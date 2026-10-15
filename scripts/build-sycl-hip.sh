@@ -55,8 +55,8 @@ git -C "$SRC" checkout -q FETCH_HEAD
 echo "== configure"
 BUILD="$WORK/build"
 # --hip: HIP adapter + amdgcn libspirv + AMDGPU backend. --disable-jit: the runtime kernel
-# compiler is not used by gpu_test and doubles the LLVM link work. Link jobs are capped so the
-# 16 GB CI runner does not run out of memory linking clang.
+# compiler is not used by gpu_test and doubles the LLVM link work. (LLVM_PARALLEL_LINK_JOBS is
+# not set: it makes ninja fail with "duplicate pool 'link_job_pool'" in this tree.)
 # The two runtime overrides work around an intel/llvm bug (as of nightly-2026-10-14, which CI
 # never hits because no intel/llvm CI job builds --hip): configure.py names the AMD libclc
 # runtime "amdgcn-amd-amdhsa-llvm", but sycl/CMakeLists.txt requires "amdgcn-amd-amdhsa" in the
@@ -64,7 +64,7 @@ BUILD="$WORK/build"
 # (clang/lib/Driver/ToolChains/SYCL.cpp, findLibspirvPath). Later -D options win.
 rm -f "$BUILD/CMakeCache.txt"
 python3 "$SRC/buildbot/configure.py" -s "$SRC" -o "$BUILD" --hip --no-assertions --disable-jit \
-  --cmake-opt=-DLLVM_PARALLEL_LINK_JOBS=2 --cmake-opt=-DUR_HIP_ROCM_DIR=/opt/rocm \
+  --cmake-opt=-DUR_HIP_ROCM_DIR=/opt/rocm \
   "--cmake-opt=-DLLVM_RUNTIME_TARGETS=default;amdgcn-amd-amdhsa;spirv64-unknown-unknown" \
   --cmake-opt=-DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES=libclc
 
