@@ -39,6 +39,18 @@ Put these variables in the agent's MCP config (examples below) or source the env
 
 ## 3. Register the MCP server
 
+The quick way: source your toolchain environment first, then
+
+```bash
+oneapi-agent setup --dry-run   # prints every file/command it would touch
+oneapi-agent setup             # all detected agents; or --agent claude|codex|cursor|gemini (repeatable)
+```
+
+It runs `claude mcp add -s user` for Claude Code (and copies the `oneapi-port` skill to `~/.claude/skills/`),
+and merges an `oneapi-agent` entry into `~/.codex/config.toml`, `~/.cursor/mcp.json` and `~/.gemini/settings.json`.
+Edited files are backed up as `<file>.bak`, re-running replaces the entry instead of duplicating it,
+and `ONEAPI_AGENT_API_KEY` is never written into any config. The manual equivalents follow.
+
 The server speaks MCP over stdio: `oneapi-agent serve` (equivalently `python -m oneapi_agent.server`).
 Use the absolute path of the venv's `oneapi-agent` if it is not on `PATH`.
 

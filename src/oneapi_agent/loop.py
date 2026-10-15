@@ -19,6 +19,11 @@ The loop is deliberately explicit:
 
 Everything is written to ``runs/<timestamp>/trace.jsonl`` and ``report.md``.
 ``--dry-run`` swaps the API model for a scripted fake so the loop runs without a key.
+
+``--baseline`` is the ablation arm used to measure what the toolkit adds: the model keeps
+migrate, compile and file access (what a plain coding agent has) but loses scan_helpers,
+verify and benchmark, and the run ends when the model calls finish. ``--evaluate`` grades
+the final sources of either arm with a hidden compile + verify + scan the model never sees.
 """
 
 from __future__ import annotations
@@ -68,6 +73,27 @@ Rules:
 - If a tool reports toolchain_missing, say so and call finish; do not invent results.
 """
 
+BASELINE_SYSTEM_PROMPT = """\
+You are porting CUDA code to idiomatic SYCL 2020 for Intel oneAPI DPC++ (icpx -fsycl).
+Work only through the provided tools. Every tool returns JSON evidence:
+{tool, status, summary, evidence, limitations}.
+
+Procedure: migrate -> compile -> fix errors -> refactor to idiomatic SYCL (remove every
+dpct:: helper, DPCT_* macro and #include <dpct/...>) -> compile -> finish.
+
+Rules:
+- Do not write CUDA idioms (warp size 32, error-code plumbing, 3-D launches for 1-D work).
+- Fix the first compiler error first. Keep edits small and targeted.
+- write_file replaces a whole file: always send the complete file content.
+- The port must produce the same output as the original within the stated tolerance.
+- Call finish when the current sources compile and you believe the port is complete and
+  correct.
+- If the same error repeats, change approach instead of retrying the same edit.
+- If a tool reports toolchain_missing, say so and call finish; do not invent results.
+"""
+
+BASELINE_REMOVED_TOOLS = frozenset({"scan_helpers", "verify", "benchmark"})
+
 
 # ----------------------------------------------------------------------------- config
 
@@ -94,6 +120,8 @@ class LoopConfig:
     stuck_threshold: int = 3
     model: str = field(default_factory=lambda: os.environ.get("ONEAPI_AGENT_MODEL", DEFAULT_MODEL))
     name: str = "task"
+    baseline: bool = False  # ablation arm: no scan_helpers/verify/benchmark; ends on finish
+    evaluate: bool = False  # grade the final sources with a hidden compile+verify+scan
 
     @classmethod
     def from_task_file(cls, path: str | Path, **overrides: Any) -> LoopConfig:
@@ -253,7 +281,12 @@ class ScriptedModel:
 # ----------------------------------------------------------------------------- tools
 
 
-def tool_schemas() -> list[dict[str, Any]]:
+def tool_schemas(baseline: bool = False) -> list[dict[str, Any]]:
+    tools = _all_tool_schemas()
+    return [t for t in tools if t["name"] not in BASELINE_REMOVED_TOOLS] if baseline else tools
+
+
+def _all_tool_schemas() -> list[dict[str, Any]]:
     def obj(props: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:
         return {"type": "object", "properties": props, "required": required or [],
                 "additionalProperties": False}
@@ -311,6 +344,8 @@ class Toolbox:
         raise PermissionError(f"path escapes the work dir: {rel}")
 
     def __call__(self, name: str, args: dict[str, Any]) -> ToolResult:
+        if self.cfg.baseline and name in BASELINE_REMOVED_TOOLS:
+            return ToolResult(name, "error", f"tool {name!r} is not available in this run")
         try:
             fn = getattr(self, f"t_{name}")
         except AttributeError:
@@ -518,10 +553,14 @@ class AgentLoop:
             f"GOAL: {c.goal}\n\n"
             f"CUDA source ({c.cuda_path}):\n```cuda\n{self.state.cuda_source}\n```\n\n"
             f"Work dir: all paths are relative to it. Compile output goes to "
-            f"{c.candidate_binary}.\nVerify compares `{c.candidate_cmd}` against the reference "
-            f"`{c.reference_cmd}` on {len(c.inputs)} input(s); mode={c.mode}, "
-            f"atol={c.tolerance}, rtol={c.rtol}, audio threshold={c.threshold_dbfs} dBFS.\n"
-            f"Budget: {c.max_iterations} iterations, {c.max_total_tokens} tokens, "
+            f"{c.candidate_binary}.\n"
+            + (f"Correctness bar: output must match the original's within mode={c.mode}, "
+               f"atol={c.tolerance}, rtol={c.rtol}, audio threshold={c.threshold_dbfs} dBFS.\n"
+               if c.baseline else
+               f"Verify compares `{c.candidate_cmd}` against the reference "
+               f"`{c.reference_cmd}` on {len(c.inputs)} input(s); mode={c.mode}, "
+               f"atol={c.tolerance}, rtol={c.rtol}, audio threshold={c.threshold_dbfs} dBFS.\n")
+            + f"Budget: {c.max_iterations} iterations, {c.max_total_tokens} tokens, "
             f"${c.max_cost_usd:.2f}.\nStart with migrate."
         )
 
@@ -530,6 +569,10 @@ class AgentLoop:
         cur = source_hash(self.work)
         best = (f"iteration {s.best['iteration']} ({s.best['helpers']} helpers)" if s.best
                 else "none yet")
+        if c.baseline:
+            return (f"[loop state] iteration {s.iteration}/{c.max_iterations}; sources {cur}; "
+                    f"compiled-from-current={'yes' if s.last_compile_ok_hash == cur else 'no'}; "
+                    f"tokens used {s.usage['input_tokens'] + s.usage['output_tokens']}")
         return (
             f"[loop state] iteration {s.iteration}/{c.max_iterations}; sources {cur}; "
             f"compiled-from-current={'yes' if s.last_compile_ok_hash == cur else 'no'}; "
@@ -621,7 +664,8 @@ class AgentLoop:
         if not self.prepare():
             return self.finish()
         self.messages = [{"role": "user", "content": self._initial_message()}]
-        tools = tool_schemas()
+        tools = tool_schemas(c.baseline)
+        system = BASELINE_SYSTEM_PROMPT if c.baseline else SYSTEM_PROMPT
 
         while self.state.stop_reason is None:
             if self.state.iteration >= c.max_iterations:
@@ -631,7 +675,7 @@ class AgentLoop:
                 break
             self.state.iteration += 1
             it = self.state.iteration
-            resp = self.model.create(system=SYSTEM_PROMPT, messages=self.messages, tools=tools)
+            resp = self.model.create(system=system, messages=self.messages, tools=tools)
             for k in self.state.usage:
                 self.state.usage[k] += int(resp.usage.get(k, 0))
             # Scripted dry runs cost nothing; unknown models -> None (token budget still applies).
@@ -655,10 +699,11 @@ class AgentLoop:
                 if self._text_only_turns >= 2:
                     self._stop("model_stopped", "model ended twice without tool calls")
                     break
+                nudge = ("Continue with tool calls, or call finish when you are done."
+                         if c.baseline else "Success conditions are not met yet. Continue "
+                         "with tool calls, or call finish if you are blocked.")
                 self.messages.append({"role": "user", "content": [
-                    {"type": "text", "text": "Success conditions are not met yet. Continue "
-                     "with tool calls, or call finish if you are blocked.\n" + self._state_note()}
-                ]})
+                    {"type": "text", "text": nudge + "\n" + self._state_note()}]})
                 continue
             self._text_only_turns = 0
 
@@ -668,7 +713,13 @@ class AgentLoop:
             for u in uses:
                 name, args = u["name"], u.get("input") or {}
                 self._trace("tool_call", iteration=it, name=name, input=args)
-                if name == "finish":
+                if name == "finish" and c.baseline:
+                    finished = args.get("summary", "")
+                    result = ToolResult("finish", "ok", "finish recorded",
+                                        {"model_summary": finished})
+                    self._trace("tool_result", iteration=it, name=name, input=args,
+                                source_hash=source_hash(self.work), result=result.to_dict())
+                elif name == "finish":
                     finished = args.get("summary", "")
                     ok = self.success()
                     result = ToolResult("finish", "ok" if ok else "fail",
@@ -695,6 +746,10 @@ class AgentLoop:
             results_blocks.append({"type": "text", "text": self._state_note()})
             self.messages.append({"role": "user", "content": results_blocks})
 
+            if c.baseline and finished is not None:
+                self._stop("model_finished", "model called finish (baseline: no loop-side "
+                                             "success check)")
+                break
             if self.success():
                 self._stop("success", "verify passed and zero dpct helpers on the current "
                                       "compiled sources")
@@ -725,10 +780,39 @@ class AgentLoop:
         result = self.toolbox("benchmark", {"runs": self.cfg.benchmark_runs})
         self._record("benchmark", {"runs": self.cfg.benchmark_runs, "by": "harness"}, result)
 
+    def evaluate(self) -> dict[str, Any]:
+        """Hidden grading of the final sources (never shown to the model).
+
+        Recompiles with the model's last compile arguments if the current sources were not
+        compiled, then runs verify and a whole-tree helper scan on exactly those sources.
+        """
+        cur = source_hash(self.work)
+        last = _last(self.state.history, "compile")
+        ev: dict[str, Any] = {"source_hash": cur, "compiled": False, "verify_status": None,
+                              "verify_summary": None, "helpers": None}
+        if self.state.last_compile_ok_hash != cur:
+            if last is None:
+                ev["note"] = "the model never compiled"
+                return ev
+            res = Toolbox.t_compile(Toolbox(self.cfg, self.work), last.input)  # type: ignore[arg-type]
+            if not res.ok:
+                ev["note"] = "final sources do not compile: " + res.summary
+                return ev
+        ev["compiled"] = True
+        v = Toolbox.t_verify(Toolbox(self.cfg, self.work), {})  # type: ignore[arg-type]
+        ev["verify_status"], ev["verify_summary"] = v.status, v.summary
+        sc = scan_helpers(str(self.work))
+        ev["helpers"] = int(sc.evidence.get("total", 0)) if sc.status in ("ok", "fail") else None
+        ev["advisories"] = [a.get("kind", "?")
+                            for a in sc.evidence.get("advisories", [])]
+        self._trace("evaluation", **ev)
+        return ev
+
     def finish(self) -> dict[str, Any]:
         s = self.state
         if s.stop_reason == "success":
             self._final_benchmark()
+        evaluation = self.evaluate() if self.cfg.evaluate else None
         outcome = {
             "stop_reason": s.stop_reason,
             "stop_detail": s.stop_detail,
@@ -740,6 +824,8 @@ class AgentLoop:
             "trace": str(self.trace_path),
             "report": str(self.run_dir / "report.md"),
             "model": self.model.name,
+            "baseline": self.cfg.baseline,
+            **({"evaluation": evaluation} if evaluation is not None else {}),
         }
         self._trace("stop", **outcome)
         (self.run_dir / "report.md").write_text(render_report(self, outcome))
@@ -908,7 +994,9 @@ def default_task_file() -> Path:
 
 def cli_entry(args: Any) -> dict[str, Any]:
     task = Path(args.config) if args.config else default_task_file()
-    cfg = LoopConfig.from_task_file(task, max_iterations=args.max_iterations)
+    cfg = LoopConfig.from_task_file(task, max_iterations=args.max_iterations,
+                                    baseline=getattr(args, "baseline", False) or None,
+                                    evaluate=getattr(args, "evaluate", False) or None)
     if args.dry_run:
         sol_path = task.parent / "sycl" / (Path(cfg.cuda_path).stem + ".cpp")
         sol = sol_path.read_text() if sol_path.is_file() else None

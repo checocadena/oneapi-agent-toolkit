@@ -17,6 +17,7 @@ from oneapi_agent.loop import (
     estimate_cost,
     failure_signature,
     mock_queues,
+    tool_schemas,
 )
 from oneapi_agent.result import ToolResult
 
@@ -216,3 +217,24 @@ def test_client_prefers_oneapi_agent_key(monkeypatch):
                                               "base_url": "https://api.anthropic.com"}
     monkeypatch.delenv("ONEAPI_AGENT_API_KEY")
     assert make_anthropic_client(FakeSDK) == {}  # falls back to the SDK's own lookup
+
+
+def test_baseline_hides_checks_and_ends_on_finish(cfg, tmp_path):
+    cfg.baseline = True
+    names = {t["name"] for t in tool_schemas(baseline=True)}
+    assert not names & {"scan_helpers", "verify", "benchmark"} and "compile" in names
+    script = [[("verify", {})],  # not offered, but a model could still try
+              [("finish", {"summary": "done"})]]
+    loop = make_loop(cfg, tmp_path, script, {})
+    out = loop.run()
+    assert out["stop_reason"] == "model_finished" and out["baseline"] is True
+    assert loop.state.history[0].result.status == "error"  # verify refused, not run
+    assert "Verify compares" not in loop.messages[0]["content"]
+    assert "verify-passed" not in loop._state_note()
+
+
+def test_evaluate_reports_never_compiled(cfg, tmp_path):
+    cfg.baseline, cfg.evaluate = True, True
+    out = make_loop(cfg, tmp_path, [[("finish", {"summary": "done"})]], {}).run()
+    assert out["evaluation"]["compiled"] is False
+    assert out["evaluation"]["note"] == "the model never compiled"

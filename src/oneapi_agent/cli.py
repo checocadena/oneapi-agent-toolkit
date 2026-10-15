@@ -70,6 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("serve", help="run the MCP server on stdio")
 
+    st = sub.add_parser("setup", help="register the MCP server (and skill) with coding agents")
+    st.add_argument("--agent", action="append", dest="agents",
+                    choices=["claude", "codex", "cursor", "gemini"],
+                    help="agent to configure (repeatable); default: every agent detected")
+    st.add_argument("--dry-run", action="store_true", help="show what would change, write nothing")
+    st.add_argument("--no-skill", action="store_true", help="do not install the oneapi-port skill")
+
     lp = sub.add_parser("loop", help="run the standalone agent loop")
     lp.add_argument("--config", help="JSON task file (see examples/*/task.json)")
     lp.add_argument("--dry-run", action="store_true",
@@ -79,6 +86,11 @@ def build_parser() -> argparse.ArgumentParser:
     lp.add_argument("--scenario", default="success", choices=["success", "stuck", "max_iterations"],
                     help="dry-run script to play")
     lp.add_argument("--max-iterations", type=int)
+    lp.add_argument("--baseline", action="store_true",
+                    help="ablation: no scan_helpers/verify/benchmark; run ends when the model "
+                         "calls finish")
+    lp.add_argument("--evaluate", action="store_true",
+                    help="grade the final sources with a hidden compile + verify + scan")
     lp.add_argument("--runs-dir", default="runs")
     return p
 
@@ -108,6 +120,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.cmd == "benchmark":
         return _emit(benchmark(args.command, args.runs, args.devices, warmup=args.warmup,
                                report_regex=args.report_regex), args.summary)
+    if args.cmd == "setup":
+        from .setup import setup
+
+        return _emit(setup(args.agents, dry_run=args.dry_run, skill=not args.no_skill),
+                     args.summary)
     if args.cmd == "serve":
         from .server import main as serve_main
 
@@ -118,6 +135,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         outcome = cli_entry(args)
         print(json.dumps(outcome, indent=2, default=str))
+        if args.baseline:
+            return 0 if outcome.get("stop_reason") == "model_finished" else 1
         return 0 if outcome.get("stop_reason") == "success" else 1
     return 2
 

@@ -1,0 +1,41 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; none: median 59.49 ms, p95 66.86 ms",
+  "evidence": {
+    "command": "build/reference /workspace/repo/examples/data/sweep_noise_48k.wav /workspace/gpu-run/work/fuzz/bench_out.wav",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "none",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.04590344987809658,
+          "median": 0.05949107091873884,
+          "p95": 0.0668641772121191,
+          "max": 0.06848912313580513,
+          "mean": 0.05843315590173006,
+          "stdev": 0.007311911844698047
+        },
+        "samples_s": [
+          0.062669,
+          0.047222,
+          0.059982,
+          0.068489,
+          0.064878,
+          0.059,
+          0.057372,
+          0.063417,
+          0.055398,
+          0.045903
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}
