@@ -89,4 +89,4 @@ def test_falls_back_to_the_next_gpu_when_one_is_out_of_stock(tmp_path):
                            max_minutes=0.01, into=str(tmp_path), log=lambda m: None,
                            agent_url=lambda pid: "http://127.0.0.1:9")
     assert len(tried) == 2 and r.evidence["gpu"] == tried[1]
-    assert r.evidence["create_attempts"][0]["http"] == 400 and api.deleted == ["p1"]
+    assert "HTTP 400" in r.evidence["create_attempts"][0]["error"] and api.deleted == ["p1"]

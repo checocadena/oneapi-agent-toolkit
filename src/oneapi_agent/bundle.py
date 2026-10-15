@@ -136,8 +136,9 @@ def ingest_results(archive: str, into: str = "docs/gpu-run") -> ToolResult:
             summary: dict[str, Any] = json.loads(raw.read()) if raw else {}
             ev = summary.get("evidence", {})
             dev = ev.get("device") or {}
-            slug = re.sub(r"[^a-z0-9]+", "-", f"{ev.get('vendor', 'unknown')}-"
-                          f"{dev.get('name', 'device')}".lower()).strip("-")[:60]
+            vendor, name = str(ev.get("vendor", "unknown")), str(dev.get("name", "device"))
+            label = name if name.lower().startswith(vendor.lower()) else f"{vendor}-{name}"
+            slug = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")[:60]
             dest = Path(into) / slug / str(ev.get("task", "task"))
             dest.mkdir(parents=True, exist_ok=True)
             kw: dict[str, Any] = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}

@@ -201,86 +201,167 @@ def _agent_call(url: str, token: str, method: str = "GET", data: bytes | None = 
         return 0, b""
 
 
+class Unavailable(Exception):
+    """The provider could not create this GPU right now (no stock, quota): try the next one."""
+
+
+START_CMD = 'echo "$GT_AGENT" | base64 -d > /gt_agent.py && exec python3 /gt_agent.py'
+
+
+class Provider:
+    """What remote_test needs from a GPU rental service. Subclasses implement each method."""
+
+    name = "provider"
+    key_env = ""
+
+    def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
+        raise NotImplementedError
+
+    def price(self, gpu: str) -> float | None:
+        """USD per hour, or None if unknown."""
+        raise NotImplementedError
+
+    def create(self, gpu: str, *, vendor: str, image: str | None, env: dict[str, str]) -> str:
+        """Start a machine that runs START_CMD with ``env``; return its id. Raise Unavailable."""
+        raise NotImplementedError
+
+    def agent_url(self, machine_id: str) -> str | None:
+        """Base URL of the agent on port 8000, or None while it is not known yet."""
+        raise NotImplementedError
+
+    def delete(self, machine_id: str) -> None:
+        raise NotImplementedError
+
+    def exists(self, machine_id: str) -> bool:
+        raise NotImplementedError
+
+
+class RunpodProvider(Provider):
+    name, key_env = "runpod", "RUNPOD_API_KEY"
+
+    def __init__(self, api: RunpodAPI, cloud: str = "SECURE") -> None:
+        self.api, self.cloud = api, cloud
+
+    def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
+        return [gpu_type] if gpu_type else DEFAULT_GPUS[vendor]
+
+    def price(self, gpu: str) -> float | None:
+        return self.api.gpu_price(gpu, self.cloud)
+
+    def create(self, gpu: str, *, vendor: str, image: str | None, env: dict[str, str]) -> str:
+        body: dict[str, Any] = {
+            "name": f"oneapi-gputest-{secrets.token_hex(3)}", "cloud": self.cloud,
+            "gpu": {"id": gpu, "count": 1}, "image": image or DEFAULT_IMAGE[vendor],
+            "disk": 60, "ports": ["8000/http"], "env": env,
+            "entrypoint": ["bash", "-c"], "cmd": [START_CMD],
+        }
+        if vendor == "nvidia":
+            body["gpu"]["minCudaVersion"] = "12.4"
+        try:
+            return str(self.api.create_pod(body)["id"])
+        except urllib.error.HTTPError as e:
+            raise Unavailable(f"HTTP {e.code}: {e.read().decode(errors='replace')[:300]}") from e
+
+    def agent_url(self, machine_id: str) -> str | None:
+        return f"https://{machine_id}-8000.proxy.runpod.net"
+
+    def delete(self, machine_id: str) -> None:
+        self.api.delete_pod(machine_id)
+
+    def exists(self, machine_id: str) -> bool:
+        return self.api.get_pod(machine_id) is not None
+
+
+def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = None) -> Provider:
+    """Provider by name, keyed from its environment variable (or ``api_key``)."""
+    if name == "runpod":
+        return RunpodProvider(RunpodAPI(api_key or os.environ.get("RUNPOD_API_KEY", "")), cloud)
+    raise ValueError(f"unknown provider {name!r}")
+
+
+PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY"}
+
+
 def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None = None,
-                cloud: str = "SECURE", image: str | None = None, max_minutes: float = 45,
-                max_usd: float = 2.0, into: str = "docs/gpu-run", keep_pod: bool = False,
-                api_key: str | None = None, api: RunpodAPI | None = None,
-                log: Callable[[str], None] = print, poll_s: float = 10,
-                agent_url: Callable[[str], str] | None = None) -> ToolResult:
-    """Rent a GPU on Runpod, run ``gpu_test`` there through a bundle, import the results."""
-    key = api_key or os.environ.get("RUNPOD_API_KEY", "")
-    if api is None and not key:
-        return ToolResult("remote_test", "toolchain_missing",
-                          "RUNPOD_API_KEY is not set", {},
-                          ["Create an API key in the Runpod console and export RUNPOD_API_KEY."])
-    api = api or RunpodAPI(key)
-    candidates = [gpu_type] if gpu_type else DEFAULT_GPUS[vendor]
+                provider: str | Provider = "runpod", cloud: str = "SECURE",
+                image: str | None = None, max_minutes: float = 45, max_usd: float = 2.0,
+                into: str = "docs/gpu-run", keep_pod: bool = False, api_key: str | None = None,
+                api: RunpodAPI | None = None, log: Callable[[str], None] = print,
+                poll_s: float = 10, agent_url: Callable[[str], str] | None = None) -> ToolResult:
+    """Rent a GPU, run ``gpu_test`` there through a bundle, import the results, delete it."""
+    if isinstance(provider, Provider):
+        prov = provider
+    elif api is not None:  # tests / callers that bring their own Runpod client
+        prov = RunpodProvider(api, cloud)
+    else:
+        env_name = PROVIDER_KEY_ENV.get(provider, "")
+        if not env_name:
+            return ToolResult("remote_test", "error", f"unknown provider {provider!r}; "
+                              f"choose from {sorted(PROVIDER_KEY_ENV)}")
+        if not (api_key or os.environ.get(env_name)):
+            return ToolResult("remote_test", "toolchain_missing", f"{env_name} is not set", {},
+                              [f"Create an API key in the {provider} console and export "
+                               f"{env_name}."])
+        prov = make_provider(provider, cloud=cloud, api_key=api_key)
+    candidates = prov.candidates(vendor, gpu_type)
     affordable: list[tuple[str, float | None, float]] = []
     for g in candidates:
-        p = api.gpu_price(g, cloud)
+        p = prov.price(g)
         budget_minutes = max_usd / p * 60 if p else float("inf")
         if budget_minutes >= 10:  # a GPU the budget can't keep for 10 minutes is skipped
             affordable.append((g, p, min(max_minutes, budget_minutes)))
     if not affordable:
         return ToolResult("remote_test", "error",
                           f"no candidate GPU fits max_usd ${max_usd} for 10+ minutes",
-                          {"candidates": candidates})
+                          {"candidates": candidates, "provider": prov.name})
     tmp = Path(tempfile.mkdtemp(prefix="remote-test-"))
     b = make_bundle(task_file, str(tmp / "bundle.sh"))
     if not b.ok:
         return b
     token = secrets.token_urlsafe(24)
-    body: dict[str, Any] = {
-        "name": f"oneapi-gputest-{secrets.token_hex(3)}", "cloud": cloud,
-        "gpu": {"id": affordable[0][0], "count": 1}, "image": image or DEFAULT_IMAGE[vendor],
-        "disk": 60, "ports": ["8000/http"],
-        "env": {"GT_TOKEN": token, "GT_AGENT": base64.b64encode(POD_AGENT.encode()).decode()},
-        "entrypoint": ["bash", "-c"],
-        "cmd": ["echo \"$GT_AGENT\" | base64 -d > /gt_agent.py && exec python3 /gt_agent.py"],
-    }
-    if vendor == "nvidia":
-        body["gpu"]["minCudaVersion"] = "12.4"
+    env = {"GT_TOKEN": token, "GT_AGENT": base64.b64encode(POD_AGENT.encode()).decode()}
     t0 = time.time()
-    pod_id: str | None = None
-    ev: dict[str, Any] = {"cloud": cloud, "image": body["image"], "create_attempts": []}
+    mid: str | None = None
+    ev: dict[str, Any] = {"provider": prov.name, "create_attempts": []}
     status: dict[str, Any] = {}
     result: ToolResult
     gpu, price = affordable[0][0], affordable[0][1]
     try:
-        pod = None
         for cand in affordable:
-            body["gpu"]["id"] = cand[0]
             try:
-                pod = api.create_pod(body)
-            except urllib.error.HTTPError as e:
-                msg = e.read().decode(errors="replace")[:300]
-                ev["create_attempts"].append({"gpu": cand[0], "http": e.code, "error": msg})
-                log(f"{cand[0]}: not created (HTTP {e.code}); trying the next GPU")
+                mid = prov.create(cand[0], vendor=vendor, image=image, env=env)
+            except Unavailable as e:
+                ev["create_attempts"].append({"gpu": cand[0], "error": str(e)})
+                log(f"{cand[0]}: not created ({str(e)[:80]}); trying the next GPU")
                 continue
             gpu, price, max_minutes = cand
             break
-        if pod is None:
+        if mid is None:
             return ToolResult("remote_test", "error",
-                              f"no candidate GPU could be created ({len(affordable)} tried)", ev,
+                              f"no candidate GPU could be created on {prov.name} "
+                              f"({len(affordable)} tried)", ev,
                               ["Usually means no stock right now; retry later or pass --gpu."])
-        ev.update(gpu=gpu, price_per_hour=price, max_minutes=round(max_minutes, 1))
+        ev.update(gpu=gpu, price_per_hour=price, max_minutes=round(max_minutes, 1),
+                  machine_id=mid)
         deadline = t0 + max_minutes * 60
-        pod_id = pod["id"]
-        ev["pod_id"] = pod_id
-        log(f"created pod {pod_id} ({gpu}, ${price}/h)")
-        url = agent_url(pod_id) if agent_url else f"https://{pod_id}-8000.proxy.runpod.net"
-        # Wait for the agent to answer, then upload the bundle.
+        log(f"created {prov.name} machine {mid} ({gpu}, ${price}/h)")
+        # Wait until the agent's address is known and it answers, then upload the bundle.
+        url: str | None = None
         seen_codes: set[int] = set()
         while time.time() < deadline:
-            code, _ = _agent_call(url + "/status", token, timeout=20)
-            if code == 200:
-                break
-            if code not in seen_codes:  # 0 = not reachable yet, 502/404 = proxy still starting
-                seen_codes.add(code)
-                log(f"waiting for the pod agent (HTTP {code or 'no answer'})")
+            url = agent_url(mid) if agent_url else prov.agent_url(mid)
+            if url:
+                code, _ = _agent_call(url + "/status", token, timeout=20)
+                if code == 200:
+                    break
+                if code not in seen_codes:  # 0 = not reachable yet; 502/404 = still starting
+                    seen_codes.add(code)
+                    log(f"waiting for the agent (HTTP {code or 'no answer'})")
             time.sleep(poll_s)
         else:
-            raise TimeoutError("the pod's agent never answered before the time limit")
+            raise TimeoutError("the machine's agent never answered before the time limit")
+        assert url is not None
+        ev["agent_url"] = url
         code, resp = _agent_call(url + "/bundle", token, "PUT", (tmp / "bundle.sh").read_bytes(),
                                  {"X-Args": json.dumps(["--vendor", vendor])}, timeout=300)
         if code != 202:
@@ -293,7 +374,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                 status = json.loads(raw)
                 if status.get("phase") != last:
                     last = status.get("phase", "")
-                    log(f"pod phase: {last}")
+                    log(f"agent phase: {last}")
                 if status.get("phase") == "done":
                     break
             time.sleep(poll_s)
@@ -316,16 +397,16 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         ev["run_tail"] = status.get("run_tail", "")[-3000:]
         result = ToolResult("remote_test", "error", f"{type(exc).__name__}: {exc}"[:600], ev)
     finally:
-        if pod_id and not keep_pod:
-            api.delete_pod(pod_id)
-            gone = api.get_pod(pod_id) is None
+        if mid and not keep_pod:
+            prov.delete(mid)
+            gone = not prov.exists(mid)
             ev["pod_deleted"] = gone
-            log(f"deleted pod {pod_id}: {'confirmed' if gone else 'NOT CONFIRMED'}")
+            log(f"deleted {prov.name} machine {mid}: {'confirmed' if gone else 'NOT CONFIRMED'}")
     minutes = (time.time() - t0) / 60
     ev["minutes"] = round(minutes, 1)
     if price is not None:
         ev["est_cost_usd"] = round(price * minutes / 60, 3)
-    if pod_id and not keep_pod and not ev.get("pod_deleted"):
-        result.limitations.append(f"Pod {pod_id} deletion could not be confirmed: check the "
-                                  "Runpod console.")
+    if mid and not keep_pod and not ev.get("pod_deleted"):
+        result.limitations.append(f"{prov.name} machine {mid} deletion could not be confirmed: "
+                                  "check the provider's console.")
     return result
