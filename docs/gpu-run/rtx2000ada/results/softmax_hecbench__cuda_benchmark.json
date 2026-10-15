@@ -1,0 +1,62 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; none: median 329.19 ms, p95 383.48 ms",
+  "evidence": {
+    "command": "build/cuda /workspace/gpu-run/work/softmax_hecbench/bench_out.bin 2048 256",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "none",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.3191203875467181,
+          "median": 0.32918602926656604,
+          "p95": 0.38348163827322423,
+          "max": 0.39499012753367424,
+          "mean": 0.342272019200027,
+          "stdev": 0.026421480794619288
+        },
+        "samples_s": [
+          0.324298,
+          0.31912,
+          0.367654,
+          0.327005,
+          0.369416,
+          0.32323,
+          0.331367,
+          0.39499,
+          0.346427,
+          0.319213
+        ],
+        "reported": {
+          "n": 10,
+          "min": 0.278701,
+          "median": 0.28781599999999996,
+          "p95": 1.4365016499999999,
+          "max": 1.470073,
+          "mean": 0.515488,
+          "stdev": 0.48379656608675237
+        },
+        "reported_samples": [
+          0.295751,
+          0.28407,
+          1.470073,
+          0.286321,
+          0.289851,
+          1.39547,
+          0.286321,
+          0.278701,
+          0.289311,
+          0.279011
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}

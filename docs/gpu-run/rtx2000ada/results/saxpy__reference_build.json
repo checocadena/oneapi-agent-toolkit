@@ -1,0 +1,8 @@
+{
+  "command": "g++ -O2 -std=c++17 /workspace/repo/examples/saxpy/saxpy_ref.cpp -o build/reference",
+  "returncode": 0,
+  "duration_s": 0.395504,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/workspace/gpu-run/work/saxpy"
+}

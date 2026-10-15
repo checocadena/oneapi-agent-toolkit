@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native -I/workspace/repo/examples/softmax_hecbench /workspace/repo/examples/softmax_hecbench/softmax.cu -o build/cuda",
+  "returncode": 0,
+  "duration_s": 5.27694,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/workspace/gpu-run/work/softmax_hecbench"
+}

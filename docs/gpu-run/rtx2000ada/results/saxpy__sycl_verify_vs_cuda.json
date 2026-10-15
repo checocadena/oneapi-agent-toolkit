@@ -1,0 +1,70 @@
+{
+  "tool": "verify",
+  "status": "ok",
+  "summary": "PASS: 1/1 case(s) match (worst max abs err 0, atol 1e-06)",
+  "evidence": {
+    "mode": "array",
+    "cases": [
+      {
+        "input": null,
+        "reference": {
+          "command": "build/cuda /workspace/gpu-run/work/saxpy/v_sycl_cuda/case0_reference.out",
+          "returncode": 0,
+          "duration_s": 0.347539,
+          "stdout": "kernel_ms=3.599168\n",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/saxpy",
+          "env_overrides": {
+            "ONEAPI_DEVICE_SELECTOR": "cuda:*"
+          },
+          "output_file": "/workspace/gpu-run/work/saxpy/v_sycl_cuda/case0_reference.out"
+        },
+        "candidate": {
+          "command": "build/sycl_gpu /workspace/gpu-run/work/saxpy/v_sycl_cuda/case0_candidate.out",
+          "returncode": 0,
+          "duration_s": 0.309311,
+          "stdout": "kernel_ms=2.345823\n",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/saxpy",
+          "env_overrides": {
+            "ONEAPI_DEVICE_SELECTOR": "cuda:*"
+          },
+          "output_file": "/workspace/gpu-run/work/saxpy/v_sycl_cuda/case0_candidate.out"
+        },
+        "reference_format": "f32",
+        "candidate_format": "f32",
+        "mode": "array",
+        "stats": {
+          "n_reference": 1048576,
+          "n_candidate": 1048576,
+          "atol": 1e-06,
+          "rtol": 0.0,
+          "max_ulp_allowed": null,
+          "passed": true,
+          "max_abs_err": 0.0,
+          "rms_err": 0.0,
+          "mean_abs_err": 0.0,
+          "max_rel_err": 0.0,
+          "max_ulp_f32": 0,
+          "median_ulp_f32": 0.0,
+          "exact_matches": 1048576,
+          "mismatches": 0,
+          "nan_mismatches": 0,
+          "reference_range": [
+            0.0,
+            4.4835004806518555
+          ],
+          "first_mismatches": []
+        },
+        "passed": true
+      }
+    ],
+    "work_dir": "/workspace/gpu-run/work/saxpy/v_sycl_cuda",
+    "passed_cases": 1,
+    "total_cases": 1,
+    "worst_max_abs_err": 0.0
+  },
+  "limitations": [
+    "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+  ]
+}

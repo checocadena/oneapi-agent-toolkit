@@ -1,0 +1,64 @@
+{
+  "tool": "verify",
+  "status": "ok",
+  "summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
+  "evidence": {
+    "mode": "array",
+    "cases": [
+      {
+        "input": null,
+        "reference": {
+          "command": "build/reference /workspace/gpu-run/work/saxpy/v_cuda/case0_reference.out",
+          "returncode": 0,
+          "duration_s": 0.055182,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/saxpy",
+          "output_file": "/workspace/gpu-run/work/saxpy/v_cuda/case0_reference.out"
+        },
+        "candidate": {
+          "command": "build/cuda /workspace/gpu-run/work/saxpy/v_cuda/case0_candidate.out",
+          "returncode": 0,
+          "duration_s": 0.434746,
+          "stdout": "kernel_ms=2.432992\n",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/saxpy",
+          "output_file": "/workspace/gpu-run/work/saxpy/v_cuda/case0_candidate.out"
+        },
+        "reference_format": "f32",
+        "candidate_format": "f32",
+        "mode": "array",
+        "stats": {
+          "n_reference": 1048576,
+          "n_candidate": 1048576,
+          "atol": 1e-06,
+          "rtol": 0.0,
+          "max_ulp_allowed": null,
+          "passed": true,
+          "max_abs_err": 4.76837158203125e-07,
+          "rms_err": 9.132723682817551e-08,
+          "mean_abs_err": 3.60726772896669e-08,
+          "max_rel_err": 1.1857194791656045e-07,
+          "max_ulp_f32": 1,
+          "median_ulp_f32": 0.0,
+          "exact_matches": 853539,
+          "mismatches": 0,
+          "nan_mismatches": 0,
+          "reference_range": [
+            0.0,
+            4.4835004806518555
+          ],
+          "first_mismatches": []
+        },
+        "passed": true
+      }
+    ],
+    "work_dir": "/workspace/gpu-run/work/saxpy/v_cuda",
+    "passed_cases": 1,
+    "total_cases": 1,
+    "worst_max_abs_err": 4.76837158203125e-07
+  },
+  "limitations": [
+    "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+  ]
+}
