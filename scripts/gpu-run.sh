@@ -31,6 +31,30 @@ rm -f "$OUT/DONE"
 nvidia-smi || echo "WARN: nvidia-smi failed"
 NVCC="$(command -v nvcc || ls /usr/local/cuda/bin/nvcc 2>/dev/null || true)"
 echo "nvcc=$NVCC"; [ -n "$NVCC" ] && "$NVCC" --version
+
+# Fail fast on a host whose CUDA driver is unusable (seen on a community host: nvidia-smi works
+# but cuInit returns CUDA_ERROR_UNKNOWN 999), instead of producing misleading per-example failures.
+if [ -n "$NVCC" ]; then
+  cat >/tmp/cuda_smoke.cu <<'EOF'
+#include <cstdio>
+__global__ void k(int* p) { p[threadIdx.x] = threadIdx.x; }
+int main() {
+  int* d; int h[32];
+  cudaError_t e = cudaMalloc(&d, sizeof(h));
+  if (e != cudaSuccess) { printf("cudaMalloc: %s\n", cudaGetErrorString(e)); return 1; }
+  k<<<1, 32>>>(d);
+  e = cudaMemcpy(h, d, sizeof(h), cudaMemcpyDeviceToHost);
+  if (e != cudaSuccess || h[31] != 31) { printf("kernel/memcpy: %s\n", cudaGetErrorString(e)); return 1; }
+  int* m; e = cudaMallocManaged(&m, 4);
+  if (e != cudaSuccess) { printf("cudaMallocManaged: %s\n", cudaGetErrorString(e)); return 1; }
+  printf("CUDA smoke test OK\n"); return 0;
+}
+EOF
+  if ! { "$NVCC" -o /tmp/cuda_smoke /tmp/cuda_smoke.cu && /tmp/cuda_smoke; }; then
+    phase "FAILED gpu-unusable: CUDA smoke test failed on this host (driver/runtime problem, not the code)"
+    date -u >"$OUT/DONE"; sleep infinity
+  fi
+fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq && apt-get install -y -qq git g++ curl bzip2 xz-utils gnupg python3-venv >/dev/null \
   || echo "WARN: apt-get install failed"
