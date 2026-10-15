@@ -1,0 +1,11 @@
+{
+  "name": "saxpy",
+  "goal": "Port saxpy.cu to idiomatic SYCL 2020 with zero dpct helpers; the float32 output must match the C++ reference within atol 1e-6.",
+  "cuda_path": "saxpy.cu",
+  "reference_build": ["g++", "-O2", "-std=c++17", "{task_dir}/saxpy_ref.cpp", "-o", "build/reference"],
+  "reference_cmd": "build/reference {output}",
+  "candidate_cmd": "build/candidate {output}",
+  "inputs": [],
+  "mode": "array",
+  "tolerance": 1e-6
+}

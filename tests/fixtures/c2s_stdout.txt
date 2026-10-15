@@ -1,0 +1,8 @@
+NOTE: Could not auto-detect compilation database for file 'reduce.cu' in '/work/reduce' or any parent directory.
+Parsing: /work/reduce/reduce.cu
+Analyzing: /work/reduce/reduce.cu
+Migrating: /work/reduce/reduce.cu
+Processed 1 file(s) in -in-root folder "/work/reduce"
+
+See Diagnostics Reference to resolve warnings and complete the migration:
+https://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html
