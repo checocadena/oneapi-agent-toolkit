@@ -1,0 +1,64 @@
+{
+  "tool": "verify",
+  "status": "ok",
+  "summary": "PASS: 1/1 case(s) match (worst max abs err 5.25e-07, atol 1e-06)",
+  "evidence": {
+    "mode": "array",
+    "cases": [
+      {
+        "input": null,
+        "reference": {
+          "command": "build/reference /tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_reference.out 2048 256",
+          "returncode": 0,
+          "duration_s": 0.00413,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
+          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_reference.out"
+        },
+        "candidate": {
+          "command": "build/native /tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_candidate.out 2048 256",
+          "returncode": 0,
+          "duration_s": 0.145577,
+          "stdout": "kernel_ms=0.948162\n",
+          "stderr": "",
+          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
+          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_candidate.out"
+        },
+        "reference_format": "f32",
+        "candidate_format": "f32",
+        "mode": "array",
+        "stats": {
+          "n_reference": 524288,
+          "n_candidate": 524288,
+          "atol": 1e-06,
+          "rtol": 0.0,
+          "max_ulp_allowed": null,
+          "passed": true,
+          "max_abs_err": 5.252659320831299e-07,
+          "rms_err": 3.995974244464003e-08,
+          "mean_abs_err": 1.3374866584538962e-08,
+          "max_rel_err": 1.4042050968111258e-05,
+          "max_ulp_f32": 224,
+          "median_ulp_f32": 35.0,
+          "exact_matches": 3933,
+          "mismatches": 0,
+          "nan_mismatches": 0,
+          "reference_range": [
+            1.2936880011693574e-07,
+            0.056325364857912064
+          ],
+          "first_mismatches": []
+        },
+        "passed": true
+      }
+    ],
+    "work_dir": "/tmp/tmp.x3fMLZMAhu/out/work/v_native",
+    "passed_cases": 1,
+    "total_cases": 1,
+    "worst_max_abs_err": 5.252659320831299e-07
+  },
+  "limitations": [
+    "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+  ]
+}

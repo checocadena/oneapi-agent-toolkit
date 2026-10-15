@@ -1,7 +1,7 @@
 {
   "tool": "gpu_test",
   "status": "ok",
-  "summary": "PASS on AMD Instinct MI350X VF gfx950:sramecc+:xnack- [HIP 71460.85] (hip:0, amd): sycl_verify_vs_reference: PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
+  "summary": "PASS on AMD Instinct MI350X VF gfx950:sramecc+:xnack- [HIP 71460.85] (hip:0, amd): sycl_verify_vs_reference: PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06); sycl_verify_vs_native: PASS: 1/1 case(s) match (worst max abs err 4.66e-07, atol 1e-06)",
   "evidence": {
     "task": "softmax_hecbench",
     "device": {
@@ -26,17 +26,22 @@
       {
         "step": "reference_build",
         "status": "ok",
-        "summary": "exit 0: g++ -O2 -std=c++17 -I/tmp/tmp.EITWR4ay4W/task /tmp/tmp.EITWR4ay4W/task/softmax_ref.cpp -o build/reference"
+        "summary": "exit 0: g++ -O2 -std=c++17 -I/tmp/tmp.x3fMLZMAhu/task /tmp/tmp.x3fMLZMAhu/task/softmax_ref.cpp -o build/reference"
       },
       {
         "step": "native_build",
-        "status": "fail",
-        "summary": "exit 1: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 -I/tmp/tmp.EITWR4ay4W/task /tmp/tmp.EITWR4ay4W/out/work/softmax.hip.cpp -o build/native"
+        "status": "ok",
+        "summary": "exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 -I/tmp/tmp.x3fMLZMAhu/task /tmp/tmp.x3fMLZMAhu/out/work/softmax.hip.cpp -o build/native"
+      },
+      {
+        "step": "native_verify_vs_reference",
+        "status": "ok",
+        "summary": "PASS: 1/1 case(s) match (worst max abs err 5.25e-07, atol 1e-06)"
       },
       {
         "step": "sycl_compile",
         "status": "ok",
-        "summary": "compiled 1 source(s) -> /tmp/tmp.EITWR4ay4W/out/work/build/sycl (0 warning(s))"
+        "summary": "compiled 1 source(s) -> /tmp/tmp.x3fMLZMAhu/out/work/build/sycl (0 warning(s))"
       },
       {
         "step": "sycl_verify_vs_reference",
@@ -44,12 +49,22 @@
         "summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)"
       },
       {
+        "step": "sycl_verify_vs_native",
+        "status": "ok",
+        "summary": "PASS: 1/1 case(s) match (worst max abs err 4.66e-07, atol 1e-06)"
+      },
+      {
         "step": "sycl_benchmark",
         "status": "ok",
-        "summary": "10 run(s) each; hip:0: median 235.89 ms, p95 237.99 ms"
+        "summary": "10 run(s) each; hip:0: median 237.97 ms, p95 239.47 ms"
+      },
+      {
+        "step": "native_benchmark",
+        "status": "ok",
+        "summary": "10 run(s) each; none: median 155.99 ms, p95 161.91 ms"
       }
     ],
-    "results_dir": "/tmp/tmp.EITWR4ay4W/out/results"
+    "results_dir": "/tmp/tmp.x3fMLZMAhu/out/results"
   },
   "limitations": [
     "Benchmarks are single-process wall times plus program-reported kernel times; treat them as rough."

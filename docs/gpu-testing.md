@@ -90,7 +90,7 @@ oneapi-agent ci setup --task examples/softmax_hecbench/task.json --provider runp
 | Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
 | Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | **Verified**: softmax on an RTX A4000 ($0.12/h), PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. Hosts that cannot pull the image are replaced automatically. No AMD offers listed. |
 | Vultr | NVIDIA A16 / A40 Cloud GPU | **Verified**: softmax on an A16, PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. AMD Instinct plans are listed but not deployable on demand. The API key's access control must allow the caller's IP. |
-| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h; spot MI350X $3.50/h), ROCm image `gpu-amd-base` | **Verified**: softmax on an MI350X (gfx950, spot $3.50/h), PASS against the C++ reference (9.69e-8), with this repo's HIP build of intel/llvm (see "The AMD SYCL toolchain" below). About 2 min, about $0.12, deletion confirmed ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)). The original CUDA could not be built there: the image's ROCm (7.14, `/opt/rocm/core-7.14`) has no HIP headers for `hipcc`. GPU images require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
+| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h; spot MI350X $3.50/h), ROCm image `gpu-amd-base` | **Verified**: softmax on an MI350X (gfx950, spot $3.50/h), PASS against the C++ reference (9.69e-8) and the original CUDA, hipified and built with `hipcc` (4.66e-7), with this repo's HIP build of intel/llvm (see "The AMD SYCL toolchain" below). About 2 min, about $0.12, deletion confirmed ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)). The image's ROCm (7.14, `/opt/rocm/core-7.14`) ships no HIP headers; setup fetches the matching `amdrocm-runtime-dev7.14` package for `hipcc`. GPU images require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
 | Intel | none to rent | No public API: use a bundle (below). |
 
 **Intel, as of 2026-10-15.**
@@ -140,9 +140,9 @@ Every run is fully automated with `remote-test`, the machine deletion is confirm
 | RTX 2000 Ada | Runpod | 9.69e-8 | 7.45e-9 |
 | A16 | Vultr | 9.69e-8 | 7.45e-9 |
 | RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
-| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | not built: no HIP headers in the image |
+| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | 4.66e-7 |
 
-The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. Speed (median wall time, 10 runs) is reported, not graded: on the MI350X the SYCL port took 238 ms and the hipified original 156 ms. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
 
 ## Problems found on real clouds, and what the tool does about them
 
@@ -157,6 +157,7 @@ The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual r
 | `sycl-ls`: "No platforms found" on an AMD MI350X (DigitalOcean) | intel/llvm prebuilts (v7.1.0 and the nightlies to 2026-10-14) are configured with `--cuda` only: no `libur_adapter_hip`, no amdgcn `libspirv`; Codeplay's AMD plugin download API is gone | `--vendor amd` installs intel/llvm built with `--hip` by this repo's CI (below); without any HIP toolchain it stops with `toolchain_missing` before renting; the setup log is kept in the result |
 | `deleted ... NOT CONFIRMED` although the droplet was gone (DigitalOcean) | droplet deletion is asynchronous; one immediate check still saw it | deletion is polled for up to 2 minutes before it is reported unconfirmed |
 | native build on DigitalOcean AMD: `'hip/hip_runtime.h' file not found` | `gpu-amd-base` ships the ROCm 7.14 runtime and `hipcc`, but not the HIP development headers | reported as a limitation; the SYCL port is still verified against the C++ reference |
+| hipified CUDA: `'cooperative_groups/reduce.h' file not found` (ROCm 7.14) | `hipify-perl` leaves that include unchanged; HIP keeps `cg::reduce` (ROCm 7+) at `hip/cooperative_groups/hip_reduce.h` | the include is pointed at the HIP header the host has; with none, the native build is skipped with that reason |
 | the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
 | a Vast instance stuck in `loading`: `TLS handshake timeout` from Docker Hub | that host's network | the machine is deleted, its host is skipped, and another is tried; any machine silent past `--boot-minutes` is replaced the same way |
 

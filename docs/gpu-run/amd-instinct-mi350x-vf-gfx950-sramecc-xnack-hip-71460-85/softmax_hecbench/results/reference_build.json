@@ -1,8 +1,8 @@
 {
-  "command": "g++ -O2 -std=c++17 -I/tmp/tmp.EITWR4ay4W/task /tmp/tmp.EITWR4ay4W/task/softmax_ref.cpp -o build/reference",
+  "command": "g++ -O2 -std=c++17 -I/tmp/tmp.x3fMLZMAhu/task /tmp/tmp.x3fMLZMAhu/task/softmax_ref.cpp -o build/reference",
   "returncode": 0,
-  "duration_s": 0.178069,
+  "duration_s": 0.175907,
   "stdout": "",
   "stderr": "",
-  "cwd": "/tmp/tmp.EITWR4ay4W/out/work"
+  "cwd": "/tmp/tmp.x3fMLZMAhu/out/work"
 }

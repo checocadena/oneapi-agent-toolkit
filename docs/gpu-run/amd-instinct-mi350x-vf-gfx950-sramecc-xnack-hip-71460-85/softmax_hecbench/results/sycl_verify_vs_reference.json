@@ -8,28 +8,28 @@
       {
         "input": null,
         "reference": {
-          "command": "build/reference /tmp/tmp.EITWR4ay4W/out/work/v_sycl/case0_reference.out 2048 256",
+          "command": "build/reference /tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_reference.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.004299,
+          "duration_s": 0.004272,
           "stdout": "",
           "stderr": "",
-          "cwd": "/tmp/tmp.EITWR4ay4W/out/work",
+          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.EITWR4ay4W/out/work/v_sycl/case0_reference.out"
+          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_reference.out"
         },
         "candidate": {
-          "command": "build/sycl /tmp/tmp.EITWR4ay4W/out/work/v_sycl/case0_candidate.out 2048 256",
+          "command": "build/sycl /tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_candidate.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.230963,
-          "stdout": "kernel_ms=17.380725\n",
+          "duration_s": 0.219646,
+          "stdout": "kernel_ms=16.896236\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.EITWR4ay4W/out/work",
+          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.EITWR4ay4W/out/work/v_sycl/case0_candidate.out"
+          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_candidate.out"
         },
         "reference_format": "f32",
         "candidate_format": "f32",
@@ -59,7 +59,7 @@
         "passed": true
       }
     ],
-    "work_dir": "/tmp/tmp.EITWR4ay4W/out/work/v_sycl",
+    "work_dir": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl",
     "passed_cases": 1,
     "total_cases": 1,
     "worst_max_abs_err": 9.685754776000977e-08
