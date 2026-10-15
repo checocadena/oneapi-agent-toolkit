@@ -72,7 +72,7 @@ Spending is capped by `--max-minutes` (45 by default) and `--max-usd` ($2 by def
 | Provider | GPUs used | Status (2026-10-15) |
 |---|---|---|
 | Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
-| Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | Create and delete verified live (RTX 3090); a full run not yet completed. No AMD offers listed. |
+| Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | **Verified**: softmax on an RTX A4000 ($0.12/h), PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. Hosts that cannot pull the image are replaced automatically. No AMD offers listed. |
 | Vultr | NVIDIA A16 / A40 Cloud GPU | **Verified**: softmax on an A16, PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. AMD Instinct plans are listed but not deployable on demand. The API key's access control must allow the caller's IP. |
 | DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h), ROCm image `gpu-amd-base` | Create path verified live up to the account's GPU limit: new accounts start at 0 GPUs ("will exceed your GPU limit") and need a support request. GPU images also require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
 | Intel | none to rent | No public API: use a bundle (below). |
@@ -94,6 +94,18 @@ A self-hosted Intel Arc or Flex machine registered as a GitHub Actions runner is
 
 The original Intel DevCloud for oneAPI was retired on 2024-10-31.
 
+## Same port, three GPUs, three rental services
+
+Every run is fully automated with `remote-test`, the machine deletion is confirmed, and every result is graded the same way:
+
+| GPU | Service | SYCL vs C++ reference | SYCL vs original CUDA on the same GPU |
+|---|---|---|---|
+| RTX 2000 Ada | Runpod | 9.69e-8 | 7.45e-9 |
+| A16 | Vultr | 9.69e-8 | 7.45e-9 |
+| RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
+
+The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+
 ## Problems found on real clouds, and what the tool does about them
 
 | Symptom | Cause | Handling |
@@ -105,5 +117,6 @@ The original Intel DevCloud for oneAPI was retired on 2024-10-31.
 | `will exceed your GPU limit` (DigitalOcean) | new accounts start with 0 GPUs | reported as-is; ask DigitalOcean support for a limit |
 | `does not use root passwords, please use an SSH key` (DigitalOcean) | GPU images need an SSH key | the account's keys, or a throwaway key made and removed for the run |
 | the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
+| a Vast instance stuck in `loading`: `TLS handshake timeout` from Docker Hub | that host's network | the machine is deleted, its host is skipped, and another is tried; any machine silent past `--boot-minutes` is replaced the same way |
 
 A run that crashes still returns an archive with the error and the run log.
