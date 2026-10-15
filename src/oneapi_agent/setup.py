@@ -48,7 +48,9 @@ def server_env(environ: dict[str, str] | None = None) -> dict[str, str]:
 
 
 def skill_source() -> Path | None:
-    p = Path(__file__).resolve().parents[2] / "skills" / "oneapi-port"
+    # src/oneapi_agent/skill is a symlink to skills/oneapi-port in a git checkout; wheels
+    # carry a real copy (package data), so `pip install oneapi-agent-toolkit` gets it too.
+    p = Path(__file__).resolve().parent / "skill"
     return p if (p / "SKILL.md").is_file() else None
 
 
@@ -147,7 +149,8 @@ def setup_codex(home: Path, cmd: list[str], env: dict[str, str], dry_run: bool) 
     return action
 
 
-def setup_claude(cmd: list[str], env: dict[str, str], dry_run: bool) -> dict[str, Any]:
+def setup_claude(cmd: list[str], env: dict[str, str], dry_run: bool,
+                 home: Path | None = None) -> dict[str, Any]:
     # The name goes before -e: -e is variadic and would swallow a name placed after it.
     argv = ["claude", "mcp", "add", "-s", "user", SERVER_NAME]
     for k, v in sorted(env.items()):
@@ -161,8 +164,12 @@ def setup_claude(cmd: list[str], env: dict[str, str], dry_run: bool) -> dict[str
     if dry_run:
         action.update(status="ok", changed=True, dry_run=True)
         return action
-    run_command(["claude", "mcp", "remove", "-s", "user", SERVER_NAME], timeout=60)  # idempotent
-    res = run_command(argv, timeout=60)
+    # The claude CLI keeps user-scope servers under $HOME: point it at the same home as the
+    # other agents' files, so `setup(home=...)` never touches the real user's config.
+    cli_env = {"HOME": str(home)} if home is not None else None
+    run_command(["claude", "mcp", "remove", "-s", "user", SERVER_NAME], timeout=60,
+                env=cli_env)  # idempotent
+    res = run_command(argv, timeout=60, env=cli_env)
     action.update(status="ok" if res.returncode == 0 else "fail", changed=res.returncode == 0,
                   returncode=res.returncode, stderr=res.stderr[-1000:])
     return action
@@ -173,8 +180,7 @@ def install_claude_skill(home: Path, dry_run: bool) -> dict[str, Any]:
     dest = home / ".claude" / "skills" / "oneapi-port"
     if src is None:
         return {"agent": "claude", "skill": "oneapi-port", "status": "skipped",
-                "reason": "skills/oneapi-port not found next to the package (install from a git "
-                          "clone with `pip install -e .` to get it)"}
+                "reason": "skill files not found in the installed package"}
     action = {"agent": "claude", "skill": "oneapi-port", "path": str(dest), "status": "ok",
               "changed": True, "replaced_existing": dest.exists()}
     if not dry_run:
@@ -200,7 +206,7 @@ def setup(agents: Sequence[str] | None = None, *, dry_run: bool = False, skill: 
     actions: list[dict[str, Any]] = []
     for agent in chosen:
         if agent == "claude":
-            actions.append(setup_claude(cmd, env, dry_run))
+            actions.append(setup_claude(cmd, env, dry_run, home))
             if skill:
                 actions.append(install_claude_skill(home, dry_run))
         elif agent == "codex":
