@@ -58,6 +58,18 @@ Script: [`scripts/gpu-run.sh`](scripts/gpu-run.sh). Every result JSON and the fu
 
 So the reference can be the real CUDA binary, not only a C++ stand-in. Kernel timings were also recorded, but they come from single small launches and are not a performance claim.
 
+## Does the toolkit actually help?
+
+The same model ran the same four tasks 3 times each with the toolkit, and 3 times without its checks (`--baseline`: no `scan_helpers`, `verify` or `benchmark`; the run ends when the agent says it is done).
+A hidden check the agent never sees graded every final port the same way. Details: [`docs/ablation/`](docs/ablation/README.md).
+
+| Arm | correct output + 0 dpct helpers | said "done" but wasn't |
+|---|---|---|
+| with the toolkit | **12/12** | 0/12 |
+| without its checks | **7/12** | 5/12 |
+
+Without the checks, the agent declared done with dpct helpers left in 4 runs. In one softmax run it shipped a port that compiled cleanly but got 332,679 of 524,288 outputs wrong, after writing "I did not run the binary". 3 runs per cell on a CPU device: indicative, not a benchmark.
+
 ## Architecture
 
 ```mermaid
@@ -167,7 +179,7 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 
 ## Roadmap
 
-- Repeat the real-model runs (several seeds per example) and compare against the same agent **without** the toolkit.
+- More runs and models for the ablation, and a baseline agent that has a shell.
 - A oneMath example (cuBLAS/cuFFT → oneMath) and a multi-file HeCBench app.
 - Intel GPU validation (Arc/Max through Level Zero).
 - AOT builds (`-fsycl-targets=`) and in-process kernel timing by default, so benchmarks exclude JIT.
