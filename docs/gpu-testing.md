@@ -49,7 +49,7 @@ oneapi-agent ingest gputest-results-<name>-<host>.tar.gz    # -> docs/gpu-run/<v
 ## Renting a GPU automatically: `remote-test`
 
 ```bash
-export RUNPOD_API_KEY=...        # or VAST_API_KEY / VULTR_API_KEY
+oneapi-agent login runpod        # once; or export RUNPOD_API_KEY=... (VAST_API_KEY / VULTR_API_KEY / OCEAN_API_KEY)
 oneapi-agent remote-test examples/softmax_hecbench/task.json --provider runpod --vendor nvidia
 ```
 
@@ -63,8 +63,24 @@ oneapi-agent remote-test examples/softmax_hecbench/task.json --provider runpod -
 Spending is capped by `--max-minutes` (45 by default) and `--max-usd` ($2 by default), using the provider's own prices.
 
 **Login.**
-- Each provider reads one API key, from `RUNPOD_API_KEY`, `VAST_API_KEY`, `VULTR_API_KEY` or `OCEAN_API_KEY`.
-- The key is only sent to that provider's API. It is never written to disk or into the machine.
+- `oneapi-agent login <provider>` (`runpod`, `vast`, `vultr` or `digitalocean`) asks for the API key with a hidden prompt, or reads it from stdin when piped (`op read ... | oneapi-agent login vast`), and saves it in the OS password store: macOS Keychain, Windows Credential Manager or Linux Secret Service. It needs the `keyring` extra: `pip install 'oneapi-agent-toolkit[keyring]'`. `oneapi-agent logout <provider>` removes it.
+- A key is looked up in this order: the environment variable (`RUNPOD_API_KEY`, `VAST_API_KEY`, `VULTR_API_KEY`, `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`), then the password store. So CI and anything that exports a variable keep working, and a variable overrides a saved key.
+- `oneapi-agent providers` shows, for each provider, whether a key was found and where (variable name or `keyring`, never the key), and makes one read-only API call to check the provider accepts it. It also shows account facts the API returns: Runpod balance and spend limit, Vast.ai credit, Vultr balance and pending charges, DigitalOcean account status and droplet limit. It never creates or deletes anything.
+- Coding agents use the read-only MCP tool `providers_status` (same report). No MCP tool takes a key. When a key is missing, `remote-test` and `providers_status` return the provider, the console URL where the key is created, and `oneapi-agent login <provider>` for the user to run in their own terminal. The agent never sees or handles the key.
+- The key is only sent to that provider's API. It is never written to disk in plain text, printed, or sent into the machine.
+- Browser sign-in (OAuth) is not supported. [provider-oauth.md](provider-oauth.md) records what each provider offers.
+
+**In CI (GitHub Actions).**
+
+```bash
+oneapi-agent ci setup --task examples/softmax_hecbench/task.json --provider runpod --max-usd 2 --max-minutes 45
+```
+
+- Writes `.github/workflows/gpu-test.yml`. It runs `remote-test` on pull requests labelled `gpu-test` and on manual dispatch, with the `--max-usd` and `--max-minutes` caps. It uploads the imported results (`gpu-run/`) as the `gpu-test-results` artifact.
+- Pull requests from forks never run it. Fork PRs get no secrets anyway, and the job checks that the PR comes from the same repository.
+- Only the `remote-test` step sees the key secrets. Dispatch inputs reach the shell through environment variables, not pasted into the script.
+- Then, for each key found on this machine (environment or `login`), it asks before storing the key as a repository secret with `gh secret set <ENV_NAME>`. The value goes to `gh` on stdin, never on a command line or in output. `--yes` stores all of them without asking, and `--no-secrets` skips this step. Nothing is stored when `gh` is missing or not logged in, or when there is no terminal to ask on.
+- The workflow installs this toolkit from GitHub `main` by default. Pass `--install` to pin a tag or commit.
 - The machine's agent gets a fresh random token for each run.
 - Runpod is reached through its HTTPS proxy.
 - Vast.ai, Vultr and DigitalOcean machines are reached on a bare IP. There the agent serves TLS with a throwaway self-signed certificate made for the run (this needs `openssl`), and the client trusts only that certificate.

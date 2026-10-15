@@ -28,6 +28,9 @@ and `limitations`. Base claims on evidence only. Never claim a port works unless
 `verify` returned status "ok" on the current code. Typical order:
 migrate -> compile -> (fix) -> scan_helpers -> refactor to idiomatic SYCL -> compile
 -> verify -> benchmark.
+GPU rental keys (runpod, vast, vultr, digitalocean) are the user's: `providers_status` says
+which are set up. Never ask for, store or pass a key; when one is missing, give the user the
+console_url and ask them to run the login_command in their own terminal.
 """
 
 STATUS_NOTE = (
@@ -149,6 +152,24 @@ def doctor() -> dict[str, Any]:
         "evidence": report,
         "limitations": [],
     }
+
+
+@mcp.tool(
+    name="providers_status",
+    description=(
+        "Read-only: for each GPU rental provider (runpod, vast, vultr, digitalocean), whether an "
+        "API key is configured on this machine and where it comes from (environment variable or "
+        "the OS password store; never the key itself), checked with one read-only API call, "
+        "plus account facts such as balance. A provider without a key lists console_url (where "
+        "the user creates one) and login_command (`oneapi-agent login <provider>`, which the "
+        "USER runs in their own terminal). No tool takes a key: never ask for one, store it or "
+        "pass it on. Nothing is created or deleted." + STATUS_NOTE
+    ),
+)
+def providers_status() -> dict[str, Any]:
+    from .keys import providers
+
+    return providers().to_dict()
 
 
 def main() -> None:

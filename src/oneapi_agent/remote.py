@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from .bundle import ingest_results, make_bundle
+from .keys import PROVIDER_KEY_ALIASES, PROVIDER_KEY_ENV, find_key, missing_key_result  # noqa: F401 (re-exported)
 from .result import ToolResult
 from .toolchain import run_command
 
@@ -682,8 +683,9 @@ class DigitalOceanProvider(Provider):
 
 
 def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = None) -> Provider:
-    """Provider by name, keyed from its environment variable (or ``api_key``)."""
-    key = api_key or os.environ.get(PROVIDER_KEY_ENV.get(name, ""), "")
+    """Provider by name, keyed from ``api_key``, its environment variable or the keyring."""
+    found = find_key(name, api_key)
+    key = found[0] if found else ""
     if name == "runpod":
         return RunpodProvider(RunpodAPI(key), cloud)
     if name == "vast":
@@ -691,14 +693,10 @@ def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = Non
     if name == "vultr":
         return VultrProvider(key)
     if name == "digitalocean":
-        return DigitalOceanProvider(key or os.environ.get("DIGITALOCEAN_TOKEN", ""))
+        return DigitalOceanProvider(key)
     raise ValueError(f"unknown provider {name!r}")
 
 
-PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY", "vast": "VAST_API_KEY", "vultr": "VULTR_API_KEY",
-                    "digitalocean": "OCEAN_API_KEY"}
-# Also accepted: the name doctl uses.
-PROVIDER_KEY_ALIASES = {"digitalocean": ("DIGITALOCEAN_TOKEN",)}
 
 
 def _confirm_gone(prov: Provider, machine_id: str, poll_s: float, wait_s: float = 120) -> bool:
@@ -749,11 +747,8 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         if not env_name:
             return ToolResult("remote_test", "error", f"unknown provider {provider!r}; "
                               f"choose from {sorted(PROVIDER_KEY_ENV)}")
-        if not (api_key or os.environ.get(env_name)
-                or any(os.environ.get(a) for a in PROVIDER_KEY_ALIASES.get(provider, ()))):
-            return ToolResult("remote_test", "toolchain_missing", f"{env_name} is not set", {},
-                              [f"Create an API key in the {provider} console and export "
-                               f"{env_name}."])
+        if not find_key(provider, api_key):
+            return missing_key_result("remote_test", provider)
         prov = make_provider(provider, cloud=cloud, api_key=api_key)
     candidates = prov.candidates(vendor, gpu_type)
     affordable: list[tuple[str, float | None, float]] = []
