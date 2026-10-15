@@ -51,7 +51,7 @@ def scan_helpers(path: str, *, max_occurrences: int = 200) -> ToolResult:
         else sorted(p for p in root.rglob("*") if p.is_file() and p.suffix in MIGRATED_SUFFIXES)
     )
     uses = []
-    unresolved = []
+    unresolved: list[dict] = []
     advisories: list[dict] = []
     for f in files:
         rel = f.name if root.is_file() else str(f.relative_to(root))

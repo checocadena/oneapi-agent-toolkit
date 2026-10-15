@@ -16,7 +16,7 @@ from .tools import scan_helpers as _scan_helpers
 from .tools import verify as _verify
 
 try:  # mcp 1.x
-    from mcp.server.fastmcp import FastMCP as _Server
+    from mcp.server.fastmcp import FastMCP as _Server  # type: ignore[attr-defined]
 except ImportError:  # mcp 2.x renamed FastMCP -> MCPServer (same decorator API)
     from mcp.server.mcpserver import MCPServer as _Server  # type: ignore[no-redef]
 

@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 
 from ..parsers.sycl_ls import parse_sycl_ls
-from ..result import ToolResult
+from ..result import Status, ToolResult
 from ..toolchain import Runner, find_tool, run_command, split_command
 
 NO_SELECTOR = "none"  # run without ONEAPI_DEVICE_SELECTOR (e.g. a plain C++ baseline)
@@ -23,10 +23,10 @@ def _stats(samples: list[float]) -> dict[str, Any]:
     arr = np.asarray(samples, dtype=np.float64)
     return {
         "n": int(arr.size),
-        "min": float(arr.min()),
+        "min": float(min(samples)),
         "median": float(np.median(arr)),
         "p95": float(np.percentile(arr, 95, method="linear")),
-        "max": float(arr.max()),
+        "max": float(max(samples)),
         "mean": float(arr.mean()),
         "stdev": float(statistics.stdev(samples)) if len(samples) > 1 else 0.0,
     }
@@ -95,7 +95,9 @@ def benchmark(
     any_fail = False
     for sel in selectors:
         env = None if sel == NO_SELECTOR else {"ONEAPI_DEVICE_SELECTOR": sel}
-        entry: dict[str, Any] = {"selector": sel, **({"device": device_info[sel]} if sel in device_info else {})}
+        entry: dict[str, Any] = {"selector": sel}
+        if sel in device_info:
+            entry["device"] = device_info[sel]
         times: list[float] = []
         reported: list[float] = []
         failure = None
@@ -136,7 +138,7 @@ def benchmark(
         name = r.get("device", {}).get("name", r["selector"])
         parts.append(f"{name}: median {r['wall_time_s']['median'] * 1e3:.2f} ms, "
                      f"p95 {r['wall_time_s']['p95'] * 1e3:.2f} ms")
-    status = "fail" if any_fail else "ok"
+    status: Status = "fail" if any_fail else "ok"
     prefix = "partial: " if any_fail else ""
     return ToolResult("benchmark", status, prefix + f"{runs} run(s) each; " + "; ".join(parts),
                       evidence, limitations)

@@ -60,7 +60,8 @@ def compare_arrays(
 
     diff = np.zeros_like(ref)
     diff[both_finite] = np.abs(cand[both_finite] - ref[both_finite])
-    bound = atol + rtol * np.abs(ref)
+    with np.errstate(invalid="ignore"):  # inf * 0 for non-finite refs; masked below
+        bound = atol + rtol * np.abs(ref)
     bad = nan_mismatch | inf_mismatch | (both_finite & (diff > bound))
 
     ulps = ulp_distance_f32(ref[both_finite], cand[both_finite])
@@ -141,7 +142,7 @@ def audio_null_test(
     peak = float(np.max(np.abs(residual))) if residual.size else 0.0
     rms = float(np.sqrt(np.mean(residual**2))) if residual.size else 0.0
     sig_rms = float(np.sqrt(np.mean(ref**2))) if ref.size else 0.0
-    peak_db, rms_db = dbfs(peak), dbfs(rms)
+    peak_db, rms_db, sig_db = dbfs(peak), dbfs(rms), dbfs(sig_rms)
     per_channel = []
     for ch in range(residual.shape[1]):
         r = residual[:, ch]
@@ -159,8 +160,8 @@ def audio_null_test(
         residual_peak=peak,
         residual_peak_dbfs=peak_db,
         residual_rms_dbfs=rms_db,
-        reference_rms_dbfs=dbfs(sig_rms),
-        null_depth_db=(dbfs(sig_rms) - rms_db) if (rms_db is not None and sig_rms > 0) else None,
+        reference_rms_dbfs=sig_db,
+        null_depth_db=(sig_db - rms_db) if (rms_db is not None and sig_db is not None) else None,
         per_channel=per_channel,
     )
     if not passed:

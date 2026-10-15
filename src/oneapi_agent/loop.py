@@ -747,7 +747,7 @@ def render_report(loop: AgentLoop, outcome: dict[str, Any]) -> str:
         f"cache write {s.usage['cache_creation_input_tokens']}, "
         f"cache read {s.usage['cache_read_input_tokens']}"
         + (f"; est. cost ${s.cost_usd:.4f}" if s.cost_usd else ""),
-        f"- **Best passing candidate:** "
+        "- **Best passing candidate:** "
         + (f"iteration {s.best['iteration']}, {s.best['helpers']} helper(s), `{s.best['path']}`"
            if s.best else "none"),
         f"- **Trace:** `{loop.trace_path}`",
@@ -773,22 +773,23 @@ def render_report(loop: AgentLoop, outcome: dict[str, Any]) -> str:
                      if f.name == "write_file"]
             sig = failure_signature(e.result) or e.result.summary
             if later_ok:
+                edited = sorted({Path(f.input.get("path", "?")).name for f in edits})
                 fixes.append(f"- it {e.iteration}: `{sig}` → fixed by iteration "
                              f"{later_ok.iteration} after editing "
-                             f"{', '.join(sorted({Path(f.input.get('path', '?')).name for f in edits})) or '(no file edits)'}")
+                             f"{', '.join(edited) or '(no file edits)'}")
             else:
                 fixes.append(f"- it {e.iteration}: `{sig}` → **not fixed**")
     lines += fixes or ["- (no compile/verify failures)"]
 
     lines += ["", "## Final evidence", ""]
     for tool in ("migrate", "compile", "scan_helpers", "verify", "benchmark"):
-        e = _last(s.history, tool)
-        if e is None:
+        ev = _last(s.history, tool)
+        if ev is None:
             lines.append(f"- **{tool}:** not run")
             continue
-        lines.append(f"- **{tool}** (it {e.iteration}, sources `{e.source_hash}`): "
-                     f"`{e.result.status}` — {e.result.summary}")
-        for lim in e.result.limitations:
+        lines.append(f"- **{tool}** (it {ev.iteration}, sources `{ev.source_hash}`): "
+                     f"`{ev.result.status}` — {ev.result.summary}")
+        for lim in ev.result.limitations:
             if "MOCK" in lim:
                 lines.append(f"  - ⚠️ {lim}")
     cur = source_hash(loop.work)
