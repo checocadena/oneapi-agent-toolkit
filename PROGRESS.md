@@ -7,7 +7,7 @@ Status legend: ✅ done · 🟡 in progress · ⛔ blocked · ⬜ not started
 | 0 | Environment probe | ✅ | Real toolchain installed. Details below. |
 | 1 | Core tool library | ✅ | 5 tools + parsers; smoke-tested on the real toolchain |
 | 2 | MCP server + CLI | ✅ | 5 tools + `doctor` over stdio; `oneapi-agent` CLI; registration docs for Claude Code, Codex, Cursor |
-| 3 | Agent skill | ⬜ | |
+| 3 | Agent skill | ✅ | `skills/oneapi-port/SKILL.md` |
 | 4 | Standalone agent loop | ⬜ | |
 | 5 | Examples | ⬜ | |
 | 6 | Tests | ⬜ | |
@@ -52,3 +52,14 @@ All five tools are implemented in `src/oneapi_agent/tools/` and return `ToolResu
 - `oneapi-agent <tool>` CLI (`src/oneapi_agent/cli.py`) prints the same JSON. Exit codes: 0 = ok, 1 = fail, 2 = anything else.
 - `docs/install.md` covers registration for Claude Code (`claude mcp add` / `.mcp.json`), Codex (`config.toml`) and Cursor (`.cursor/mcp.json`).
   Those configs follow each tool's documented format but were **not exercised inside those clients** here, since none is available in this sandbox.
+
+## Milestone 3: agent skill
+
+`skills/oneapi-port/SKILL.md` covers:
+- frontmatter for Claude Code auto-loading;
+- ground rules: no CUDA idioms, evidence only, never claim success without a passing verify on the current code, report `toolchain_missing` honestly;
+- the 8-step procedure, with per-category refactoring guidance;
+- loop discipline: `max_iterations` (default 8), keep the best passing snapshot, the stuck rule (same error 3×), no unjustified tolerance widening;
+- a fixed final evidence-report template.
+
+The same rules are enforced in code by the standalone loop (M4).
