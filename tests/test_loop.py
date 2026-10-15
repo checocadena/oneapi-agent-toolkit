@@ -246,3 +246,15 @@ def test_report_paths_are_relative_to_run_dir(cfg, tmp_path):
     loop.run()
     report = (loop.run_dir / "report.md").read_text()
     assert str(loop.run_dir) not in report and "`trace.jsonl`" in report
+
+
+def test_shell_tool_only_when_enabled(cfg, tmp_path):
+    assert "run" not in {t["name"] for t in tool_schemas(baseline=True)}
+    assert "run" in {t["name"] for t in tool_schemas(baseline=True, shell=True)}
+    work = tmp_path / "w"
+    work.mkdir()
+    assert Toolbox(cfg, work)("run", {"command": "echo hi"}).status == "error"
+    cfg.shell = True
+    r = Toolbox(cfg, work)("run", {"command": "echo hi > f.txt; cat f.txt"})
+    assert r.status == "ok" and r.evidence["stdout"].strip() == "hi"
+    assert (work / "f.txt").exists()
