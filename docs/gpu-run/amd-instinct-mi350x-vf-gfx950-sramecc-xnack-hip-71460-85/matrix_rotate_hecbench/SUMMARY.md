@@ -6,14 +6,14 @@
 
 | step | status | summary |
 |---|---|---|
-| reference_build | `ok` | exit 0: g++ -O2 -std=c++17 /tmp/tmp.LlvYRpX48R/task/matrix_rotate_ref.cpp -o build/reference |
-| native_build | `ok` | exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 /tmp/tmp.LlvYRpX48R/out/work/matrix_rotate.hip.cpp -o build/native |
+| reference_build | `ok` | exit 0: g++ -O2 -std=c++17 /tmp/tmp.t6cZ5tQvVr/task/matrix_rotate_ref.cpp -o build/reference |
+| native_build | `ok` | exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 /tmp/tmp.t6cZ5tQvVr/out/work/matrix_rotate.hip.cpp -o build/native |
 | native_verify_vs_reference | `ok` | PASS: 1/1 case(s) match (worst max abs err 0, atol 0) |
-| sycl_compile | `ok` | compiled 1 source(s) -> /tmp/tmp.LlvYRpX48R/out/work/build/sycl (0 warning(s)) |
+| sycl_compile | `ok` | compiled 1 source(s) -> /tmp/tmp.t6cZ5tQvVr/out/work/build/sycl (0 warning(s)) |
 | sycl_verify_vs_reference | `ok` | PASS: 1/1 case(s) match (worst max abs err 0, atol 0) |
 | sycl_verify_vs_native | `ok` | PASS: 1/1 case(s) match (worst max abs err 0, atol 0) |
-| sycl_benchmark | `ok` | 10 run(s) each; hip:0: median 266.99 ms, p95 268.54 ms |
-| native_benchmark | `ok` | 10 run(s) each; none: median 170.95 ms, p95 180.42 ms |
+| sycl_benchmark | `ok` | 10 run(s) each; hip:0: median 206.84 ms, p95 210.60 ms |
+| native_benchmark | `ok` | 10 run(s) each; none: median 172.01 ms, p95 175.61 ms |
 
 Limitations:
 - Benchmarks are single-process wall times plus program-reported kernel times; treat them as rough.

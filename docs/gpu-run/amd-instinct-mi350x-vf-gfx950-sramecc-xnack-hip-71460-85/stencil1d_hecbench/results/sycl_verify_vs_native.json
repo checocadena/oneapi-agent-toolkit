@@ -8,28 +8,28 @@
       {
         "input": null,
         "reference": {
-          "command": "build/native /tmp/tmp.BV6EVXrVvN/out/work/v_sycl_native/case0_reference.out 1048576",
+          "command": "build/native /tmp/tmp.LfgnhhDKaX/out/work/v_sycl_native/case0_reference.out 1048576",
           "returncode": 0,
-          "duration_s": 0.159656,
-          "stdout": "kernel_ms=0.585070\n",
+          "duration_s": 0.160809,
+          "stdout": "kernel_ms=0.368420\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.BV6EVXrVvN/out/work",
+          "cwd": "/tmp/tmp.LfgnhhDKaX/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.BV6EVXrVvN/out/work/v_sycl_native/case0_reference.out"
+          "output_file": "/tmp/tmp.LfgnhhDKaX/out/work/v_sycl_native/case0_reference.out"
         },
         "candidate": {
-          "command": "build/sycl /tmp/tmp.BV6EVXrVvN/out/work/v_sycl_native/case0_candidate.out 1048576",
+          "command": "build/sycl /tmp/tmp.LfgnhhDKaX/out/work/v_sycl_native/case0_candidate.out 1048576",
           "returncode": 0,
-          "duration_s": 0.239987,
-          "stdout": "kernel_ms=23.037533\n",
+          "duration_s": 0.197787,
+          "stdout": "kernel_ms=6.123048\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.BV6EVXrVvN/out/work",
+          "cwd": "/tmp/tmp.LfgnhhDKaX/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.BV6EVXrVvN/out/work/v_sycl_native/case0_candidate.out"
+          "output_file": "/tmp/tmp.LfgnhhDKaX/out/work/v_sycl_native/case0_candidate.out"
         },
         "reference_format": "f64",
         "candidate_format": "f64",
@@ -59,7 +59,7 @@
         "passed": true
       }
     ],
-    "work_dir": "/tmp/tmp.BV6EVXrVvN/out/work/v_sycl_native",
+    "work_dir": "/tmp/tmp.LfgnhhDKaX/out/work/v_sycl_native",
     "passed_cases": 1,
     "total_cases": 1,
     "worst_max_abs_err": 0.0

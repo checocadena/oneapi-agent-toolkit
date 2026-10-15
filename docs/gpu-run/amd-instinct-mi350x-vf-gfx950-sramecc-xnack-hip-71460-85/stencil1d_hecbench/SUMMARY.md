@@ -6,14 +6,14 @@
 
 | step | status | summary |
 |---|---|---|
-| reference_build | `ok` | exit 0: g++ -O2 -std=c++17 /tmp/tmp.BV6EVXrVvN/task/stencil_1d_ref.cpp -o build/reference |
-| native_build | `ok` | exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 /tmp/tmp.BV6EVXrVvN/out/work/stencil_1d.hip.cpp -o build/native |
+| reference_build | `ok` | exit 0: g++ -O2 -std=c++17 /tmp/tmp.LfgnhhDKaX/task/stencil_1d_ref.cpp -o build/reference |
+| native_build | `ok` | exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 /tmp/tmp.LfgnhhDKaX/out/work/stencil_1d.hip.cpp -o build/native |
 | native_verify_vs_reference | `ok` | PASS: 1/1 case(s) match (worst max abs err 0, atol 0) |
-| sycl_compile | `ok` | compiled 1 source(s) -> /tmp/tmp.BV6EVXrVvN/out/work/build/sycl (0 warning(s)) |
+| sycl_compile | `ok` | compiled 1 source(s) -> /tmp/tmp.LfgnhhDKaX/out/work/build/sycl (0 warning(s)) |
 | sycl_verify_vs_reference | `ok` | PASS: 1/1 case(s) match (worst max abs err 0, atol 0) |
 | sycl_verify_vs_native | `ok` | PASS: 1/1 case(s) match (worst max abs err 0, atol 0) |
-| sycl_benchmark | `ok` | 10 run(s) each; hip:0: median 250.46 ms, p95 253.07 ms |
-| native_benchmark | `ok` | 10 run(s) each; none: median 160.98 ms, p95 163.33 ms |
+| sycl_benchmark | `ok` | 10 run(s) each; hip:0: median 200.07 ms, p95 202.02 ms |
+| native_benchmark | `ok` | 10 run(s) each; none: median 163.49 ms, p95 166.78 ms |
 
 Limitations:
 - Benchmarks are single-process wall times plus program-reported kernel times; treat them as rough.

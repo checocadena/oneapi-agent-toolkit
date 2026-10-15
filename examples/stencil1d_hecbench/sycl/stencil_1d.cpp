@@ -4,7 +4,8 @@
 // Laboratory (Zheming Jin). BSD 3-Clause License; see LICENSE.HeCBench in this directory.
 //
 // Port notes: __shared__ becomes a sycl::local_accessor sized for the tile plus both halos,
-// and __syncthreads() becomes sycl::group_barrier.
+// and __syncthreads() becomes sycl::group_barrier. The queue is in-order, as the CUDA default
+// stream is.
 // Usage: stencil_1d <out.bin> [length=1048576, a multiple of 256] [repeat=1]
 #include <sycl/sycl.hpp>
 
@@ -29,7 +30,7 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i < length + kRadius; i++) a[i] = i;
 
   try {
-    sycl::queue q;
+    sycl::queue q{sycl::property::queue::in_order()};
     int* in = sycl::malloc_device<int>(length + kRadius, q);
     int* out = sycl::malloc_device<int>(length, q);
     q.memcpy(in, a.data(), sizeof(int) * (length + kRadius)).wait();

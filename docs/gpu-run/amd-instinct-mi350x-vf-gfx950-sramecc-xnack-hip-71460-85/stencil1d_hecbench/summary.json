@@ -26,12 +26,12 @@
       {
         "step": "reference_build",
         "status": "ok",
-        "summary": "exit 0: g++ -O2 -std=c++17 /tmp/tmp.BV6EVXrVvN/task/stencil_1d_ref.cpp -o build/reference"
+        "summary": "exit 0: g++ -O2 -std=c++17 /tmp/tmp.LfgnhhDKaX/task/stencil_1d_ref.cpp -o build/reference"
       },
       {
         "step": "native_build",
         "status": "ok",
-        "summary": "exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 /tmp/tmp.BV6EVXrVvN/out/work/stencil_1d.hip.cpp -o build/native"
+        "summary": "exit 0: /opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 /tmp/tmp.LfgnhhDKaX/out/work/stencil_1d.hip.cpp -o build/native"
       },
       {
         "step": "native_verify_vs_reference",
@@ -41,7 +41,7 @@
       {
         "step": "sycl_compile",
         "status": "ok",
-        "summary": "compiled 1 source(s) -> /tmp/tmp.BV6EVXrVvN/out/work/build/sycl (0 warning(s))"
+        "summary": "compiled 1 source(s) -> /tmp/tmp.LfgnhhDKaX/out/work/build/sycl (0 warning(s))"
       },
       {
         "step": "sycl_verify_vs_reference",
@@ -56,15 +56,15 @@
       {
         "step": "sycl_benchmark",
         "status": "ok",
-        "summary": "10 run(s) each; hip:0: median 250.46 ms, p95 253.07 ms"
+        "summary": "10 run(s) each; hip:0: median 200.07 ms, p95 202.02 ms"
       },
       {
         "step": "native_benchmark",
         "status": "ok",
-        "summary": "10 run(s) each; none: median 160.98 ms, p95 163.33 ms"
+        "summary": "10 run(s) each; none: median 163.49 ms, p95 166.78 ms"
       }
     ],
-    "results_dir": "/tmp/tmp.BV6EVXrVvN/out/results"
+    "results_dir": "/tmp/tmp.LfgnhhDKaX/out/results"
   },
   "limitations": [
     "Benchmarks are single-process wall times plus program-reported kernel times; treat them as rough."

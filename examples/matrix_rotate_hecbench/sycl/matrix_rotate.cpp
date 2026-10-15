@@ -6,7 +6,10 @@
 //
 // Port notes: one work-item per concentric layer, as in CUDA. Layers touch disjoint rings, so
 // the in-place update needs no synchronisation. The global size is rounded up to the 256-wide
-// work-group and surplus work-items return early.
+// work-group and surplus work-items return early. Each launch rotates the result of the
+// previous one, so the queue must be in-order, as the CUDA default stream is: on an
+// out-of-order queue nothing orders the launches, and overlapping rotations corrupt the matrix
+// (seen on a CPU device: 33431 of 4194304 elements wrong).
 // Usage: matrix_rotate <out.bin> [n=2048] [repeat=3]   (the output depends on repeat)
 #include <sycl/sycl.hpp>
 
@@ -30,7 +33,7 @@ int main(int argc, char* argv[]) {
     for (int j = 0; j < n; j++) m[size_t(i) * n + j] = i * n + j;
 
   try {
-    sycl::queue q;
+    sycl::queue q{sycl::property::queue::in_order()};
     float* matrix = sycl::malloc_device<float>(m.size(), q);
     q.memcpy(matrix, m.data(), sizeof(float) * m.size()).wait();
 

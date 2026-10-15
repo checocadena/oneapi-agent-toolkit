@@ -1,8 +1,8 @@
 {
-  "command": "g++ -O2 -std=c++17 /tmp/tmp.BV6EVXrVvN/task/stencil_1d_ref.cpp -o build/reference",
+  "command": "g++ -O2 -std=c++17 /tmp/tmp.LfgnhhDKaX/task/stencil_1d_ref.cpp -o build/reference",
   "returncode": 0,
-  "duration_s": 0.132846,
+  "duration_s": 0.133696,
   "stdout": "",
   "stderr": "",
-  "cwd": "/tmp/tmp.BV6EVXrVvN/out/work"
+  "cwd": "/tmp/tmp.LfgnhhDKaX/out/work"
 }

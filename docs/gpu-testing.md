@@ -168,7 +168,7 @@ All five new ports compiled and passed on their first run. They have not been ru
 | one sub-group per slice, in-order queue (the current port) | 24.4 us |
 | original CUDA, hipified | 8.9 us |
 
-So the large gap was the out-of-order queue's dependency tracking on every submission; CUDA's default stream is in-order, which makes an in-order queue the faithful translation. Of the new ports, atomic_reduction, scan and adam use in-order queues; stencil1d and matrix_rotate (one launch per run) were verified with the default out-of-order queue. The remaining gap (about 2.7x per launch here) is the SYCL runtime's own submission cost through the HIP adapter, not the kernel.
+So the large gap was the out-of-order queue's dependency tracking on every submission; CUDA's default stream is in-order, which makes an in-order queue the faithful translation. All six ports now use in-order queues. This is also a correctness matter: matrix_rotate launches its kernel three times on the same matrix, and with the default out-of-order queue nothing orders those launches. The MI350X happened to run them one after another and passed; CI's CPU device overlapped them and got 33431 of 4194304 elements wrong. The fixed port passes on both. The remaining gap (about 2.7x per launch here) is the SYCL runtime's own submission cost through the HIP adapter, not the kernel.
 
 ## Problems found on real clouds, and what the tool does about them
 
@@ -184,6 +184,7 @@ So the large gap was the out-of-order queue's dependency tracking on every submi
 | `deleted ... NOT CONFIRMED` although the droplet was gone (DigitalOcean) | droplet deletion is asynchronous; one immediate check still saw it | deletion is polled for up to 2 minutes before it is reported unconfirmed |
 | native build on DigitalOcean AMD: `'hip/hip_runtime.h' file not found` | `gpu-amd-base` ships the ROCm 7.14 runtime and `hipcc`, but not the HIP development headers | reported as a limitation; the SYCL port is still verified against the C++ reference |
 | hipified CUDA: `'cooperative_groups/reduce.h' file not found` (ROCm 7.14) | `hipify-perl` leaves that include unchanged; HIP keeps `cg::reduce` (ROCm 7+) at `hip/cooperative_groups/hip_reduce.h` | the include is pointed at the HIP header the host has; with none, the native build is skipped with that reason |
+| a SYCL port passes on the GPU but fails in CI's CPU run (matrix_rotate: 33431 wrong elements) | kernels launched on a default (out-of-order) queue with USM pointers have no ordering; the GPU serialised them, the CPU device did not | ports use an in-order queue, as CUDA's default stream is; CI verifies every example on a CPU device as well, which is what exposed it |
 | the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
 | a Vast instance stuck in `loading`: `TLS handshake timeout` from Docker Hub | that host's network | the machine is deleted, its host is skipped, and another is tried; any machine silent past `--boot-minutes` is replaced the same way |
 
