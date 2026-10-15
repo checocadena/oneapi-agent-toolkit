@@ -137,3 +137,38 @@ def test_stuck_machines_are_replaced_then_given_up(tmp_path):
     reasons = [a["error"] for a in r.evidence["create_attempts"]]
     assert "TLS handshake timeout" in reasons[0] and "did not answer within" in reasons[1]
     assert r.status == "error" and "2 stuck machine(s) replaced" in r.summary
+
+
+def test_amd_without_a_hip_toolchain_image_refuses_before_renting(tmp_path):
+    prov = StuckThenSlowProvider()
+    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider=prov, vendor="amd",
+                           poll_s=0.01, boot_minutes=0.002, max_stuck=1, max_minutes=5,
+                           into=str(tmp_path), log=lambda m: None)
+    assert r.status == "toolchain_missing" and "HIP" in r.summary
+    assert prov.created == [] and "--image" in r.limitations[0]
+
+
+class SlowDeleteProvider(StuckThenSlowProvider):
+    """Like a DigitalOcean droplet: still listed for a few checks after the DELETE."""
+
+    def __init__(self):
+        super().__init__()
+        self.checks_after_delete = 0
+
+    def agent_url(self, machine_id):
+        raise remote.MachineStuck("broken host")
+
+    def exists(self, machine_id):
+        if machine_id not in self.deleted:
+            return True
+        self.checks_after_delete += 1
+        return self.checks_after_delete < 3
+
+
+def test_asynchronous_delete_is_waited_for_and_confirmed(tmp_path):
+    prov = SlowDeleteProvider()
+    logs = []
+    remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider=prov, poll_s=0.01,
+                       max_stuck=1, max_minutes=5, into=str(tmp_path), log=logs.append)
+    assert prov.deleted == ["m1"] and prov.checks_after_delete == 3
+    assert any("deleted fake machine m1: confirmed" in m for m in logs), logs

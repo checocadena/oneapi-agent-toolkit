@@ -175,6 +175,7 @@ def test_end_to_end_over_pinned_tls(tmp_path):
     # No GPU here: the remote gpu_test reports that honestly, and the archive still comes back.
     assert r.status in ("toolchain_missing", "ok", "fail"), r.summary
     assert r.evidence["agent_url"].startswith("https://") and r.evidence["pod_deleted"] is True
+    assert "setup_tail" in r.evidence  # kept even when an archive comes back
     assert list((tmp_path / "into").rglob("summary.json"))
 
 

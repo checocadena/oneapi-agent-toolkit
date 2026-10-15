@@ -74,7 +74,7 @@ Spending is capped by `--max-minutes` (45 by default) and `--max-usd` ($2 by def
 | Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
 | Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | **Verified**: softmax on an RTX A4000 ($0.12/h), PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. Hosts that cannot pull the image are replaced automatically. No AMD offers listed. |
 | Vultr | NVIDIA A16 / A40 Cloud GPU | **Verified**: softmax on an A16, PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. AMD Instinct plans are listed but not deployable on demand. The API key's access control must allow the caller's IP. |
-| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h), ROCm image `gpu-amd-base` | Create path verified live up to the account's GPU limit: new accounts start at 0 GPUs ("will exceed your GPU limit") and need a support request. GPU images also require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
+| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h; spot MI350X $3.50/h), ROCm image `gpu-amd-base` | **Rent, agent, upload and delete verified live** (2026-10-15, MI350X spot, deletion confirmed). The port itself cannot run yet: the intel/llvm prebuilt the setup installs has no HIP support (see the problems table), so `--vendor amd` now stops before renting unless `--image` brings a HIP-enabled SYCL compiler. GPU images require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
 | Intel | none to rent | No public API: use a bundle (below). |
 
 **Intel, as of 2026-10-15.**
@@ -116,6 +116,8 @@ The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual r
 | HTTP 403, `error code: 1010` (Runpod proxy) | Cloudflare blocks Python's default user agent | every request sends its own User-Agent |
 | `will exceed your GPU limit` (DigitalOcean) | new accounts start with 0 GPUs | reported as-is; ask DigitalOcean support for a limit |
 | `does not use root passwords, please use an SSH key` (DigitalOcean) | GPU images need an SSH key | the account's keys, or a throwaway key made and removed for the run |
+| `sycl-ls`: "No platforms found" on an AMD MI350X (DigitalOcean) | intel/llvm prebuilts (v7.1.0 and the nightlies to 2026-10-14) ship only CUDA, Level Zero and OpenCL adapters: no `libur_adapter_hip`, no amdgcn `libspirv`; Codeplay's AMD plugin download API is gone | `--vendor amd` without `--image` stops with `toolchain_missing` before renting; the setup log is now kept in the result |
+| `deleted ... NOT CONFIRMED` although the droplet was gone (DigitalOcean) | droplet deletion is asynchronous; one immediate check still saw it | deletion is polled for up to 2 minutes before it is reported unconfirmed |
 | the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
 | a Vast instance stuck in `loading`: `TLS handshake timeout` from Docker Hub | that host's network | the machine is deleted, its host is skipped, and another is tried; any machine silent past `--boot-minutes` is replaced the same way |
 

@@ -677,6 +677,18 @@ PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY", "vast": "VAST_API_KEY", "vultr":
 PROVIDER_KEY_ALIASES = {"digitalocean": ("DIGITALOCEAN_TOKEN",)}
 
 
+def _confirm_gone(prov: Provider, machine_id: str, poll_s: float, wait_s: float = 120) -> bool:
+    """True once the provider no longer lists the machine. Deletes are asynchronous on some
+    providers (a DigitalOcean droplet still answers for several seconds after the DELETE), so
+    one immediate check reports a deleted machine as still there."""
+    end = time.time() + wait_s
+    while prov.exists(machine_id):
+        if time.time() >= end:
+            return False
+        time.sleep(max(min(poll_s, 5), 0.01))
+    return True
+
+
 def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None = None,
                 provider: str | Provider = "runpod", cloud: str = "SECURE",
                 image: str | None = None, max_minutes: float = 45, max_usd: float = 2.0,
@@ -685,6 +697,18 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                 poll_s: float = 10, agent_url: Callable[[str], str] | None = None,
                 boot_minutes: float = 15, max_stuck: int = 3) -> ToolResult:
     """Rent a GPU, run ``gpu_test`` there through a bundle, import the results, delete it."""
+    if vendor == "amd" and not image:
+        # The machine setup installs the intel/llvm prebuilt, which (checked on v7.1.0 and the
+        # nightlies to 2026-10-14) ships only CUDA/Level Zero/OpenCL adapters: no
+        # libur_adapter_hip and no amdgcn libspirv, so sycl-ls finds no platform on an AMD GPU.
+        # Fail here, before paying for a GPU that cannot run the port.
+        return ToolResult("remote_test", "toolchain_missing",
+                          "the default SYCL toolchain (intel/llvm prebuilt) has no AMD HIP "
+                          "support, so an AMD GPU cannot run the port",
+                          {"vendor": vendor, "provider": getattr(provider, "name", provider)},
+                          ["Pass --image with an image that already has a HIP-enabled SYCL "
+                           "compiler (icpx with the AMD plugin, or intel/llvm built with "
+                           "--hip at /opt/sycl); setup then skips the intel/llvm download."])
     if isinstance(provider, Provider):
         prov = provider
     elif api is not None:  # tests / callers that bring their own Runpod client
@@ -786,7 +810,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             if not keep_pod:
                 prov.delete(mid)
                 log(f"deleted {prov.name} machine {mid}: "
-                    f"{'confirmed' if not prov.exists(mid) else 'NOT CONFIRMED'}")
+                    f"{'confirmed' if _confirm_gone(prov, mid, poll_s) else 'NOT CONFIRMED'}")
             mid = None
             if time.time() >= t0 + max_minutes * 60:
                 break
@@ -825,6 +849,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             raise RuntimeError("run finished but produced no results archive. Run log tail: "
                                f"{status.get('run_tail', '')[-2000:]} || setup log tail: "
                                f"{status.get('setup_tail', '')[-800:]}")
+        ev["setup_tail"] = status.get("setup_tail", "")[-3000:]  # explains a missing toolchain
         (tmp / "results.tar.gz").write_bytes(archive)
         ing = ingest_results(str(tmp / "results.tar.gz"), into)
         ev["ingest"] = ing.evidence
@@ -839,7 +864,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
     finally:
         if mid and not keep_pod:
             prov.delete(mid)
-            gone = not prov.exists(mid)
+            gone = _confirm_gone(prov, mid, poll_s)
             ev["pod_deleted"] = gone
             log(f"deleted {prov.name} machine {mid}: {'confirmed' if gone else 'NOT CONFIRMED'}")
     minutes = (time.time() - t0) / 60
