@@ -144,3 +144,15 @@ def test_bundle_crash_still_yields_an_explaining_archive(tmp_path):
         assert "run.log" in t.getnames()
     assert summary["status"] == "error" and "crashed" in summary["summary"]
     assert "no-such-flag" in summary["evidence"]["run_log_tail"]
+
+
+def test_bundle_runs_without_home(tmp_path):
+    # cloud-init (Vultr, DigitalOcean) starts the agent with no HOME; the runner uses `set -u`.
+    import os
+    import subprocess
+
+    make_bundle(str(REPO / "examples/saxpy/task.json"), str(tmp_path / "b.sh"))
+    env = {k: v for k, v in os.environ.items() if k != "HOME"}
+    p = subprocess.run(["bash", str(tmp_path / "b.sh"), "--no-such-flag"], cwd=tmp_path, env=env,
+                       capture_output=True, text=True, timeout=300)
+    assert "unbound variable" not in p.stdout + p.stderr

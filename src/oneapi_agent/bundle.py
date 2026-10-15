@@ -37,6 +37,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 D="$(mktemp -d)"
 sed '1,/^__PAYLOAD_BELOW__$/d' "$0" | base64 -d | tar xz -C "$D" || { echo "bundle extract failed"; exit 2; }
 cd "$D"
+export HOME="${HOME:-/root}"  # cloud-init and some agents start us without HOME
 for f in /opt/intel/oneapi/setvars.sh "$HOME/intel/oneapi/setvars.sh"; do
   if [ -z "${ONEAPI_ROOT:-}" ] && [ -f "$f" ]; then . "$f" --force >/dev/null 2>&1 || true; fi
 done

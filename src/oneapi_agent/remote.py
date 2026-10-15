@@ -82,6 +82,7 @@ nvidia-smi || rocm-smi || true
 sycl-ls
 """
 ENV = dict(os.environ)
+ENV.setdefault("HOME", "/root")  # cloud-init starts us without HOME
 ENV["PATH"] = "/opt/sycl/bin:/usr/local/cuda/bin:/opt/rocm/bin:" + ENV.get("PATH", "")
 ENV["LD_LIBRARY_PATH"] = "/opt/sycl/lib:/opt/rocm/lib:" + ENV.get("LD_LIBRARY_PATH", "")
 ENV.setdefault("SYCL_CXX", "/opt/sycl/bin/clang++")  # dropped after setup if not installed
@@ -413,7 +414,7 @@ class VastProvider(Provider):
 def cloud_init_script(env: dict[str, str]) -> str:
     """A cloud-init user-data shell script that starts the agent with ``env`` on port 8000."""
     exports = "\n".join(f"export {k}={shlex.quote(v)}" for k, v in env.items())
-    return ("#!/bin/bash\n" + exports + "\n"
+    return ("#!/bin/bash\nexport HOME=/root\n" + exports + "\n"
             "(command -v ufw >/dev/null && ufw allow 8000/tcp) || true\n"
             "mkdir -p /workspace && cd /workspace\n"
             "nohup bash -c " + shlex.quote(START_CMD) + " > /var/log/gputest-agent.log 2>&1 &\n")
