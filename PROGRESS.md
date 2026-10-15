@@ -8,7 +8,7 @@ Status legend: ✅ done · 🟡 in progress · ⛔ blocked · ⬜ not started
 | 1 | Core tool library | ✅ | 5 tools + parsers; smoke-tested on the real toolchain |
 | 2 | MCP server + CLI | ✅ | 5 tools + `doctor` over stdio; `oneapi-agent` CLI; registration docs for Claude Code, Codex, Cursor |
 | 3 | Agent skill | ✅ | `skills/oneapi-port/SKILL.md` |
-| 4 | Standalone agent loop | ⬜ | |
+| 4 | Standalone agent loop | ✅ | `src/oneapi_agent/loop.py`; dry-run scenarios success/stuck/max_iterations verified. **No real-LLM run: no `ANTHROPIC_API_KEY` in this sandbox** |
 | 5 | Examples | ⬜ | |
 | 6 | Tests | ⬜ | |
 | 7 | Docs | ⬜ | |
@@ -63,3 +63,23 @@ All five tools are implemented in `src/oneapi_agent/tools/` and return `ToolResu
 - a fixed final evidence-report template.
 
 The same rules are enforced in code by the standalone loop (M4).
+
+## Milestone 4: standalone agent loop
+
+`src/oneapi_agent/loop.py` and `oneapi-agent loop`:
+
+- **Model:** the Anthropic SDK with a manual tool-use loop. The model comes from `ONEAPI_AGENT_MODEL` (default `claude-sonnet-5-5`) and the key from `ANTHROPIC_API_KEY`.
+  - Assistant content blocks are passed back verbatim, so thinking blocks are preserved.
+  - Automatic prompt caching is on.
+  - Server-side refusal fallback (`fallbacks: "default"`) is on by default; disable it with `ONEAPI_AGENT_FALLBACKS=0`.
+  - A `refusal` stop reason ends the run.
+- **State:** goal, CUDA source, iteration count, a history of tool events (each tagged with a hash of the source tree), the best passing snapshot (`runs/<ts>/best/`), and token/cost usage.
+- **Success is computed by the loop:** compile ok, verify ok and zero-helper scan, all on the *same current* source hash.
+  - The model cannot choose verify's commands or tolerances, and cannot write outside `runs/<ts>/work/`.
+  - `finish` is rejected unless the conditions hold.
+- **Stop reasons:** `success`, `max_iterations`, `stuck` (same failure signature in 3 consecutive iterations), `budget` (tokens or USD, using the price table), `model_stopped`, `blocked` (toolchain missing), `error` (reference build failed).
+- **Outputs:** `runs/<ts>/trace.jsonl` (every model response, tool call and tool result) and `report.md` (iteration table, failures and how each was fixed, final evidence).
+- **`--dry-run`:** a scripted fake model. `--mock-tools` adds canned tool results that are clearly marked MOCK. Without `--mock-tools`, the scripted model drives the *real* tools.
+
+Verified: the mocked scenarios end with `success` (7 iterations), `stuck` (3) and `max_iterations` (6).
+**Not verified: a run with a real model.** No API key is available in this sandbox.
