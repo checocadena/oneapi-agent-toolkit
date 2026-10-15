@@ -147,6 +147,34 @@ def test_scan_helpers_tool(tmp_path, fixtures):
     assert [a["kind"] for a in r2.evidence["advisories"]] == ["native_math"]
 
 
+def test_scan_helpers_flags_onemkl_product_api(tmp_path):
+    # Shape of the c2s output for cublasSgemm (examples/gemm_cublas): a dpct::blas handle
+    # plus the oneMKL product API.
+    mig = tmp_path / "gemm.dp.cpp"
+    mig.write_text(
+        "#include <sycl/sycl.hpp>\n#include <dpct/dpct.hpp>\n#include <dpct/blas_utils.hpp>\n"
+        "void f(float* a, float* b, float* c) {\n"
+        "  dpct::blas::descriptor_ptr handle = new dpct::blas::descriptor();\n"
+        "  oneapi::mkl::blas::column_major::gemm(handle->get_queue(),\n"
+        "      oneapi::mkl::transpose::nontrans, oneapi::mkl::transpose::nontrans,\n"
+        "      4, 4, 4, 1.f, a, 4, b, 4, 0.f, c, 4);\n}\n")
+    r = scan_helpers(str(mig))
+    assert r.status == "fail"
+    assert r.evidence["by_category"]["library_wrappers"] == 2
+    assert "oneapi::math" in r.evidence["suggestions"]["library_wrappers"]
+    lines = [a["line"] for a in r.evidence["advisories"] if a["kind"] == "onemkl_product_api"]
+    assert lines == [6, 7]
+
+    port = tmp_path / "gemm.cpp"  # the oneMath port: no helpers and no advisory
+    port.write_text(
+        "#include <oneapi/math.hpp>\n// was oneapi::mkl::blas::column_major::gemm\n"
+        "void f(sycl::queue& q, float* a, float* b, float* c) {\n"
+        "  oneapi::math::blas::column_major::gemm(q, oneapi::math::transpose::nontrans,\n"
+        "      oneapi::math::transpose::nontrans, 4, 4, 4, 1.f, a, 4, b, 4, 0.f, c, 4);\n}\n")
+    r2 = scan_helpers(str(port))
+    assert r2.status == "ok" and r2.evidence["advisories"] == []
+
+
 # ------------------------------------------------------------------ verify (real subprocesses)
 
 WRITE_ARRAY = textwrap.dedent("""

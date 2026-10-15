@@ -32,6 +32,15 @@ ADVISORIES: list[tuple[str, re.Pattern[str], str]] = [
         "precision builtin unless verify shows native precision is acceptable.",
     ),
     (
+        "onemkl_product_api",
+        re.compile(r"\boneapi::mkl::"),
+        "Intel oneMKL product API: c2s maps cuBLAS (and cuFFT/cuRAND/cuSOLVER) calls to "
+        "oneapi::mkl::, which targets Intel CPUs/GPUs. For a vendor-portable port call oneMath "
+        "(UXL Foundation, formerly oneMKL interfaces): #include <oneapi/math.hpp>, "
+        "oneapi::math::blas::column_major::gemm(q, ...), link -lonemath; it dispatches to MKL, "
+        "cuBLAS or rocBLAS from the queue's device.",
+    ),
+    (
         "free_function_item_query",
         re.compile(r"this_work_item::get_nd_item"),
         "Kernel fetches its nd_item via this_work_item::get_nd_item (extension). Passing the "
