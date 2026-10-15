@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native -I/tmp/tmp.T6XGAnYMKu/task /tmp/tmp.T6XGAnYMKu/task/softmax.cu -o build/native",
+  "returncode": 0,
+  "duration_s": 4.554496,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.T6XGAnYMKu/out/work"
+}
