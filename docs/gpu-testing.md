@@ -46,13 +46,35 @@ oneapi-agent ingest gputest-results-<name>-<host>.tar.gz    # -> docs/gpu-run/<v
 
 `ingest` rejects archives that contain absolute paths or `..` entries.
 
-## Where to get each GPU
+## Renting a GPU automatically: `remote-test`
 
-| Vendor | Automatable today | How |
+```bash
+export RUNPOD_API_KEY=...        # or VAST_API_KEY / VULTR_API_KEY
+oneapi-agent remote-test examples/softmax_hecbench/task.json --provider runpod --vendor nvidia
+```
+
+`remote-test` runs the whole job in one command:
+1. Builds a bundle.
+2. Rents the cheapest GPU in stock, trying the next one if a card sells out.
+3. Starts a small agent on the machine and uploads the bundle.
+4. Waits for the run and imports the results into `docs/gpu-run/`.
+5. **Always deletes the machine and checks that it is gone**, including when something failed.
+
+Spending is capped by `--max-minutes` (45 by default) and `--max-usd` ($2 by default), using the provider's own prices.
+
+**Login.**
+- Each provider reads one API key, from `RUNPOD_API_KEY`, `VAST_API_KEY` or `VULTR_API_KEY`.
+- The key is only sent to that provider's API. It is never written to disk or into the machine.
+- The machine's agent gets a fresh random token for each run.
+- Runpod is reached through its HTTPS proxy.
+- Vast.ai and Vultr machines are reached on a bare IP. There the agent serves TLS with a throwaway self-signed certificate made for the run (this needs `openssl`), and the client trusts only that certificate.
+
+| Provider | GPUs used | Status (2026-10-15) |
 |---|---|---|
-| NVIDIA | yes | Runpod via its REST/MCP API: create a pod, run, fetch the results over the pod's HTTPS proxy, delete. Done by hand for [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md); automation is planned. |
-| AMD | yes, when stock exists | Runpod MI300X / MI350X with the ROCm image; `scripts/amd-gpu-run.sh`. Stock was `NONE` on 2026-10-15. |
-| Intel | **no public API found** | See below; use a bundle. |
+| Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
+| Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | Implemented against the official CLI and docs; unit-tested, not yet run against the live API. No AMD offers listed. |
+| Vultr | NVIDIA A16 / A40 Cloud GPU | Implemented against the official SDK and Terraform provider; unit-tested, not yet run against the live API. AMD Instinct plans are listed but not deployable on demand. |
+| Intel | none to rent | No public API: use a bundle (below). |
 
 **Intel, as of 2026-10-15.**
 

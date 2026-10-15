@@ -22,6 +22,8 @@ import base64
 import json
 import os
 import secrets
+import shlex
+import ssl
 import tempfile
 import time
 import urllib.error
@@ -32,6 +34,7 @@ from typing import Any
 
 from .bundle import ingest_results, make_bundle
 from .result import ToolResult
+from .toolchain import run_command
 
 API = "https://api.runpod.io/v2"
 # Runpod's proxy sits behind Cloudflare, which rejects Python's default "Python-urllib" agent
@@ -58,6 +61,7 @@ S = {"phase": "setup", "rc": None, "started": time.time()}
 SETUP = r"""
 set -x
 export DEBIAN_FRONTEND=noninteractive
+command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }
 python3 -c 'import numpy' 2>/dev/null || python3 -m pip install -q numpy
 if ! command -v icpx >/dev/null && [ ! -x /opt/sycl/bin/clang++ ]; then
   URL="$(curl -fsSL 'https://api.github.com/repos/intel/llvm/releases?per_page=30' | python3 -c '
@@ -81,6 +85,9 @@ ENV["LD_LIBRARY_PATH"] = "/opt/sycl/lib:/opt/rocm/lib:" + ENV.get("LD_LIBRARY_PA
 ENV.setdefault("SYCL_CXX", "/opt/sycl/bin/clang++")  # dropped after setup if not installed
 
 def setup():
+    if os.environ.get("GT_NO_SETUP"):  # tests: use whatever toolchain is already on PATH
+        S["phase"], S["setup_rc"] = "ready", 0
+        return
     with open(W / "setup.log", "w") as log:
         rc = subprocess.call(["bash", "-c", SETUP], stdout=log, stderr=subprocess.STDOUT, env=ENV)
     if not os.path.exists("/opt/sycl/bin/clang++"):
@@ -91,8 +98,8 @@ def setup():
 def run(args):
     while S["phase"] == "setup":
         time.sleep(2)
-    if S["phase"] == "setup_failed":
-        S["phase"] = "done"; S["rc"] = 99; return
+    # Run even if setup failed: gpu_test then reports what is missing (toolchain_missing) in a
+    # results archive, which is more useful than no archive at all.
     S["phase"] = "running"
     with open(W / "run.log", "w") as log:
         S["rc"] = subprocess.call(["bash", str(W / "bundle.sh"), *args], cwd=W, stdout=log,
@@ -138,7 +145,15 @@ class H(http.server.BaseHTTPRequestHandler):
         pass
 
 threading.Thread(target=setup, daemon=True).start()
-http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("GT_PORT", "8000"))), H).serve_forever()
+srv = http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("GT_PORT", "8000"))), H)
+if os.environ.get("GT_TLS_CERT"):  # direct-IP providers: TLS with a per-run cert the client pins
+    import base64, ssl
+    (W / "tls.crt").write_bytes(base64.b64decode(os.environ["GT_TLS_CERT"]))
+    (W / "tls.key").write_bytes(base64.b64decode(os.environ["GT_TLS_KEY"]))
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(W / "tls.crt", W / "tls.key")
+    srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+srv.serve_forever()
 '''
 
 
@@ -187,13 +202,31 @@ class RunpodAPI:
                 raise
 
 
+def make_tls_pair(directory: Path) -> tuple[Path, Path] | None:
+    """A throwaway self-signed cert + key for one run (None if openssl is unavailable)."""
+    crt, key = directory / "agent.crt", directory / "agent.key"
+    res = run_command(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt",
+                       "ec_paramgen_curve:prime256v1", "-nodes", "-days", "2",
+                       "-subj", "/CN=oneapi-gputest-agent", "-keyout", str(key), "-out", str(crt)],
+                      timeout=60)
+    return (crt, key) if res.returncode == 0 and crt.exists() else None
+
+
+def pinned_context(cert: Path) -> ssl.SSLContext:
+    """Trust exactly this certificate (it is self-signed for a bare IP, so no hostname check)."""
+    ctx = ssl.create_default_context(cafile=str(cert))
+    ctx.check_hostname = False
+    return ctx
+
+
 def _agent_call(url: str, token: str, method: str = "GET", data: bytes | None = None,
-                headers: dict[str, str] | None = None, timeout: float = 60) -> tuple[int, bytes]:
+                headers: dict[str, str] | None = None, timeout: float = 60,
+                context: ssl.SSLContext | None = None) -> tuple[int, bytes]:
     req = urllib.request.Request(url, data=data, method=method,
                                  headers={"X-Token": token, "User-Agent": USER_AGENT,
                                           **(headers or {})})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with urllib.request.urlopen(req, timeout=timeout, context=context) as r:
             return r.status, r.read()
     except urllib.error.HTTPError as e:
         return e.code, e.read()
@@ -213,6 +246,7 @@ class Provider:
 
     name = "provider"
     key_env = ""
+    tls = False  # True for providers reached on a bare IP: the agent then serves pinned TLS
 
     def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
         raise NotImplementedError
@@ -272,14 +306,202 @@ class RunpodProvider(Provider):
         return self.api.get_pod(machine_id) is not None
 
 
+class _JSONAPI:
+    """Bearer-token JSON client shared by the Vast and Vultr providers."""
+
+    def __init__(self, base: str, key: str) -> None:
+        self.base, self.key = base, key
+
+    def req(self, method: str, path: str, body: Any = None) -> Any:
+        data = json.dumps(body).encode() if body is not None else None
+        r = urllib.request.Request(self.base + path, data=data, method=method, headers={
+            "Authorization": f"Bearer {self.key}", "Content-Type": "application/json",
+            "Accept": "application/json", "User-Agent": USER_AGENT})
+        with urllib.request.urlopen(r, timeout=60) as resp:
+            raw = resp.read()
+            return json.loads(raw) if raw else None
+
+
+class VastProvider(Provider):
+    """Vast.ai marketplace (docs.vast.ai; endpoints as used by the official vast CLI).
+
+    Offers are searched per GPU name (cheapest verified, rentable, reliable host with a direct
+    port), rented with ``PUT /api/v0/asks/{offer}/`` in ``args`` mode with ``-p 8000:8000``,
+    and reached on ``public_ipaddr`` + the host port mapped to 8000 (plain TCP, so the agent
+    serves TLS with a per-run pinned certificate). As of 2026-10-15 Vast lists no AMD offers.
+    """
+
+    name, key_env, tls = "vast", "VAST_API_KEY", True
+    GPUS = {"nvidia": ["RTX A4000", "RTX 3090", "RTX A5000", "RTX 4090", "RTX 4080"], "amd": []}
+    IMAGE = {"nvidia": "pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel"}  # python3 + nvcc
+
+    def __init__(self, key: str, api: _JSONAPI | None = None) -> None:
+        self.api = api or _JSONAPI("https://console.vast.ai/api/v0", key)
+
+    def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
+        return [gpu_type] if gpu_type else self.GPUS.get(vendor, [])
+
+    def _offers(self, gpu: str) -> list[dict[str, Any]]:
+        q = {"gpu_name": {"in": [gpu]}, "num_gpus": {"eq": 1}, "rentable": {"eq": True},
+             "rented": {"eq": False}, "verified": {"eq": True}, "reliability": {"gte": 0.98},
+             "direct_port_count": {"gte": 1}, "type": "ondemand",
+             "order": [["dph_total", "asc"]], "limit": 5}
+        try:
+            return list((self.api.req("POST", "/bundles/", q) or {}).get("offers") or [])
+        except (urllib.error.URLError, ValueError):
+            return []
+
+    def price(self, gpu: str) -> float | None:
+        offers = self._offers(gpu)
+        return float(offers[0]["dph_total"]) if offers else None
+
+    def create(self, gpu: str, *, vendor: str, image: str | None, env: dict[str, str]) -> str:
+        offers = self._offers(gpu)
+        if not offers:
+            raise Unavailable("no rentable offer")
+        body = {"client_id": "me", "image": image or self.IMAGE.get(vendor, self.IMAGE["nvidia"]),
+                "disk": 40, "label": f"oneapi-gputest-{secrets.token_hex(3)}",
+                "env": {"-p 8000:8000": "1", **env}, "runtype": "args",
+                "args": ["bash", "-c", START_CMD]}
+        for offer in offers:  # the cheapest can be taken between search and rent
+            try:
+                res = self.api.req("PUT", f"/asks/{offer['id']}/", body)
+            except urllib.error.HTTPError as e:
+                if e.code in (404, 410):
+                    continue
+                raise Unavailable(f"HTTP {e.code}: {e.read().decode(errors='replace')[:200]}") from e
+            if res and res.get("success") and res.get("new_contract"):
+                return str(res["new_contract"])
+        raise Unavailable("every offer was taken before it could be rented")
+
+    def _instance(self, mid: str) -> dict[str, Any] | None:
+        try:
+            data = self.api.req("GET", f"/instances/{mid}/")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+        inst = (data or {}).get("instances")
+        return inst if isinstance(inst, dict) and inst else None
+
+    def agent_url(self, machine_id: str) -> str | None:
+        inst = self._instance(machine_id)
+        if not inst:
+            return None
+        if inst.get("actual_status") in ("exited", "unknown", "offline"):
+            raise RuntimeError(f"vast instance is {inst.get('actual_status')}: "
+                               f"{inst.get('status_msg', '')}"[:300])
+        mapped = (inst.get("ports") or {}).get("8000/tcp") or []
+        ip = inst.get("public_ipaddr")
+        if inst.get("actual_status") == "running" and mapped and ip:
+            return f"https://{ip.strip()}:{mapped[0]['HostPort']}"
+        return None
+
+    def delete(self, machine_id: str) -> None:
+        try:
+            self.api.req("DELETE", f"/instances/{machine_id}/", {})
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+
+    def exists(self, machine_id: str) -> bool:
+        return self._instance(machine_id) is not None
+
+
+class VultrProvider(Provider):
+    """Vultr Cloud GPU (api.vultr.com/v2; fields as in the official govultr SDK / Terraform).
+
+    A VM is created with ``POST /v2/instances`` (Ubuntu 24.04; Vultr's GPU plans boot GPU-enabled
+    images with drivers) and a cloud-init ``user_data`` script that starts the agent; it is
+    reached on ``main_ip:8000`` with pinned TLS. As of 2026-10-15 Vultr's AMD Instinct plans
+    are listed but not deployable on demand, so only NVIDIA plans are candidates.
+    """
+
+    name, key_env, tls = "vultr", "VULTR_API_KEY", True
+    GPUS = {"nvidia": ["vcg-a16-6c-60g-16vram", "vcg-a16-12c-120g-32vram",
+                       "vcg-a40-24c-120g-48vram"], "amd": []}
+    UBUNTU_2404 = 2284
+
+    def __init__(self, key: str, api: _JSONAPI | None = None) -> None:
+        self.api = api or _JSONAPI("https://api.vultr.com/v2", key)
+        self._plans: dict[str, dict[str, Any]] | None = None
+
+    def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
+        return [gpu_type] if gpu_type else self.GPUS.get(vendor, [])
+
+    def _plan(self, plan_id: str) -> dict[str, Any] | None:
+        if self._plans is None:
+            self._plans = {}
+            for kind in ("vdm", "vcg"):
+                try:
+                    data = self.api.req("GET", f"/plans?type={kind}&per_page=500") or {}
+                except (urllib.error.URLError, ValueError):
+                    continue
+                self._plans.update({pl["id"]: pl for pl in data.get("plans", [])})
+        return self._plans.get(plan_id)
+
+    def price(self, gpu: str) -> float | None:
+        plan = self._plan(gpu)
+        return float(plan["hourly_cost"]) if plan and plan.get("hourly_cost") else None
+
+    def create(self, gpu: str, *, vendor: str, image: str | None, env: dict[str, str]) -> str:
+        plan = self._plan(gpu)
+        regions = (plan or {}).get("locations") or []
+        if not regions:
+            raise Unavailable("plan has no deployable locations right now")
+        exports = "\n".join(f"export {k}={shlex.quote(v)}" for k, v in env.items())
+        script = ("#!/bin/bash\n" + exports + "\n"
+                  "(command -v ufw >/dev/null && ufw allow 8000/tcp) || true\n"
+                  "mkdir -p /workspace && cd /workspace\n"
+                  "nohup bash -c " + shlex.quote(START_CMD) + " > /var/log/gputest-agent.log 2>&1 &\n")
+        body = {"region": regions[0], "plan": gpu, "os_id": self.UBUNTU_2404,
+                "label": f"oneapi-gputest-{secrets.token_hex(3)}",
+                "user_data": base64.b64encode(script.encode()).decode()}
+        try:
+            res = self.api.req("POST", "/instances", body)
+        except urllib.error.HTTPError as e:
+            raise Unavailable(f"HTTP {e.code}: {e.read().decode(errors='replace')[:200]}") from e
+        return str(res["instance"]["id"])
+
+    def _instance(self, mid: str) -> dict[str, Any] | None:
+        try:
+            return (self.api.req("GET", f"/instances/{mid}") or {}).get("instance")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+
+    def agent_url(self, machine_id: str) -> str | None:
+        inst = self._instance(machine_id)
+        ip = (inst or {}).get("main_ip")
+        if inst and inst.get("status") == "active" and ip and ip != "0.0.0.0":
+            return f"https://{ip}:8000"
+        return None
+
+    def delete(self, machine_id: str) -> None:
+        try:
+            self.api.req("DELETE", f"/instances/{machine_id}")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+
+    def exists(self, machine_id: str) -> bool:
+        return self._instance(machine_id) is not None
+
+
 def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = None) -> Provider:
     """Provider by name, keyed from its environment variable (or ``api_key``)."""
+    key = api_key or os.environ.get(PROVIDER_KEY_ENV.get(name, ""), "")
     if name == "runpod":
-        return RunpodProvider(RunpodAPI(api_key or os.environ.get("RUNPOD_API_KEY", "")), cloud)
+        return RunpodProvider(RunpodAPI(key), cloud)
+    if name == "vast":
+        return VastProvider(key)
+    if name == "vultr":
+        return VultrProvider(key)
     raise ValueError(f"unknown provider {name!r}")
 
 
-PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY"}
+PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY", "vast": "VAST_API_KEY", "vultr": "VULTR_API_KEY"}
 
 
 def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None = None,
@@ -320,6 +542,18 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         return b
     token = secrets.token_urlsafe(24)
     env = {"GT_TOKEN": token, "GT_AGENT": base64.b64encode(POD_AGENT.encode()).decode()}
+    ctx: ssl.SSLContext | None = None
+    tls_note: list[str] = []
+    if prov.tls:
+        pair = make_tls_pair(tmp)
+        if pair:
+            env["GT_TLS_CERT"] = base64.b64encode(pair[0].read_bytes()).decode()
+            env["GT_TLS_KEY"] = base64.b64encode(pair[1].read_bytes()).decode()
+            ctx = pinned_context(pair[0])
+        else:
+            return ToolResult("remote_test", "toolchain_missing",
+                              f"openssl is needed to protect the connection to a {prov.name} "
+                              "machine (it is reached on a bare IP)", {"provider": prov.name})
     t0 = time.time()
     mid: str | None = None
     ev: dict[str, Any] = {"provider": prov.name, "create_attempts": []}
@@ -351,7 +585,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         while time.time() < deadline:
             url = agent_url(mid) if agent_url else prov.agent_url(mid)
             if url:
-                code, _ = _agent_call(url + "/status", token, timeout=20)
+                code, _ = _agent_call(url + "/status", token, timeout=20, context=ctx)
                 if code == 200:
                     break
                 if code not in seen_codes:  # 0 = not reachable yet; 502/404 = still starting
@@ -363,13 +597,14 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         assert url is not None
         ev["agent_url"] = url
         code, resp = _agent_call(url + "/bundle", token, "PUT", (tmp / "bundle.sh").read_bytes(),
-                                 {"X-Args": json.dumps(["--vendor", vendor])}, timeout=300)
+                                 {"X-Args": json.dumps(["--vendor", vendor])}, timeout=300,
+                                 context=ctx)
         if code != 202:
             raise RuntimeError(f"bundle upload failed: HTTP {code} {resp[:200]!r}")
         log("bundle uploaded; waiting for the run")
         last = ""
         while time.time() < deadline:
-            code, raw = _agent_call(url + "/status", token, timeout=30)
+            code, raw = _agent_call(url + "/status", token, timeout=30, context=ctx)
             if code == 200:
                 status = json.loads(raw)
                 if status.get("phase") != last:
@@ -380,7 +615,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             time.sleep(poll_s)
         else:
             raise TimeoutError(f"run did not finish within {max_minutes:.0f} min")
-        code, archive = _agent_call(url + "/results", token, timeout=120)
+        code, archive = _agent_call(url + "/results", token, timeout=120, context=ctx)
         if code != 200:
             raise RuntimeError("run finished but produced no results archive; "
                                f"setup log tail: {status.get('setup_tail', '')[-1500:]} "
@@ -390,7 +625,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         ev["ingest"] = ing.evidence
         remote_status = (ing.evidence.get("remote_result") or {}).get("status") or ing.status
         result = ToolResult("remote_test", remote_status, f"{gpu}: {ing.summary}", ev,
-                            ing.limitations)
+                            [*ing.limitations, *tls_note])
     except (TimeoutError, RuntimeError, urllib.error.URLError, KeyError, ValueError) as exc:
         ev["agent_status"] = {k: status.get(k) for k in ("phase", "rc", "setup_rc")}
         ev["setup_tail"] = status.get("setup_tail", "")[-3000:]

@@ -90,6 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
     rt = sub.add_parser("remote-test", help="rent a Runpod GPU (NVIDIA or AMD), run gpu-test "
                         "there, import the results, delete the pod (needs RUNPOD_API_KEY)")
     rt.add_argument("task")
+    rt.add_argument("--provider", choices=["runpod", "vast", "vultr"], default="runpod",
+                    help="GPU rental service; its API key comes from RUNPOD_API_KEY, "
+                         "VAST_API_KEY or VULTR_API_KEY")
     rt.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
     rt.add_argument("--gpu", dest="gpu_type", help="Runpod GPU type id (default per vendor)")
     rt.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE")
@@ -166,6 +169,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .remote import remote_test
 
         return _emit(remote_test(args.task, vendor=args.vendor, gpu_type=args.gpu_type,
+                                 provider=args.provider,
                                  cloud=args.cloud, image=args.image, max_minutes=args.max_minutes,
                                  max_usd=args.max_usd, into=args.into, keep_pod=args.keep_pod,
                                  log=lambda m: print(m, file=sys.stderr)), args.summary)
