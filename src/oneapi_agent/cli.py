@@ -87,6 +87,18 @@ def build_parser() -> argparse.ArgumentParser:
     ig.add_argument("archive")
     ig.add_argument("--into", default="docs/gpu-run")
 
+    rt = sub.add_parser("remote-test", help="rent a Runpod GPU (NVIDIA or AMD), run gpu-test "
+                        "there, import the results, delete the pod (needs RUNPOD_API_KEY)")
+    rt.add_argument("task")
+    rt.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
+    rt.add_argument("--gpu", dest="gpu_type", help="Runpod GPU type id (default per vendor)")
+    rt.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE")
+    rt.add_argument("--image", help="container image (default per vendor)")
+    rt.add_argument("--max-minutes", type=float, default=45)
+    rt.add_argument("--max-usd", type=float, default=2.0)
+    rt.add_argument("--into", default="docs/gpu-run")
+    rt.add_argument("--keep-pod", action="store_true", help="do not delete the pod (debugging)")
+
     sub.add_parser("serve", help="run the MCP server on stdio")
 
     st = sub.add_parser("setup", help="register the MCP server (and skill) with coding agents")
@@ -150,6 +162,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         return _emit(make_bundle(args.task, args.output) if args.cmd == "bundle"
                      else ingest_results(args.archive, args.into), args.summary)
+    if args.cmd == "remote-test":
+        from .remote import remote_test
+
+        return _emit(remote_test(args.task, vendor=args.vendor, gpu_type=args.gpu_type,
+                                 cloud=args.cloud, image=args.image, max_minutes=args.max_minutes,
+                                 max_usd=args.max_usd, into=args.into, keep_pod=args.keep_pod,
+                                 log=lambda m: print(m, file=sys.stderr)), args.summary)
     if args.cmd == "setup":
         from .setup import setup
 
