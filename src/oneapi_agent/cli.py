@@ -89,6 +89,8 @@ def build_parser() -> argparse.ArgumentParser:
     lp.add_argument("--baseline", action="store_true",
                     help="ablation: no scan_helpers/verify/benchmark; run ends when the model "
                          "calls finish")
+    lp.add_argument("--shell", action="store_true",
+                    help="also give the model a bash shell in the work dir (`run` tool)")
     lp.add_argument("--evaluate", action="store_true",
                     help="grade the final sources with a hidden compile + verify + scan")
     lp.add_argument("--runs-dir", default="runs")
