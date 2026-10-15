@@ -63,7 +63,8 @@ SETUP = r"""
 set -x
 export DEBIAN_FRONTEND=noninteractive
 command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }
-python3 -c 'import numpy' 2>/dev/null || python3 -m pip install -q numpy
+python3 -c 'import numpy' 2>/dev/null || { apt-get update -qq && apt-get install -y -qq python3-numpy; } \
+  || python3 -m pip install -q --break-system-packages numpy || python3 -m pip install -q numpy
 if ! command -v icpx >/dev/null && [ ! -x /opt/sycl/bin/clang++ ]; then
   URL="$(curl -fsSL 'https://api.github.com/repos/intel/llvm/releases?per_page=30' | python3 -c '
 import json,sys
@@ -766,9 +767,9 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             raise TimeoutError(f"run did not finish within {max_minutes:.0f} min")
         code, archive = _agent_call(url + "/results", token, timeout=120, context=ctx)
         if code != 200:
-            raise RuntimeError("run finished but produced no results archive; "
-                               f"setup log tail: {status.get('setup_tail', '')[-1500:]} "
-                               f"run log tail: {status.get('run_tail', '')[-1500:]}")
+            raise RuntimeError("run finished but produced no results archive. Run log tail: "
+                               f"{status.get('run_tail', '')[-2000:]} || setup log tail: "
+                               f"{status.get('setup_tail', '')[-800:]}")
         (tmp / "results.tar.gz").write_bytes(archive)
         ing = ingest_results(str(tmp / "results.tar.gz"), into)
         ev["ingest"] = ing.evidence

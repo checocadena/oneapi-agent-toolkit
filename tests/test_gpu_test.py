@@ -125,3 +125,22 @@ def test_ingest_rejects_path_traversal(tmp_path):
     r = ingest_results(str(tmp_path / "e.tar.gz"), str(tmp_path / "into"))
     assert r.status == "error" and "unsafe" in r.summary
     assert not (tmp_path / "escape").exists()
+
+
+
+def test_bundle_crash_still_yields_an_explaining_archive(tmp_path):
+    import subprocess
+
+    r = make_bundle(str(REPO / "examples/saxpy/task.json"), str(tmp_path / "b.sh"))
+    assert r.status == "ok"
+    # An unknown flag makes gpu-test exit before it writes summary.json.
+    p = subprocess.run(["bash", str(tmp_path / "b.sh"), "--no-such-flag"], cwd=tmp_path,
+                       capture_output=True, text=True, timeout=300)
+    assert p.returncode != 0
+    archives = list(tmp_path.glob("gputest-results-saxpy-*.tar.gz"))
+    assert len(archives) == 1
+    with tarfile.open(archives[0]) as t:
+        summary = json.loads(t.extractfile("summary.json").read())
+        assert "run.log" in t.getnames()
+    assert summary["status"] == "error" and "crashed" in summary["summary"]
+    assert "no-such-flag" in summary["evidence"]["run_log_tail"]

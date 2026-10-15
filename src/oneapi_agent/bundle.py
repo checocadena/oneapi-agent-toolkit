@@ -41,11 +41,39 @@ for f in /opt/intel/oneapi/setvars.sh "$HOME/intel/oneapi/setvars.sh"; do
   if [ -z "${ONEAPI_ROOT:-}" ] && [ -f "$f" ]; then . "$f" --force >/dev/null 2>&1 || true; fi
 done
 [ -d /opt/rocm/bin ] && export PATH="$PATH:/opt/rocm/bin"
-python3 -c "import numpy" 2>/dev/null || python3 -m pip install -q --user numpy || pip install -q numpy
-PYTHONPATH="$D/pkg" python3 -m oneapi_agent.cli --summary gpu-test "__TASK__" --out "$D/out" "$@"
-rc=$?
+ensure_numpy() {
+  python3 -c "import numpy" 2>/dev/null && return 0
+  # Distro Pythons (Ubuntu 24.04+) refuse plain `pip install` (PEP 668) and may lack pip:
+  # prefer the distro package when root, then pip with the escape hatch.
+  if command -v apt-get >/dev/null && [ "$(id -u)" = 0 ]; then
+    (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-numpy) \
+      >/dev/null 2>&1
+    python3 -c "import numpy" 2>/dev/null && return 0
+  fi
+  python3 -m pip install -q --user numpy 2>/dev/null \
+    || python3 -m pip install -q --user --break-system-packages numpy 2>/dev/null \
+    || pip install -q numpy 2>/dev/null
+  python3 -c "import numpy" 2>/dev/null
+}
+mkdir -p "$D/out/results"
+ensure_numpy || echo "WARNING: numpy is missing and could not be installed"
+PYTHONPATH="$D/pkg" python3 -m oneapi_agent.cli --summary gpu-test "__TASK__" --out "$D/out" "$@" \
+  2>&1 | tee "$D/out/run.log"
+rc=${PIPESTATUS[0]}
+if [ ! -f "$D/out/summary.json" ]; then  # crashed before writing a result: say so, with the log
+  python3 - "$D/out" "$rc" <<'PY'
+import json, pathlib, sys
+out = pathlib.Path(sys.argv[1])
+log = (out / "run.log").read_text(errors="replace")[-6000:] if (out / "run.log").exists() else ""
+summary = {"tool": "gpu_test", "status": "error",
+           "summary": "gpu-test crashed before writing a result (exit %s)" % sys.argv[2],
+           "evidence": {"run_log_tail": log}, "limitations": []}
+(out / "summary.json").write_text(json.dumps(summary, indent=2))
+(out / "SUMMARY.md").write_text("# GPU test crashed\n\n```\n" + log + "\n```\n")
+PY
+fi
 OUTF="$HERE/gputest-results-__NAME__-$(hostname | tr -cd 'A-Za-z0-9_-').tar.gz"
-tar czf "$OUTF" -C "$D/out" summary.json SUMMARY.md results
+tar czf "$OUTF" -C "$D/out" summary.json SUMMARY.md results run.log
 echo; cat "$D/out/SUMMARY.md"; echo; echo "results archive: $OUTF"
 exit $rc
 __PAYLOAD_BELOW__
