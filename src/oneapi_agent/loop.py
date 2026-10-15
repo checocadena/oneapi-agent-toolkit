@@ -94,6 +94,17 @@ Rules:
 
 BASELINE_REMOVED_TOOLS = frozenset({"scan_helpers", "verify", "benchmark"})
 
+SHELL_RULE = """\
+- You also have `run`: a bash shell in the work dir (icpx, g++ and the SYCL runtime on PATH).
+  Use it to build and run anything you like, including your own tests.
+"""
+
+RUN_TOOL_SCHEMA: dict[str, Any] = {
+    "name": "run", "description": "Run a bash command in the work dir (timeout 300 s). Returns "
+    "exit code and the tail of stdout/stderr.",
+    "input_schema": {"type": "object", "properties": {"command": {"type": "string"}},
+                     "required": ["command"], "additionalProperties": False}}
+
 
 # ----------------------------------------------------------------------------- config
 
@@ -122,6 +133,7 @@ class LoopConfig:
     name: str = "task"
     baseline: bool = False  # ablation arm: no scan_helpers/verify/benchmark; ends on finish
     evaluate: bool = False  # grade the final sources with a hidden compile+verify+scan
+    shell: bool = False  # offer the `run` tool (a bash shell in the work dir)
 
     @classmethod
     def from_task_file(cls, path: str | Path, **overrides: Any) -> LoopConfig:
@@ -143,7 +155,7 @@ class LoopConfig:
                 a.replace("{task_dir}", str(base)) for a in data["reference_build"]
             ] if data.get("reference_build") else None,
             candidate_binary=data.get("candidate_binary", "build/candidate"),
-            base_flags=data.get("base_flags", ["-O2"]),
+            base_flags=[os.path.expandvars(f) for f in data.get("base_flags", ["-O2"])],
             extra_include_dirs=[absolute(d) for d in data.get("include_dirs", [])],
             tolerance=data.get("tolerance", 1e-5),
             rtol=data.get("rtol", 0.0),
@@ -281,9 +293,11 @@ class ScriptedModel:
 # ----------------------------------------------------------------------------- tools
 
 
-def tool_schemas(baseline: bool = False) -> list[dict[str, Any]]:
+def tool_schemas(baseline: bool = False, shell: bool = False) -> list[dict[str, Any]]:
     tools = _all_tool_schemas()
-    return [t for t in tools if t["name"] not in BASELINE_REMOVED_TOOLS] if baseline else tools
+    if baseline:
+        tools = [t for t in tools if t["name"] not in BASELINE_REMOVED_TOOLS]
+    return [*tools, RUN_TOOL_SCHEMA] if shell else tools
 
 
 def _all_tool_schemas() -> list[dict[str, Any]]:
@@ -344,7 +358,8 @@ class Toolbox:
         raise PermissionError(f"path escapes the work dir: {rel}")
 
     def __call__(self, name: str, args: dict[str, Any]) -> ToolResult:
-        if self.cfg.baseline and name in BASELINE_REMOVED_TOOLS:
+        if (self.cfg.baseline and name in BASELINE_REMOVED_TOOLS) or \
+                (name == "run" and not self.cfg.shell):
             return ToolResult(name, "error", f"tool {name!r} is not available in this run")
         try:
             fn = getattr(self, f"t_{name}")
@@ -401,6 +416,14 @@ class Toolbox:
         p.write_text(a["content"])
         return ToolResult("write_file", "ok", f"wrote {p.relative_to(self.work)} "
                           f"({len(a['content'])} chars)", {"path": str(p)})
+
+    def t_run(self, a: dict[str, Any]) -> ToolResult:
+        res = run_command(["bash", "-c", a["command"]], cwd=str(self.work), timeout=300)
+        ok = res.returncode == 0
+        return ToolResult("run", "ok" if ok else "fail",
+                          f"exit {res.returncode}" + ("" if ok else f": {res.stderr[-200:]}"),
+                          {"returncode": res.returncode, "stdout": res.stdout[-6000:],
+                           "stderr": res.stderr[-6000:]})
 
     def t_list_files(self, a: dict[str, Any]) -> ToolResult:
         root = self._inside(a.get("path") or ".")
@@ -664,8 +687,10 @@ class AgentLoop:
         if not self.prepare():
             return self.finish()
         self.messages = [{"role": "user", "content": self._initial_message()}]
-        tools = tool_schemas(c.baseline)
+        tools = tool_schemas(c.baseline, c.shell)
         system = BASELINE_SYSTEM_PROMPT if c.baseline else SYSTEM_PROMPT
+        if c.shell:
+            system = system.rstrip("\n") + "\n" + SHELL_RULE
 
         while self.state.stop_reason is None:
             if self.state.iteration >= c.max_iterations:
@@ -825,6 +850,7 @@ class AgentLoop:
             "report": str(self.run_dir / "report.md"),
             "model": self.model.name,
             "baseline": self.cfg.baseline,
+            "shell": self.cfg.shell,
             **({"evaluation": evaluation} if evaluation is not None else {}),
         }
         self._trace("stop", **outcome)
@@ -998,7 +1024,8 @@ def cli_entry(args: Any) -> dict[str, Any]:
     task = Path(args.config) if args.config else default_task_file()
     cfg = LoopConfig.from_task_file(task, max_iterations=args.max_iterations,
                                     baseline=getattr(args, "baseline", False) or None,
-                                    evaluate=getattr(args, "evaluate", False) or None)
+                                    evaluate=getattr(args, "evaluate", False) or None,
+                                    shell=getattr(args, "shell", False) or None)
     if args.dry_run:
         sol_path = task.parent / "sycl" / (Path(cfg.cuda_path).stem + ".cpp")
         sol = sol_path.read_text() if sol_path.is_file() else None

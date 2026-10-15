@@ -97,3 +97,15 @@ def test_no_agents_detected_and_unknown_agent(tmp_path, monkeypatch):
     monkeypatch.setattr(st.shutil, "which", lambda n: None)
     assert st.setup(home=tmp_path, environ=ENV).status == "error"
     assert st.setup(["vim"], home=tmp_path, environ=ENV).status == "error"
+
+
+def test_claude_cli_runs_with_the_given_home(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(st.shutil, "which", lambda n: "/usr/bin/claude" if n == "claude" else None)
+
+    class R:
+        returncode, stderr = 0, ""
+
+    monkeypatch.setattr(st, "run_command", lambda argv, **kw: calls.append(kw.get("env")) or R())
+    assert st.setup(["claude"], home=tmp_path, environ=ENV, skill=False).status == "ok"
+    assert calls and all(e == {"HOME": str(tmp_path)} for e in calls)

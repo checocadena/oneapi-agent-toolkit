@@ -1,0 +1,16 @@
+{
+  "name": "gemm_cublas",
+  "goal": "Port gemm.cu (cublasSgemm, column-major, C = 1.5*A*B - 0.5*C, M=384 N=320 K=256) to idiomatic SYCL 2020 calling oneMath (oneapi::math::blas::column_major::gemm, include <oneapi/math.hpp>, link -lonemath) with zero dpct helpers and no oneapi::mkl product-only API; the float32 output must match the double-accumulating C++ reference within atol 2e-3. Tolerance: inputs are in [-0.5, 0.5), so every entry of |A||B| is at most K/4 = 64; the standard bound for a K-term float32 dot product in ANY summation order (blocked, FMA, parallel) is gamma_K*(|A||B|)_ij with gamma_256 = 1.53e-5, times |alpha| = 1.5 gives 1.47e-3, plus a few ulp for the final alpha/beta update. 2e-3 therefore never rejects a correct SGEMM, while a transpose/leading-dimension/alpha/beta bug produces errors of order 1-10.",
+  "cuda_path": "gemm.cu",
+  "reference_build": ["g++", "-O2", "-std=c++17", "{task_dir}/gemm_ref.cpp", "-o", "build/reference"],
+  "reference_cmd": "build/reference {output}",
+  "candidate_cmd": "build/candidate {output}",
+  "base_flags": ["-O2", "-I${ONEMATH_PREFIX}/include", "-Wl,--no-as-needed",
+                 "-L${ONEMATH_PREFIX}/lib", "-Wl,-rpath,${ONEMATH_PREFIX}/lib", "-lonemath"],
+  "migrated_flags": ["-O2", "-DMKL_ILP64", "-I${ONEMKL_PREFIX}/include", "-Wl,--no-as-needed",
+                     "-L${ONEMKL_PREFIX}/lib", "-Wl,-rpath,${ONEMKL_PREFIX}/lib",
+                     "-lmkl_sycl_blas", "-lmkl_intel_ilp64", "-lmkl_sequential", "-lmkl_core"],
+  "inputs": [],
+  "mode": "array",
+  "tolerance": 2e-3
+}

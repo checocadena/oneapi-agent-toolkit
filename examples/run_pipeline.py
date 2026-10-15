@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import platform
 import shutil
 import sys
@@ -69,9 +70,15 @@ def run_task(task_file: Path) -> dict:
     steps["migrate"] = migrate(str(tdir / task["cuda_path"]), str(mig_dir),
                                extra_args=[f"-I{d}" for d in includes])
     main_src = mig_dir / (Path(task["cuda_path"]).stem + ".dp.cpp")
-    flags = ["-O2", *[f"-I{d}" for d in includes]]
+    # base_flags: flags for the idiomatic port (and the agent loop); migrated_flags: for the raw
+    # c2s output when it needs different libraries (e.g. oneMKL instead of oneMath).
+    # ${VARS} are expanded from the environment (see scripts/oneapi-env.sh).
+    base = [os.path.expandvars(f) for f in task.get("base_flags", ["-O2"])]
+    mig_base = [os.path.expandvars(f) for f in task.get("migrated_flags", base)]
+    inc_flags = [f"-I{d}" for d in includes]
+    flags = [*base, *inc_flags]
     if main_src.exists():
-        steps["compile_migrated"] = compile_sycl([str(main_src)], flags,
+        steps["compile_migrated"] = compile_sycl([str(main_src)], [*mig_base, *inc_flags],
                                                  output=str(work / "build" / "migrated"))
         if steps["compile_migrated"].ok:
             steps["verify_migrated"] = verify(task["reference_cmd"], cand_cmd("build/migrated"),

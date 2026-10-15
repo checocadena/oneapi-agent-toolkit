@@ -100,8 +100,9 @@ SUGGESTIONS: dict[str, str] = {
         "sycl::ext::oneapi::experimental bindless images if hardware sampling is required."
     ),
     "library_wrappers": (
-        "Call oneMKL / oneDNN / oneCCL directly (oneapi::mkl::blas::column_major::gemm, ...) "
-        "instead of dpct::blas/fft/rng wrappers."
+        "Call the library directly instead of dpct::blas/fft/rng wrappers: oneMath "
+        "(oneapi::math::blas::column_major::gemm(q, ...), vendor-portable) or oneMKL / oneDNN / "
+        "oneCCL. Replace a dpct::blas::descriptor handle with the sycl::queue itself."
     ),
     "dpl_algorithms": (
         "Call oneDPL directly (oneapi::dpl::execution::make_device_policy(q) + std-like algorithms)."

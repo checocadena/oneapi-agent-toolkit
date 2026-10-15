@@ -1,0 +1,36 @@
+name: publish
+# Publishing a GitHub release uploads the package to PyPI via trusted publishing (no token).
+# One-time setup on pypi.org: add a "pending publisher" for project oneapi-agent-toolkit,
+# owner checocadena, repo oneapi-agent-toolkit, workflow publish.yml, environment pypi.
+on:
+  release:
+    types: [published]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - name: wheel ships the skill
+        run: unzip -l dist/*.whl | grep -q 'oneapi_agent/skill/SKILL.md'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

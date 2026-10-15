@@ -189,10 +189,20 @@ def test_task_file_loading(tmp_path):
     assert c.max_iterations == 3 and c.mode == "audio"
 
 
+def test_task_file_expands_env_in_base_flags(tmp_path, monkeypatch):
+    monkeypatch.setenv("ONEMATH_PREFIX", "/x/onemath")
+    (tmp_path / "a.cu").write_text("")
+    (tmp_path / "task.json").write_text(json.dumps({
+        "goal": "g", "cuda_path": "a.cu", "reference_cmd": "r", "candidate_cmd": "c",
+        "base_flags": ["-O2", "-I${ONEMATH_PREFIX}/include", "-lonemath"]}))
+    c = LoopConfig.from_task_file(tmp_path / "task.json")
+    assert c.base_flags == ["-O2", "-I/x/onemath/include", "-lonemath"]
+
+
 def test_repo_example_task_files_load():
     root = Path(__file__).resolve().parents[1] / "examples"
     tasks = sorted(root.glob("*/task.json"))
-    assert len(tasks) == 4
+    assert len(tasks) == 5
     for t in tasks:
         c = LoopConfig.from_task_file(t)
         assert Path(c.cuda_path).is_file()
@@ -246,3 +256,15 @@ def test_report_paths_are_relative_to_run_dir(cfg, tmp_path):
     loop.run()
     report = (loop.run_dir / "report.md").read_text()
     assert str(loop.run_dir) not in report and "`trace.jsonl`" in report
+
+
+def test_shell_tool_only_when_enabled(cfg, tmp_path):
+    assert "run" not in {t["name"] for t in tool_schemas(baseline=True)}
+    assert "run" in {t["name"] for t in tool_schemas(baseline=True, shell=True)}
+    work = tmp_path / "w"
+    work.mkdir()
+    assert Toolbox(cfg, work)("run", {"command": "echo hi"}).status == "error"
+    cfg.shell = True
+    r = Toolbox(cfg, work)("run", {"command": "echo hi > f.txt; cat f.txt"})
+    assert r.status == "ok" and r.evidence["stdout"].strip() == "hi"
+    assert (work / "f.txt").exists()

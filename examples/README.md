@@ -13,6 +13,13 @@ Each example contains:
 | `fir/` | 64-tap windowed-sinc low-pass FIR; `__constant__` taps plus a `__shared__` tile | WAV | audio null test, ≤ -96 dBFS |
 | `saxpy/` | `y = a*x + y`, the HPC baseline | generated in-program | array, atol 1e-6 |
 | `softmax_hecbench/` | HeCBench `softmax-cuda`: two kernels, one with cooperative-groups warp reductions | generated in-program | array, atol 1e-6 |
+| `gemm_cublas/` | cuBLAS `cublasSgemm` (column-major, alpha/beta) → oneMath `oneapi::math::blas::column_major::gemm` | generated in-program | array, atol 2e-3 (worst-case float32 dot-product bound; see `task.json`) |
+
+`gemm_cublas` needs two libraries:
+- oneMKL SYCL, for the raw c2s output, which calls `oneapi::mkl::`.
+- oneMath, for the idiomatic port.
+
+Install both with `WITH_ONEMATH=1 scripts/install-toolchain.sh`. `scripts/oneapi-env.sh` sets `ONEMKL_PREFIX` and `ONEMATH_PREFIX`, which its `task.json` flags expand.
 
 The audio inputs are generated procedurally (`python examples/gen_inputs.py`):
 - a log sine sweep from 20 Hz to 20 kHz plus -30 dBFS white noise, mono float32 at 48 kHz;
@@ -36,6 +43,7 @@ oneapi-agent loop --dry-run --config examples/saxpy/task.json   # scripted model
 - **The raw SYCLomatic output of `softmax_hecbench` compiles but fails `verify`:** 22,156 of 524,288 elements differ by up to 4.1e-6 (3,473 float32 ULP).
   - **Cause:** c2s mapped CUDA `expf` to `sycl::native::exp`, a reduced-precision builtin, and emitted **no DPCT warning** for it.
   - **Fix check:** replacing it with `sycl::exp` in an otherwise unchanged copy brings max abs error down to 9.3e-8, a PASS.
+  - **Hardware dependence:** the failure shows on AVX-512 CPUs (measured on a Xeon here; forcing the OpenCL CPU runtime to `CL_CONFIG_CPU_TARGET_ARCH=skx` reproduces it). On AVX2 (`corei7-avx`, or GitHub's AMD EPYC 7763 runners) the same binary's max error is 6.9e-7, just inside atol 1e-6. The substitution itself is the same everywhere, so CI asserts it (`scripts/check_claims.py`) and asserts the verify failure only on AVX-512 hosts.
   - This is the "last mile" in miniature: the migration looked clean, and only behavioural verification caught the problem. `scan_helpers` now reports `sycl::native::` math as a `native_math` advisory.
 - The migrated `softmax` also carries `[[sycl::reqd_sub_group_size(32)]]`, a CUDA warp-size assumption. The idiomatic port uses one work-group per slice with `sycl::reduce_over_group`, which works for any sub-group size.
 - For `fuzz`, `fir` and `saxpy`, the raw c2s output already verified against the reference (fuzz -138.5 dBFS, fir -135.0 dBFS residual peaks; saxpy max abs err 4.8e-7). It still carries 22, 14 and 11 dpct helper uses respectively; the hand-written ports remove all of them and verify identically.
