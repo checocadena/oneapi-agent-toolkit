@@ -37,6 +37,8 @@ def test_pick_device_prefers_gpus_and_honours_vendor_and_selector():
 
 def test_target_flags_per_vendor():
     assert target_flags(dev("cuda", "gpu")) == ["-fsycl-targets=nvptx64-nvidia-cuda"]
+    # exact SM -> machine code, immune to "unsupported PTX version" on older drivers
+    assert target_flags(dev("cuda", "gpu"), cuda_arch="86") == ["-fsycl-targets=nvidia_gpu_sm_86"]
     assert target_flags(dev("hip", "gpu"), "gfx942") == ["-fsycl-targets=amd_gpu_gfx942"]
     assert target_flags(dev("level_zero", "gpu")) == ["-fsycl-targets=spir64"]
     assert target_flags(dev("opencl", "cpu")) == []
@@ -156,3 +158,18 @@ def test_bundle_runs_without_home(tmp_path):
     p = subprocess.run(["bash", str(tmp_path / "b.sh"), "--no-such-flag"], cwd=tmp_path, env=env,
                        capture_output=True, text=True, timeout=300)
     assert "unbound variable" not in p.stdout + p.stderr
+
+
+
+def test_detect_cuda_arch_parses_nvidia_smi(monkeypatch):
+    from oneapi_agent.tools.gpu_test import detect_cuda_arch
+
+    monkeypatch.delenv("CUDA_ARCH", raising=False)
+
+    def runner(argv, **kw):
+        return CommandResult(list(argv), 0, "8.6\n9.0\n", "", 0.0)
+
+    assert detect_cuda_arch(runner, 0) == "86" and detect_cuda_arch(runner, 1) == "90"
+    assert detect_cuda_arch(runner, 2) is None
+    monkeypatch.setenv("CUDA_ARCH", "sm_89")
+    assert detect_cuda_arch(runner) == "89"

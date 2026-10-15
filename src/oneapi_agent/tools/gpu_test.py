@@ -52,16 +52,39 @@ def pick_device(devices: Sequence[dict[str, Any]], *, vendor: str | None = None,
     return None
 
 
-def target_flags(device: dict[str, Any], amd_arch: str | None = None) -> list[str]:
-    """Ahead-of-time target for the device (JIT-only SPIR-V for CPUs and Intel GPUs)."""
+def target_flags(device: dict[str, Any], amd_arch: str | None = None,
+                 cuda_arch: str | None = None) -> list[str]:
+    """Ahead-of-time target for the device (JIT-only SPIR-V for CPUs and Intel GPUs).
+
+    On NVIDIA, with the GPU's compute capability known, compile real machine code for exactly
+    that GPU (``nvidia_gpu_sm_XY``). Plain ``nvptx64-nvidia-cuda`` ships PTX that the driver
+    must JIT, which fails with CUDA_ERROR_UNSUPPORTED_PTX_VERSION when the SYCL compiler is
+    newer than the driver (seen on a Vultr A16).
+    """
     if device["device_type"] != "gpu":
         return []
     backend = device["backend"]
     if backend == "cuda":
-        return ["-fsycl-targets=nvptx64-nvidia-cuda"]
+        return [f"-fsycl-targets=nvidia_gpu_sm_{cuda_arch}" if cuda_arch
+                else "-fsycl-targets=nvptx64-nvidia-cuda"]
     if backend == "hip":
         return [f"-fsycl-targets=amd_gpu_{amd_arch}"] if amd_arch else []
     return ["-fsycl-targets=spir64"]
+
+
+def detect_cuda_arch(runner: Runner | None = None, index: int = 0) -> str | None:
+    """Compute capability of NVIDIA GPU ``index`` as "86" (from nvidia-smi), or None."""
+    if os.environ.get("CUDA_ARCH"):
+        return os.environ["CUDA_ARCH"].removeprefix("sm_")
+    smi = shutil.which("nvidia-smi")
+    if smi is None and runner is None:
+        return None
+    res = (runner or run_command)([smi or "nvidia-smi", "--query-gpu=compute_cap",
+                                   "--format=csv,noheader"], timeout=60)
+    caps = re.findall(r"^\s*(\d+)\.(\d+)\s*$", res.stdout, re.M) if res.returncode == 0 else []
+    if len(caps) <= index:
+        return None
+    return caps[index][0] + caps[index][1]
 
 
 def detect_amd_arch(runner: Runner | None = None) -> str | None:
@@ -153,6 +176,7 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
     dev_vendor = VENDOR_OF_BACKEND.get(dev["backend"], "unknown") if dev["device_type"] == "gpu" \
         else "cpu"
     amd_arch = detect_amd_arch(runner) if dev["backend"] == "hip" else None
+    cuda_arch = detect_cuda_arch(runner, dev["index"]) if dev["backend"] == "cuda" else None
     selector = dev["selector"]
     gpu_env = {"ONEAPI_DEVICE_SELECTOR": selector}
     incs = [f"-I{d}" for d in task["include_dirs_abs"]]
@@ -190,7 +214,7 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
                    verify(task["reference_cmd"], cmd("build/native"), inputs,
                           work_dir=str(work / "v_native"), **vkw))
 
-    tf = target_flags(dev, amd_arch)
+    tf = target_flags(dev, amd_arch, cuda_arch)
     comp = compile_sycl(task["sycl_sources_abs"], [*task["base_flags_expanded"], *tf, *incs],
                         output=str(work / "build" / "sycl"), add_dpct_include=False,
                         icpx_path=sycl_cxx or os.environ.get("SYCL_CXX"), runner=runner)
@@ -231,7 +255,7 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
                        "times; treat them as rough.")
     res = ToolResult("gpu_test", "ok" if passed else "fail", summary,
                      {"task": task["name"], "device": dev, "vendor": dev_vendor,
-                      "amd_arch": amd_arch, "target_flags": tf, "selector": selector,
+                      "amd_arch": amd_arch, "cuda_arch": cuda_arch, "target_flags": tf, "selector": selector,
                       "steps": steps, "results_dir": str(results)}, limitations)
     return _finish(res, out, steps)
 
