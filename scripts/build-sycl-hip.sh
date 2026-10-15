@@ -74,6 +74,13 @@ INSTALL="$BUILD/install"
 # ROCm's apt packages do not register /opt/rocm/lib with ld.so; the GPU host gets it from the
 # agent's LD_LIBRARY_PATH, and the checks below name it the same way.
 export LD_LIBRARY_PATH="/opt/rocm/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# Another intel/llvm naming mismatch: libclc installs the AMD libspirv under
+# lib/clang/<v>/lib/amdgcn-amd-amdhsa/, but the driver looks under amdgpu<X.Y>-amd-amdhsa/ and
+# then amdgpu-amd-amdhsa/ (seen with strace), so `clang++ -fsycl` fails with "cannot find
+# libspirv.l64.signed_char.bc". A link makes the driver's own fallback find it for every gfx.
+for d in "$INSTALL"/lib/clang/*/lib; do
+  [ -d "$d/amdgcn-amd-amdhsa" ] && ln -sfn amdgcn-amd-amdhsa "$d/amdgpu-amd-amdhsa"
+done
 
 echo "== pack (before the checks, so a failed check never throws the build away)"
 cat > "$INSTALL/BUILD-INFO.txt" <<EOF
