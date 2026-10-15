@@ -1,0 +1,26 @@
+{
+  "title": "Agent run replays: CUDA to SYCL",
+  "intro": "Step through real agent-loop runs one tool call at a time: what the model said, what it called, and the evidence each tool returned. Regenerate with: python scripts/render_trace.py --site docs/replay/runs.json",
+  "runs": [
+    {"slug": "baseline-softmax-fail", "compare": true,
+     "trace": "traces/ablation-baseline-softmax-fail.jsonl",
+     "title": "Without the toolkit: softmax ships wrong",
+     "note": "Ablation baseline arm: migrate, compile and file tools only, no verify. The agent compiled, said it had not run the binary, and called finish. The hidden check found 332,679 of 524,288 outputs outside tolerance."},
+    {"slug": "toolkit-softmax", "compare": true,
+     "trace": "traces/ablation-toolkit-softmax.jsonl",
+     "title": "With the toolkit: softmax verified",
+     "note": "Ablation toolkit arm, same model and task: the loop only accepts compile + verify + zero dpct helpers on the current sources."},
+    {"slug": "saxpy", "trace": "../real-runs/saxpy/trace.jsonl",
+     "title": "saxpy (real run)",
+     "note": "Smallest example: one compile error fixed, then helper scan and verify."},
+    {"slug": "fir", "trace": "../real-runs/fir/trace.jsonl",
+     "title": "64-tap FIR filter (real run)",
+     "note": "Constant-memory taps and a shared-memory tile; verify nulls the WAV output against the C++ reference below -96 dBFS."},
+    {"slug": "fuzz", "trace": "../real-runs/fuzz/trace.jsonl",
+     "title": "Fuzz waveshaper (real run)",
+     "note": "tanh soft-clip audio kernel; verify nulls the WAV output against the C++ reference below -96 dBFS."},
+    {"slug": "softmax_hecbench", "trace": "../real-runs/softmax_hecbench/trace.jsonl",
+     "title": "HeCBench softmax (real run)",
+     "note": "Cooperative-groups warp reductions ported to sub-group-size-portable SYCL."}
+  ]
+}
