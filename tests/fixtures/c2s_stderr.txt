@@ -1,0 +1,7 @@
+/work/reduce/reduce.cu:30:21: warning: DPCT1010:0: SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.
+   30 |   cudaError_t err = cudaGetLastError();
+      |                     ^
+/work/reduce/reduce.cu:31:56: warning: DPCT1009:1: SYCL reports errors using exceptions and does not use error codes. Please replace the "get_error_string_dummy(...)" with a real error-handling function.
+   31 |   if (err != cudaSuccess) { printf("CUDA error: %s\n", cudaGetErrorString(err)); return 1; }
+      |                                                        ^
+

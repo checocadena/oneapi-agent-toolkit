@@ -1,0 +1,5 @@
+warning: CUDA version is newer than the latest supported version 12.3 [-Wunknown-cuda-version]
+In file included from <built-in>:1:
+/opt/syclomatic/lib/clang/19/include/__clang_cuda_runtime_wrapper.h:534:10: fatal error: 'curand_mtgp32_kernel.h' file not found
+  534 | #include "curand_mtgp32_kernel.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~

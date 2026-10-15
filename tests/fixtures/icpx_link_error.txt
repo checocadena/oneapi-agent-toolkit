@@ -1,0 +1,3 @@
+/usr/bin/ld: /tmp/icpx-bcf80e7b93/linkerr-43960d.o: in function `main':
+linkerr.cpp:(.text+0x26e): undefined reference to `helper(float*)'
+icpx: error: linker command failed with exit code 1 (use -v to see invocation)
