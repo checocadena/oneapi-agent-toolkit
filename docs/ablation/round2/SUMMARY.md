@@ -1,5 +1,20 @@
 | Model | Example | Arm | correct + 0 helpers | wrong output | dpct helpers left | said done but wasn't | cost |
 |---|---|---|---|---|---|---|---|
+| claude-haiku-5-5 | **all** | toolkit | 20/20 | 0/20 | 0/20 | 0/20 | $0.08 |
+| claude-haiku-5-5 | **all** | baseline | 13/20 | 4/20 | 5/20 | 7/20 | $0.07 |
+| claude-haiku-5-5 | **all** | baseline_shell | 7/20 | 0/20 | 13/20 | 13/20 | $0.10 |
+| claude-haiku-5-5 | saxpy | toolkit | 5/5 | 0/5 | 0/5 | 0/5 | $0.01 |
+| claude-haiku-5-5 | saxpy | baseline | 0/5 | 3/5 | 3/5 | 5/5 | $0.01 |
+| claude-haiku-5-5 | saxpy | baseline_shell | 0/5 | 0/5 | 5/5 | 5/5 | $0.02 |
+| claude-haiku-5-5 | fuzz | toolkit | 5/5 | 0/5 | 0/5 | 0/5 | $0.01 |
+| claude-haiku-5-5 | fuzz | baseline | 5/5 | 0/5 | 0/5 | 0/5 | $0.01 |
+| claude-haiku-5-5 | fuzz | baseline_shell | 1/5 | 0/5 | 4/5 | 4/5 | $0.02 |
+| claude-haiku-5-5 | fir | toolkit | 5/5 | 0/5 | 0/5 | 0/5 | $0.03 |
+| claude-haiku-5-5 | fir | baseline | 3/5 | 1/5 | 2/5 | 2/5 | $0.02 |
+| claude-haiku-5-5 | fir | baseline_shell | 3/5 | 0/5 | 2/5 | 2/5 | $0.03 |
+| claude-haiku-5-5 | softmax_hecbench | toolkit | 5/5 | 0/5 | 0/5 | 0/5 | $0.03 |
+| claude-haiku-5-5 | softmax_hecbench | baseline | 5/5 | 0/5 | 0/5 | 0/5 | $0.03 |
+| claude-haiku-5-5 | softmax_hecbench | baseline_shell | 3/5 | 0/5 | 2/5 | 2/5 | $0.04 |
 | claude-sonnet-5-5 | **all** | toolkit | 20/20 | 0/20 | 0/20 | 0/20 | $1.37 |
 | claude-sonnet-5-5 | **all** | baseline | 10/20 | 2/20 | 10/20 | 10/20 | $1.23 |
 | claude-sonnet-5-5 | **all** | baseline_shell | 7/20 | 0/20 | 13/20 | 12/20 | $1.20 |
