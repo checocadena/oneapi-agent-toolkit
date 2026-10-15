@@ -6,7 +6,7 @@ Status legend: ✅ done · 🟡 in progress · ⛔ blocked · ⬜ not started
 |---|-----------|--------|-------|
 | 0 | Environment probe | ✅ | Real toolchain installed. Details below. |
 | 1 | Core tool library | ✅ | 5 tools + parsers; smoke-tested on the real toolchain |
-| 2 | MCP server + CLI | ⬜ | |
+| 2 | MCP server + CLI | ✅ | 5 tools + `doctor` over stdio; `oneapi-agent` CLI; registration docs for Claude Code, Codex, Cursor |
 | 3 | Agent skill | ⬜ | |
 | 4 | Standalone agent loop | ⬜ | |
 | 5 | Examples | ⬜ | |
@@ -44,3 +44,11 @@ All five tools are implemented in `src/oneapi_agent/tools/` and return `ToolResu
 - compile → `ok` (icpx 2026.1.1)
 - scan_helpers → `fail`, 16 helper uses across 5 categories, plus 5 advisories
 - benchmark → `ok`, real wall-clock on the OpenCL CPU device
+
+## Milestone 2: MCP server + CLI
+
+- `src/oneapi_agent/server.py` registers `migrate`, `compile`, `scan_helpers`, `verify`, `benchmark` and `doctor`. Each tool's description spells out its evidence fields.
+- Works with mcp 1.x (`FastMCP`) and 2.x (`MCPServer`); see DECISIONS D9. Verified in-process with `list_tools` and `call_tool` on mcp 2.3.0.
+- `oneapi-agent <tool>` CLI (`src/oneapi_agent/cli.py`) prints the same JSON. Exit codes: 0 = ok, 1 = fail, 2 = anything else.
+- `docs/install.md` covers registration for Claude Code (`claude mcp add` / `.mcp.json`), Codex (`config.toml`) and Cursor (`.cursor/mcp.json`).
+  Those configs follow each tool's documented format but were **not exercised inside those clients** here, since none is available in this sandbox.
