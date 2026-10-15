@@ -26,12 +26,12 @@
   "name": "softmax_hecbench",
   "steps": {
     "reference_build": {
-      "command": "g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax_ref.cpp -o build/reference",
+      "command": "g++ -O2 -std=c++17 -Iexamples/softmax_hecbench examples/softmax_hecbench/softmax_ref.cpp -o build/reference",
       "returncode": 0,
       "duration_s": 0.347744,
       "stdout": "",
       "stderr": "",
-      "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench"
+      "cwd": "examples/results/work/softmax_hecbench"
     },
     "migrate": {
       "tool": "migrate",
@@ -39,17 +39,17 @@
       "summary": "migrated 1 CUDA file(s) -> 2 file(s); 0 DPCT warning(s)",
       "evidence": {
         "run": {
-          "command": "/opt/syclomatic/bin/c2s --in-root=/home/user/oneapi-agent-toolkit/examples/softmax_hecbench --out-root=/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include --extra-arg=-I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu",
+          "command": "/opt/syclomatic/bin/c2s --in-root=examples/softmax_hecbench --out-root=examples/results/work/softmax_hecbench/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include --extra-arg=-Iexamples/softmax_hecbench examples/softmax_hecbench/softmax.cu",
           "returncode": 0,
           "duration_s": 6.55013,
-          "stdout": "NOTE: Could not auto-detect compilation database for file 'softmax.cu' in '/home/user/oneapi-agent-toolkit/examples/softmax_hecbench' or any parent directory.\nParsing: /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu\nAnalyzing: /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu\nMigrating: /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu\nProcessed 1 file(s) in -in-root folder \"/home/user/oneapi-agent-toolkit/examples/softmax_hecbench\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
+          "stdout": "NOTE: Could not auto-detect compilation database for file 'softmax.cu' in 'examples/softmax_hecbench' or any parent directory.\nParsing: examples/softmax_hecbench/softmax.cu\nAnalyzing: examples/softmax_hecbench/softmax.cu\nMigrating: examples/softmax_hecbench/softmax.cu\nProcessed 1 file(s) in -in-root folder \"examples/softmax_hecbench\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
           "stderr": "\n"
         },
         "input_files": [
-          "/home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu"
+          "examples/softmax_hecbench/softmax.cu"
         ],
-        "in_root": "/home/user/oneapi-agent-toolkit/examples/softmax_hecbench",
-        "out_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated",
+        "in_root": "examples/softmax_hecbench",
+        "out_dir": "examples/results/work/softmax_hecbench/migrated",
         "migrated_files": [
           "softmax.dp.cpp",
           "softmax_input.hpp"
@@ -66,16 +66,16 @@
     "compile_migrated": {
       "tool": "compile",
       "status": "ok",
-      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated (0 warning(s))",
+      "summary": "compiled 1 source(s) -> examples/results/work/softmax_hecbench/build/migrated (0 warning(s))",
       "evidence": {
         "run": {
-          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench -I/opt/syclomatic/include /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated/softmax.dp.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated",
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -Iexamples/softmax_hecbench -I/opt/syclomatic/include examples/results/work/softmax_hecbench/migrated/softmax.dp.cpp -o examples/results/work/softmax_hecbench/build/migrated",
           "returncode": 0,
           "duration_s": 8.790666,
           "stdout": "",
           "stderr": ""
         },
-        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated",
+        "output": "examples/results/work/softmax_hecbench/build/migrated",
         "dpct_include_added": "/opt/syclomatic/include",
         "diagnostics": [],
         "counts": {
@@ -98,22 +98,22 @@
           {
             "input": null,
             "reference": {
-              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_reference.out 2048 256",
+              "command": "build/reference examples/results/work/softmax_hecbench/v_migrated/case0_reference.out 2048 256",
               "returncode": 0,
               "duration_s": 0.010488,
               "stdout": "",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
-              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_reference.out"
+              "cwd": "examples/results/work/softmax_hecbench",
+              "output_file": "examples/results/work/softmax_hecbench/v_migrated/case0_reference.out"
             },
             "candidate": {
-              "command": "build/migrated /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_candidate.out 2048 256",
+              "command": "build/migrated examples/results/work/softmax_hecbench/v_migrated/case0_candidate.out 2048 256",
               "returncode": 0,
               "duration_s": 0.253562,
               "stdout": "kernel_ms=190.648346\n",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
-              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_candidate.out"
+              "cwd": "examples/results/work/softmax_hecbench",
+              "output_file": "examples/results/work/softmax_hecbench/v_migrated/case0_candidate.out"
             },
             "reference_format": "f32",
             "candidate_format": "f32",
@@ -206,7 +206,7 @@
             "reason": "22156 of 524288 element(s) outside tolerance"
           }
         ],
-        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated",
+        "work_dir": "examples/results/work/softmax_hecbench/v_migrated",
         "passed_cases": 0,
         "total_cases": 1,
         "worst_max_abs_err": 4.082918167114258e-06
@@ -220,7 +220,7 @@
       "status": "fail",
       "summary": "9 dpct helper use(s) remain in 1 file(s) (types_launch=4, device_queue_management=2, memory_management=2, include=1)",
       "evidence": {
-        "path": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated",
+        "path": "examples/results/work/softmax_hecbench/migrated",
         "files_scanned": 2,
         "total": 9,
         "by_category": {
@@ -365,16 +365,16 @@
     "compile_idiomatic": {
       "tool": "compile",
       "status": "ok",
-      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic (0 warning(s))",
+      "summary": "compiled 1 source(s) -> examples/results/work/softmax_hecbench/build/idiomatic (0 warning(s))",
       "evidence": {
         "run": {
-          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/sycl/softmax.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic",
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -Iexamples/softmax_hecbench examples/softmax_hecbench/sycl/softmax.cpp -o examples/results/work/softmax_hecbench/build/idiomatic",
           "returncode": 0,
           "duration_s": 5.654938,
           "stdout": "",
           "stderr": ""
         },
-        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic",
+        "output": "examples/results/work/softmax_hecbench/build/idiomatic",
         "dpct_include_added": null,
         "diagnostics": [],
         "counts": {
@@ -397,22 +397,22 @@
           {
             "input": null,
             "reference": {
-              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_reference.out 2048 256",
+              "command": "build/reference examples/results/work/softmax_hecbench/v_idiomatic/case0_reference.out 2048 256",
               "returncode": 0,
               "duration_s": 0.014098,
               "stdout": "",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
-              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_reference.out"
+              "cwd": "examples/results/work/softmax_hecbench",
+              "output_file": "examples/results/work/softmax_hecbench/v_idiomatic/case0_reference.out"
             },
             "candidate": {
-              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_candidate.out 2048 256",
+              "command": "build/idiomatic examples/results/work/softmax_hecbench/v_idiomatic/case0_candidate.out 2048 256",
               "returncode": 0,
               "duration_s": 0.387334,
               "stdout": "kernel_ms=305.177016\n",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
-              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_candidate.out"
+              "cwd": "examples/results/work/softmax_hecbench",
+              "output_file": "examples/results/work/softmax_hecbench/v_idiomatic/case0_candidate.out"
             },
             "reference_format": "f32",
             "candidate_format": "f32",
@@ -442,7 +442,7 @@
             "passed": true
           }
         ],
-        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic",
+        "work_dir": "examples/results/work/softmax_hecbench/v_idiomatic",
         "passed_cases": 1,
         "total_cases": 1,
         "worst_max_abs_err": 9.685754776000977e-08
@@ -456,7 +456,7 @@
       "status": "ok",
       "summary": "5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 273.35 ms, p95 303.86 ms",
       "evidence": {
-        "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/bench_out.bin 2048 256",
+        "command": "build/idiomatic examples/results/work/softmax_hecbench/bench_out.bin 2048 256",
         "runs": 5,
         "warmup": 1,
         "device_discovery": {
@@ -526,7 +526,7 @@
       "status": "ok",
       "summary": "5 run(s) each; none: median 11.17 ms, p95 11.49 ms",
       "evidence": {
-        "command": "build/reference /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/bench_out.bin 2048 256",
+        "command": "build/reference examples/results/work/softmax_hecbench/bench_out.bin 2048 256",
         "runs": 5,
         "warmup": 1,
         "results": [
@@ -562,7 +562,7 @@
       "status": "ok",
       "summary": "no dpct helpers in 1 file(s)",
       "evidence": {
-        "path": "/home/user/oneapi-agent-toolkit/examples/softmax_hecbench/sycl/softmax.cpp",
+        "path": "examples/softmax_hecbench/sycl/softmax.cpp",
         "files_scanned": 1,
         "total": 0,
         "by_category": {},

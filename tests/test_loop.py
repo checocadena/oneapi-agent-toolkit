@@ -238,3 +238,11 @@ def test_evaluate_reports_never_compiled(cfg, tmp_path):
     out = make_loop(cfg, tmp_path, [[("finish", {"summary": "done"})]], {}).run()
     assert out["evaluation"]["compiled"] is False
     assert out["evaluation"]["note"] == "the model never compiled"
+
+
+def test_report_paths_are_relative_to_run_dir(cfg, tmp_path):
+    loop = make_loop(cfg, tmp_path, dry_run_script("success", cfg, "int main(){}\n"),
+                     mock_queues("success"))
+    loop.run()
+    report = (loop.run_dir / "report.md").read_text()
+    assert str(loop.run_dir) not in report and "`trace.jsonl`" in report

@@ -2,6 +2,10 @@
 
 **Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.**
 
+> **Does it help?** The same model ported the same four CUDA programs to SYCL 3 times each, with and without the toolkit's checks. A hidden test graded every result.
+> With the toolkit, **12/12** ports were correct and fully converted. Without its checks, **7/12** were, and in 5 runs the agent said "done" when it wasn't.
+> [Results](#does-the-toolkit-actually-help) · [every run's code and trace](docs/ablation/)
+
 SYCLomatic translates most of a CUDA code base to SYCL. What is left is the last mile:
 - code it could not migrate,
 - output full of `dpct::` helpers,

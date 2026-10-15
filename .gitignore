@@ -221,3 +221,4 @@ __marimo__/
 runs/
 examples/data/*.wav
 examples/results/work/
+.claude/worktrees/

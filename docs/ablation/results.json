@@ -11,10 +11,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/saxpy/20261015T134509755349Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/saxpy/20261015T134509755349Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/saxpy/run1"
   },
   {
     "example": "saxpy",
@@ -28,10 +29,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
     "helpers": 11,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/saxpy/20261015T134509678991Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/saxpy/20261015T134509678991Z",
     "correct_and_clean": false,
     "claimed_done": true,
-    "claimed_but_wrong": true
+    "claimed_but_wrong": true,
+    "evidence_dir": "docs/ablation/runs/baseline/saxpy/run1"
   },
   {
     "example": "fuzz",
@@ -45,10 +47,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/fuzz/20261015T134509816592Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/fuzz/20261015T134509816592Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/fuzz/run1"
   },
   {
     "example": "fuzz",
@@ -62,10 +65,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/fuzz/20261015T134509723118Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/fuzz/20261015T134509723118Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/fuzz/run1"
   },
   {
     "example": "fir",
@@ -79,10 +83,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/fir/20261015T134536446050Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/fir/20261015T134536446050Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/fir/run1"
   },
   {
     "example": "fir",
@@ -96,10 +101,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
     "helpers": 14,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/fir/20261015T134543277249Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/fir/20261015T134543277249Z",
     "correct_and_clean": false,
     "claimed_done": true,
-    "claimed_but_wrong": true
+    "claimed_but_wrong": true,
+    "evidence_dir": "docs/ablation/runs/baseline/fir/run1"
   },
   {
     "example": "softmax_hecbench",
@@ -113,10 +119,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/softmax_hecbench/20261015T134545911476Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/softmax_hecbench/20261015T134545911476Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/softmax_hecbench/run1"
   },
   {
     "example": "softmax_hecbench",
@@ -130,10 +137,11 @@
     "verify_summary": "FAIL: 0/1 case(s) match; first failure: 332679 of 524288 element(s) outside tolerance",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/softmax_hecbench/20261015T134610868099Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/softmax_hecbench/20261015T134610868099Z",
     "correct_and_clean": false,
     "claimed_done": true,
-    "claimed_but_wrong": true
+    "claimed_but_wrong": true,
+    "evidence_dir": "docs/ablation/runs/baseline/softmax_hecbench/run1"
   },
   {
     "example": "saxpy",
@@ -147,10 +155,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/saxpy/20261015T134612871245Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/saxpy/20261015T134612871245Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/saxpy/run2"
   },
   {
     "example": "saxpy",
@@ -164,10 +173,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/saxpy/20261015T134615323762Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/saxpy/20261015T134615323762Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/saxpy/run2"
   },
   {
     "example": "fuzz",
@@ -181,10 +191,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/fuzz/20261015T134630871341Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/fuzz/20261015T134630871341Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/fuzz/run2"
   },
   {
     "example": "fuzz",
@@ -198,10 +209,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/fuzz/20261015T134636996571Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/fuzz/20261015T134636996571Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/fuzz/run2"
   },
   {
     "example": "fir",
@@ -215,10 +227,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/fir/20261015T134641735000Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/fir/20261015T134641735000Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/fir/run2"
   },
   {
     "example": "fir",
@@ -232,10 +245,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/fir/20261015T134653885970Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/fir/20261015T134653885970Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/fir/run2"
   },
   {
     "example": "softmax_hecbench",
@@ -249,10 +263,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/softmax_hecbench/20261015T134702831657Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/softmax_hecbench/20261015T134702831657Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/softmax_hecbench/run2"
   },
   {
     "example": "softmax_hecbench",
@@ -266,10 +281,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
     "helpers": 9,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/softmax_hecbench/20261015T134710048335Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/softmax_hecbench/20261015T134710048335Z",
     "correct_and_clean": false,
     "claimed_done": true,
-    "claimed_but_wrong": true
+    "claimed_but_wrong": true,
+    "evidence_dir": "docs/ablation/runs/baseline/softmax_hecbench/run2"
   },
   {
     "example": "saxpy",
@@ -283,10 +299,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/saxpy/20261015T134723266103Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/saxpy/20261015T134723266103Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/saxpy/run3"
   },
   {
     "example": "saxpy",
@@ -300,10 +317,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06)",
     "helpers": 11,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/saxpy/20261015T134723962318Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/saxpy/20261015T134723962318Z",
     "correct_and_clean": false,
     "claimed_done": true,
-    "claimed_but_wrong": true
+    "claimed_but_wrong": true,
+    "evidence_dir": "docs/ablation/runs/baseline/saxpy/run3"
   },
   {
     "example": "fuzz",
@@ -317,10 +335,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/fuzz/20261015T134751070117Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/fuzz/20261015T134751070117Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/fuzz/run3"
   },
   {
     "example": "fuzz",
@@ -334,10 +353,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/fuzz/20261015T134752363946Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/fuzz/20261015T134752363946Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/fuzz/run3"
   },
   {
     "example": "fir",
@@ -351,10 +371,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/fir/20261015T134757064505Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/fir/20261015T134757064505Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/fir/run3"
   },
   {
     "example": "fir",
@@ -368,10 +389,11 @@
     "verify_summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/fir/20261015T134817134168Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/fir/20261015T134817134168Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/fir/run3"
   },
   {
     "example": "softmax_hecbench",
@@ -385,10 +407,11 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/toolkit/softmax_hecbench/20261015T134831889611Z",
+    "run_dir": "runs/ablation-20261015T134507/toolkit/softmax_hecbench/20261015T134831889611Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/toolkit/softmax_hecbench/run3"
   },
   {
     "example": "softmax_hecbench",
@@ -402,9 +425,10 @@
     "verify_summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
     "helpers": 0,
     "note": null,
-    "run_dir": "/home/user/oneapi-agent-toolkit/runs/ablation-20261015T134507/baseline/softmax_hecbench/20261015T134832724254Z",
+    "run_dir": "runs/ablation-20261015T134507/baseline/softmax_hecbench/20261015T134832724254Z",
     "correct_and_clean": true,
     "claimed_done": true,
-    "claimed_but_wrong": false
+    "claimed_but_wrong": false,
+    "evidence_dir": "docs/ablation/runs/baseline/softmax_hecbench/run3"
   }
 ]
