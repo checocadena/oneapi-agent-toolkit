@@ -1,35 +1,35 @@
 {
   "tool": "verify",
   "status": "ok",
-  "summary": "PASS: 1/1 case(s) match (worst max abs err 4.66e-07, atol 1e-06)",
+  "summary": "PASS: 1/1 case(s) match (worst max abs err 4.69e-07, atol 1e-06)",
   "evidence": {
     "mode": "array",
     "cases": [
       {
         "input": null,
         "reference": {
-          "command": "build/native /tmp/tmp.x3fMLZMAhu/out/work/v_sycl_native/case0_reference.out 2048 256",
+          "command": "build/native /tmp/tmp.H4U7IjIsE5/out/work/v_sycl_native/case0_reference.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.154305,
-          "stdout": "kernel_ms=0.393745\n",
+          "duration_s": 0.155393,
+          "stdout": "kernel_ms=0.631940\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
+          "cwd": "/tmp/tmp.H4U7IjIsE5/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl_native/case0_reference.out"
+          "output_file": "/tmp/tmp.H4U7IjIsE5/out/work/v_sycl_native/case0_reference.out"
         },
         "candidate": {
-          "command": "build/sycl /tmp/tmp.x3fMLZMAhu/out/work/v_sycl_native/case0_candidate.out 2048 256",
+          "command": "build/sycl /tmp/tmp.H4U7IjIsE5/out/work/v_sycl_native/case0_candidate.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.231937,
-          "stdout": "kernel_ms=17.710880\n",
+          "duration_s": 0.182883,
+          "stdout": "kernel_ms=0.613809\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
+          "cwd": "/tmp/tmp.H4U7IjIsE5/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl_native/case0_candidate.out"
+          "output_file": "/tmp/tmp.H4U7IjIsE5/out/work/v_sycl_native/case0_candidate.out"
         },
         "reference_format": "f32",
         "candidate_format": "f32",
@@ -41,13 +41,13 @@
           "rtol": 0.0,
           "max_ulp_allowed": null,
           "passed": true,
-          "max_abs_err": 4.6566128730773926e-07,
-          "rms_err": 3.812870202807354e-08,
-          "mean_abs_err": 1.285145855147796e-08,
+          "max_abs_err": 4.6938657760620117e-07,
+          "rms_err": 3.8137594160663095e-08,
+          "mean_abs_err": 1.2856385836267992e-08,
           "max_rel_err": 1.3141790279806237e-05,
           "max_ulp_f32": 210,
           "median_ulp_f32": 35.0,
-          "exact_matches": 6446,
+          "exact_matches": 6727,
           "mismatches": 0,
           "nan_mismatches": 0,
           "reference_range": [
@@ -59,10 +59,10 @@
         "passed": true
       }
     ],
-    "work_dir": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl_native",
+    "work_dir": "/tmp/tmp.H4U7IjIsE5/out/work/v_sycl_native",
     "passed_cases": 1,
     "total_cases": 1,
-    "worst_max_abs_err": 4.6566128730773926e-07
+    "worst_max_abs_err": 4.6938657760620117e-07
   },
   "limitations": [
     "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."

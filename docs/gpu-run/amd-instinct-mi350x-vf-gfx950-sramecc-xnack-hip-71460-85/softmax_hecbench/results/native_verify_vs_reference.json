@@ -8,22 +8,22 @@
       {
         "input": null,
         "reference": {
-          "command": "build/reference /tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_reference.out 2048 256",
+          "command": "build/reference /tmp/tmp.H4U7IjIsE5/out/work/v_native/case0_reference.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.00413,
+          "duration_s": 0.004113,
           "stdout": "",
           "stderr": "",
-          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
-          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_reference.out"
+          "cwd": "/tmp/tmp.H4U7IjIsE5/out/work",
+          "output_file": "/tmp/tmp.H4U7IjIsE5/out/work/v_native/case0_reference.out"
         },
         "candidate": {
-          "command": "build/native /tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_candidate.out 2048 256",
+          "command": "build/native /tmp/tmp.H4U7IjIsE5/out/work/v_native/case0_candidate.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.145577,
-          "stdout": "kernel_ms=0.948162\n",
+          "duration_s": 0.154966,
+          "stdout": "kernel_ms=0.909350\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
-          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_native/case0_candidate.out"
+          "cwd": "/tmp/tmp.H4U7IjIsE5/out/work",
+          "output_file": "/tmp/tmp.H4U7IjIsE5/out/work/v_native/case0_candidate.out"
         },
         "reference_format": "f32",
         "candidate_format": "f32",
@@ -53,7 +53,7 @@
         "passed": true
       }
     ],
-    "work_dir": "/tmp/tmp.x3fMLZMAhu/out/work/v_native",
+    "work_dir": "/tmp/tmp.H4U7IjIsE5/out/work/v_native",
     "passed_cases": 1,
     "total_cases": 1,
     "worst_max_abs_err": 5.252659320831299e-07

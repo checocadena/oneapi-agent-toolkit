@@ -1,0 +1,62 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; hip:0: median 204.76 ms, p95 206.70 ms",
+  "evidence": {
+    "command": "build/sycl /tmp/tmp.PLYv3KrhJb/out/work/bench_out.bin 1048576 10 1",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "hip:0",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.20285205899999426,
+          "median": 0.20476060750000613,
+          "p95": 0.2066953149499966,
+          "max": 0.20717827699999702,
+          "mean": 0.20467735290000064,
+          "stdev": 0.0013158636084931196
+        },
+        "samples_s": [
+          0.204145,
+          0.204746,
+          0.204063,
+          0.202939,
+          0.206105,
+          0.202852,
+          0.207178,
+          0.204797,
+          0.205173,
+          0.204775
+        ],
+        "reported": {
+          "n": 10,
+          "min": 6.189838,
+          "median": 6.760453,
+          "p95": 7.15159745,
+          "max": 7.210817,
+          "mean": 6.7454749000000005,
+          "stdev": 0.29469694176049543
+        },
+        "reported_samples": [
+          6.189838,
+          6.664278,
+          6.480638,
+          6.581069,
+          7.210817,
+          6.750878,
+          7.079218,
+          6.770028,
+          6.942957,
+          6.785028
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}

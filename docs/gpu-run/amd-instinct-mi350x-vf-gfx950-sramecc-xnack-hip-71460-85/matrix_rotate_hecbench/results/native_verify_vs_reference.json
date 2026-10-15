@@ -1,0 +1,64 @@
+{
+  "tool": "verify",
+  "status": "ok",
+  "summary": "PASS: 1/1 case(s) match (worst max abs err 0, atol 0)",
+  "evidence": {
+    "mode": "array",
+    "cases": [
+      {
+        "input": null,
+        "reference": {
+          "command": "build/reference /tmp/tmp.LlvYRpX48R/out/work/v_native/case0_reference.out 2048 3",
+          "returncode": 0,
+          "duration_s": 0.046847,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/tmp/tmp.LlvYRpX48R/out/work",
+          "output_file": "/tmp/tmp.LlvYRpX48R/out/work/v_native/case0_reference.out"
+        },
+        "candidate": {
+          "command": "build/native /tmp/tmp.LlvYRpX48R/out/work/v_native/case0_candidate.out 2048 3",
+          "returncode": 0,
+          "duration_s": 0.166614,
+          "stdout": "kernel_ms=4.472045\n",
+          "stderr": "",
+          "cwd": "/tmp/tmp.LlvYRpX48R/out/work",
+          "output_file": "/tmp/tmp.LlvYRpX48R/out/work/v_native/case0_candidate.out"
+        },
+        "reference_format": "f32",
+        "candidate_format": "f32",
+        "mode": "array",
+        "stats": {
+          "n_reference": 4194304,
+          "n_candidate": 4194304,
+          "atol": 0.0,
+          "rtol": 0.0,
+          "max_ulp_allowed": null,
+          "passed": true,
+          "max_abs_err": 0.0,
+          "rms_err": 0.0,
+          "mean_abs_err": 0.0,
+          "max_rel_err": 0.0,
+          "max_ulp_f32": 0,
+          "median_ulp_f32": 0.0,
+          "exact_matches": 4194304,
+          "mismatches": 0,
+          "nan_mismatches": 0,
+          "reference_range": [
+            0.0,
+            4194303.0
+          ],
+          "first_mismatches": []
+        },
+        "passed": true
+      }
+    ],
+    "work_dir": "/tmp/tmp.LlvYRpX48R/out/work/v_native",
+    "passed_cases": 1,
+    "total_cases": 1,
+    "worst_max_abs_err": 0.0
+  },
+  "limitations": [
+    "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+  ]
+}

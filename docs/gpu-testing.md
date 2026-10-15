@@ -140,9 +140,35 @@ Every run is fully automated with `remote-test`, the machine deletion is confirm
 | RTX 2000 Ada | Runpod | 9.69e-8 | 7.45e-9 |
 | A16 | Vultr | 9.69e-8 | 7.45e-9 |
 | RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
-| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | 4.66e-7 |
+| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | 4.69e-7 |
 
-The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. Speed (median wall time, 10 runs) is reported, not graded: on the MI350X the SYCL port took 238 ms and the hipified original 156 ms. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. The NVIDIA rows were measured with the previous softmax port (a 32-wide work-group per slice and an out-of-order queue); the current port (below) has so far been run on the MI350X only. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+
+## Six HeCBench programs on an AMD MI350X
+
+Each program covers a different GPU pattern. The CUDA kernels are HeCBench's, unchanged (commit `f0c817aa`); the SYCL ports are in [`examples/`](../examples/README.md). Each row is one `remote-test` run on DigitalOcean (2026-10-15/16), with droplet deletion confirmed:
+
+| Program | Pattern | SYCL vs C++ reference | SYCL vs original CUDA (as HIP) | Tolerance |
+|---|---|---|---|---|
+| [softmax](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md) | sub-group reductions | 9.69e-8 | 4.69e-7 | atol 1e-6 |
+| [stencil1d](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/stencil1d_hecbench/SUMMARY.md) | shared-memory tile with halo, barrier | 0 | 0 | exact |
+| [matrix_rotate](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/matrix_rotate_hecbench/SUMMARY.md) | in-place 2D index math | 0 | 0 | exact |
+| [atomic_reduction](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/atomic_reduction_hecbench/SUMMARY.md) | grid-stride loads + device atomics, 4 block sizes | 0 | 0 | exact |
+| [scan](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/scan_hecbench/SUMMARY.md) | Blelloch scan in shared memory, many barriers | 0 | 0 | exact |
+| [adam](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/adam_hecbench/SUMMARY.md) | Adam optimizer, `pow`/`sqrt` | 2.38e-7 | 5.96e-8 | atol 1e-5 + rtol 1e-4 |
+
+All five new ports compiled and passed on their first run. They have not been run on NVIDIA yet.
+
+**Speed.** Speed is reported, not graded. Most programs here run one short kernel, so a run's wall time is dominated by process and runtime start-up, and `kernel_ms` with one launch includes loading the kernel. To measure the launch cost, softmax was also run with 1000 launches per run (cost per launch, MI350X):
+
+| softmax variant | per launch |
+|---|---|
+| previous SYCL port: 32-wide work-group per slice, out-of-order queue | 114.6 us |
+| one sub-group per slice | 103.4 us |
+| one sub-group per slice, in-order queue (the current port) | 24.4 us |
+| original CUDA, hipified | 8.9 us |
+
+So the large gap was the out-of-order queue's dependency tracking on every submission; CUDA's default stream is in-order, which makes an in-order queue the faithful translation. Of the new ports, atomic_reduction, scan and adam use in-order queues; stencil1d and matrix_rotate (one launch per run) were verified with the default out-of-order queue. The remaining gap (about 2.7x per launch here) is the SYCL runtime's own submission cost through the HIP adapter, not the kernel.
 
 ## Problems found on real clouds, and what the tool does about them
 
