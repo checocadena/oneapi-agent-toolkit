@@ -71,6 +71,25 @@ python3 "$SRC/buildbot/configure.py" -s "$SRC" -o "$BUILD" --hip --no-assertions
 echo "== build (jobs=$JOBS)"
 cmake --build "$BUILD" --target deploy-sycl-toolchain -- -j "$JOBS"
 INSTALL="$BUILD/install"
+# ROCm's apt packages do not register /opt/rocm/lib with ld.so; the GPU host gets it from the
+# agent's LD_LIBRARY_PATH, and the checks below name it the same way.
+export LD_LIBRARY_PATH="/opt/rocm/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+echo "== pack (before the checks, so a failed check never throws the build away)"
+cat > "$INSTALL/BUILD-INFO.txt" <<EOF
+intel/llvm commit: $INTEL_LLVM_REF
+configure: buildbot/configure.py --hip --no-assertions --disable-jit, AMD libclc runtime target amdgcn-amd-amdhsa
+ROCm: $ROCM_VERSION ($(cat /opt/rocm/.info/version 2>/dev/null || echo unknown)); the HIP adapter needs libamdhip64.so.7 (ROCm 7.x) on the GPU host
+built on: $PRETTY_NAME, $(date -u +%Y-%m-%dT%H:%M:%SZ)
+AMD target flags: -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfxXXX
+checked before publishing: HIP adapter resolves libamdhip64.so.7; amdgcn libspirv installed; a SYCL program compiles and links for gfx942 and gfx950
+EOF
+TAR="$OUT/sycl-hip-linux-x86_64.tar.gz"
+tar -czf "$TAR" -C "$INSTALL" .
+(cd "$OUT" && sha256sum "$(basename "$TAR")" > "$(basename "$TAR").sha256")
+cp "$INSTALL/BUILD-INFO.txt" "$OUT/"
+
+echo "== checks"
 ls "$INSTALL/lib"/libur_adapter_* "$INSTALL/bin/sycl-ls" "$INSTALL/bin/clang++"
 test -e "$INSTALL/lib/libur_adapter_hip.so" || { echo "FAIL: no libur_adapter_hip.so"; exit 1; }
 find "$INSTALL/lib" -path '*amdgcn*' -name 'libspirv*' | tee "$OUT/libspirv-amdgcn.txt"
@@ -97,20 +116,7 @@ for arch in gfx942 gfx950; do
     "$T/smoke.cpp" -o "$T/smoke-$arch"
   echo "built smoke-$arch: $(stat -c %s "$T/smoke-$arch") bytes"
 done
-"$INSTALL/bin/sycl-ls" || true  # no GPU here; just proves the runtime loads
-
-echo "== pack"
-cat > "$INSTALL/BUILD-INFO.txt" <<EOF
-intel/llvm commit: $INTEL_LLVM_REF
-configure: buildbot/configure.py --hip --no-assertions --disable-jit
-ROCm: $ROCM_VERSION ($(cat /opt/rocm/.info/version 2>/dev/null || echo unknown)); the HIP adapter needs libamdhip64.so.7 (ROCm 7.x) on the GPU host
-built on: $PRETTY_NAME, $(date -u +%Y-%m-%dT%H:%M:%SZ)
-AMD target flags: -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfxXXX
-smoke test: compiled and linked for gfx942 and gfx950
-EOF
-TAR="$OUT/sycl-hip-linux-x86_64.tar.gz"
-tar -czf "$TAR" -C "$INSTALL" .
-(cd "$OUT" && sha256sum "$(basename "$TAR")" > "$(basename "$TAR").sha256")
-cp "$INSTALL/BUILD-INFO.txt" "$OUT/"
+LD_LIBRARY_PATH="$INSTALL/lib:$LD_LIBRARY_PATH" "$INSTALL/bin/sycl-ls" || true  # no GPU here
+echo PASS > "$OUT/CHECKS-PASSED"
 ls -l "$OUT"
 cat "$OUT"/*.sha256

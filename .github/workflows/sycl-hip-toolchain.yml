@@ -46,13 +46,16 @@ jobs:
           WORK=/mnt/work
           [ "$(df --output=avail -B1G /mnt | tail -1)" -ge 40 ] || WORK="$RUNNER_TEMP/work"
           mkdir -p "$WORK"
+          rc=0
           docker run --rm -e INTEL_LLVM_REF -e ROCM_VERSION -e JOBS=4 \
             -v "$PWD:/src:ro" -v "$WORK:/work" ubuntu:22.04 \
-            bash /src/scripts/build-sycl-hip.sh /work
-          sudo mkdir -p out && sudo cp "$WORK"/out/* out/ && sudo chown -R "$USER" out
+            bash /src/scripts/build-sycl-hip.sh /work || rc=$?
+          # Keep whatever was produced even when a check failed: the build takes hours.
+          sudo mkdir -p out && { sudo cp "$WORK"/out/* out/ || true; } && sudo chown -R "$USER" out
           df -h / /mnt
+          exit $rc
       - uses: actions/upload-artifact@v4
-        if: steps.check.outputs.exists == 'false'
+        if: always() && steps.check.outputs.exists == 'false'
         with:
           name: sycl-hip
           path: out/
