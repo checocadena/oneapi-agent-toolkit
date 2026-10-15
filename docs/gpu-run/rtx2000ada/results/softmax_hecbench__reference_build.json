@@ -1,0 +1,8 @@
+{
+  "command": "g++ -O2 -std=c++17 -I/workspace/repo/examples/softmax_hecbench /workspace/repo/examples/softmax_hecbench/softmax_ref.cpp -o build/reference",
+  "returncode": 0,
+  "duration_s": 0.935641,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/workspace/gpu-run/work/softmax_hecbench"
+}

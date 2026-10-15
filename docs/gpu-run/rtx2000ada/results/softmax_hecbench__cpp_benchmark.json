@@ -1,0 +1,41 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; none: median 63.05 ms, p95 80.22 ms",
+  "evidence": {
+    "command": "build/reference /workspace/gpu-run/work/softmax_hecbench/bench_out.bin 2048 256",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "none",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.0479698246344924,
+          "median": 0.06304839812219143,
+          "p95": 0.08021675678901374,
+          "max": 0.08260889537632465,
+          "mean": 0.06413525696843862,
+          "stdev": 0.011172597632354097
+        },
+        "samples_s": [
+          0.05184,
+          0.063209,
+          0.04797,
+          0.059767,
+          0.077293,
+          0.054769,
+          0.072265,
+          0.068742,
+          0.062888,
+          0.082609
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}

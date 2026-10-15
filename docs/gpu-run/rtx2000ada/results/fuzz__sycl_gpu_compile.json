@@ -1,0 +1,25 @@
+{
+  "tool": "compile",
+  "status": "ok",
+  "summary": "compiled 1 source(s) -> /workspace/gpu-run/work/fuzz/build/sycl_gpu (0 warning(s))",
+  "evidence": {
+    "run": {
+      "command": "/opt/sycl/bin/clang++ -fsycl -O2 -fsycl-targets=nvptx64-nvidia-cuda -I/workspace/repo/examples/common /workspace/repo/examples/fuzz/sycl/fuzz.cpp -o /workspace/gpu-run/work/fuzz/build/sycl_gpu",
+      "returncode": 0,
+      "duration_s": 7.944658,
+      "stdout": "",
+      "stderr": ""
+    },
+    "output": "/workspace/gpu-run/work/fuzz/build/sycl_gpu",
+    "dpct_include_added": null,
+    "diagnostics": [],
+    "counts": {
+      "error": 0,
+      "warning": 0,
+      "note": 0
+    }
+  },
+  "limitations": [
+    "A successful compile says nothing about numerical correctness; run verify."
+  ]
+}

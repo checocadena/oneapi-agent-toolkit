@@ -1,0 +1,133 @@
+{
+  "tool": "verify",
+  "status": "ok",
+  "summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
+  "evidence": {
+    "mode": "audio",
+    "cases": [
+      {
+        "input": "/workspace/repo/examples/data/sweep_noise_48k.wav",
+        "reference": {
+          "command": "build/reference /workspace/repo/examples/data/sweep_noise_48k.wav /workspace/gpu-run/work/fir/v_sycl/case0_reference.wav",
+          "returncode": 0,
+          "duration_s": 0.069651,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/fir",
+          "env_overrides": {
+            "ONEAPI_DEVICE_SELECTOR": "cuda:*"
+          },
+          "output_file": "/workspace/gpu-run/work/fir/v_sycl/case0_reference.wav"
+        },
+        "candidate": {
+          "command": "build/sycl_gpu /workspace/repo/examples/data/sweep_noise_48k.wav /workspace/gpu-run/work/fir/v_sycl/case0_candidate.wav",
+          "returncode": 0,
+          "duration_s": 0.380565,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/fir",
+          "env_overrides": {
+            "ONEAPI_DEVICE_SELECTOR": "cuda:*"
+          },
+          "output_file": "/workspace/gpu-run/work/fir/v_sycl/case0_candidate.wav"
+        },
+        "reference_format": "wav",
+        "candidate_format": "wav",
+        "mode": "audio",
+        "stats": {
+          "threshold_dbfs": -96.0,
+          "reference_frames": 96000,
+          "candidate_frames": 96000,
+          "reference_channels": 1,
+          "candidate_channels": 1,
+          "reference_sample_rate": 48000,
+          "candidate_sample_rate": 48000,
+          "passed": true,
+          "bit_exact": false,
+          "residual_peak": 1.1920928955078125e-07,
+          "residual_peak_dbfs": -138.47379800543135,
+          "residual_rms_dbfs": -155.56082682898696,
+          "reference_rms_dbfs": -10.983389376767594,
+          "null_depth_db": 144.57743745221936,
+          "per_channel": [
+            {
+              "channel": 0,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -155.56082682898696,
+              "peak_frame": 604
+            }
+          ]
+        },
+        "passed": true
+      },
+      {
+        "input": "/workspace/repo/examples/data/sweep_noise_stereo_44k.wav",
+        "reference": {
+          "command": "build/reference /workspace/repo/examples/data/sweep_noise_stereo_44k.wav /workspace/gpu-run/work/fir/v_sycl/case1_reference.wav",
+          "returncode": 0,
+          "duration_s": 0.060054,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/fir",
+          "env_overrides": {
+            "ONEAPI_DEVICE_SELECTOR": "cuda:*"
+          },
+          "output_file": "/workspace/gpu-run/work/fir/v_sycl/case1_reference.wav"
+        },
+        "candidate": {
+          "command": "build/sycl_gpu /workspace/repo/examples/data/sweep_noise_stereo_44k.wav /workspace/gpu-run/work/fir/v_sycl/case1_candidate.wav",
+          "returncode": 0,
+          "duration_s": 0.313497,
+          "stdout": "",
+          "stderr": "",
+          "cwd": "/workspace/gpu-run/work/fir",
+          "env_overrides": {
+            "ONEAPI_DEVICE_SELECTOR": "cuda:*"
+          },
+          "output_file": "/workspace/gpu-run/work/fir/v_sycl/case1_candidate.wav"
+        },
+        "reference_format": "wav",
+        "candidate_format": "wav",
+        "mode": "audio",
+        "stats": {
+          "threshold_dbfs": -96.0,
+          "reference_frames": 44100,
+          "candidate_frames": 44100,
+          "reference_channels": 2,
+          "candidate_channels": 2,
+          "reference_sample_rate": 44100,
+          "candidate_sample_rate": 44100,
+          "passed": true,
+          "bit_exact": false,
+          "residual_peak": 1.7881393432617188e-07,
+          "residual_peak_dbfs": -134.95197282431772,
+          "residual_rms_dbfs": -155.6051398509516,
+          "reference_rms_dbfs": -10.941526370582011,
+          "null_depth_db": 144.66361348036958,
+          "per_channel": [
+            {
+              "channel": 0,
+              "residual_peak_dbfs": -134.95197282431772,
+              "residual_rms_dbfs": -155.5692483331675,
+              "peak_frame": 5773
+            },
+            {
+              "channel": 1,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -155.6413304615059,
+              "peak_frame": 22507
+            }
+          ]
+        },
+        "passed": true
+      }
+    ],
+    "work_dir": "/workspace/gpu-run/work/fir/v_sycl",
+    "passed_cases": 2,
+    "total_cases": 2,
+    "worst_residual_peak_dbfs": -134.95197282431772
+  },
+  "limitations": [
+    "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+  ]
+}

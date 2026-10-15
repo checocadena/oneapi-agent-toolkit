@@ -1,0 +1,62 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; cuda:0: median 363.79 ms, p95 550.12 ms",
+  "evidence": {
+    "command": "build/sycl_gpu /workspace/gpu-run/work/saxpy/bench_out.bin",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "cuda:0",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.30828696116805077,
+          "median": 0.36379373585805297,
+          "p95": 0.5501162739470598,
+          "max": 0.6895299665629864,
+          "mean": 0.3860756148584187,
+          "stdev": 0.10953770248533022
+        },
+        "samples_s": [
+          0.333652,
+          0.356561,
+          0.379722,
+          0.68953,
+          0.308287,
+          0.315764,
+          0.375247,
+          0.364529,
+          0.374406,
+          0.363059
+        ],
+        "reported": {
+          "n": 10,
+          "min": 2.109439,
+          "median": 2.764703,
+          "p95": 3.969328,
+          "max": 4.007776,
+          "mean": 2.8785244000000003,
+          "stdev": 0.6937971037642057
+        },
+        "reported_samples": [
+          3.922336,
+          2.862337,
+          2.109439,
+          4.007776,
+          2.700959,
+          2.828447,
+          2.143903,
+          3.378848,
+          2.167552,
+          2.663647
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}

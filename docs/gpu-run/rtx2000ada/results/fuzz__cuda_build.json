@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native -I/workspace/repo/examples/common /workspace/repo/examples/fuzz/fuzz.cu -o build/cuda",
+  "returncode": 0,
+  "duration_s": 3.554315,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/workspace/gpu-run/work/fuzz"
+}

@@ -1,0 +1,62 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; none: median 347.76 ms, p95 493.95 ms",
+  "evidence": {
+    "command": "build/cuda /workspace/repo/examples/data/sweep_noise_48k.wav /workspace/gpu-run/work/fuzz/bench_out.wav",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "none",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.32541104406118393,
+          "median": 0.34776244778186083,
+          "p95": 0.4939463397022335,
+          "max": 0.5571059267967939,
+          "mean": 0.3739225679077208,
+          "stdev": 0.0698014773600434
+        },
+        "samples_s": [
+          0.349129,
+          0.325411,
+          0.36961,
+          0.339112,
+          0.557106,
+          0.332631,
+          0.371498,
+          0.331583,
+          0.416751,
+          0.346396
+        ],
+        "reported": {
+          "n": 10,
+          "min": 0.061216,
+          "median": 0.06761600000000001,
+          "p95": 0.0716352,
+          "max": 0.072096,
+          "mean": 0.06671039999999999,
+          "stdev": 0.003697136525595028
+        },
+        "reported_samples": [
+          0.061216,
+          0.072096,
+          0.06816,
+          0.062048,
+          0.068288,
+          0.071072,
+          0.067072,
+          0.068384,
+          0.06592,
+          0.062848
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "command": "g++ -O2 -std=c++17 -I/workspace/repo/examples/fir/../common -I/workspace/repo/examples/fir /workspace/repo/examples/fir/fir_ref.cpp -o build/reference",
+  "returncode": 0,
+  "duration_s": 1.998965,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/workspace/gpu-run/work/fir"
+}
