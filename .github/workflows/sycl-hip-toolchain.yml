@@ -1,0 +1,82 @@
+name: sycl-hip-toolchain
+# Builds intel/llvm with the HIP (AMD) backend (scripts/build-sycl-hip.sh) and publishes it as a
+# GitHub release asset, which `remote-test --vendor amd` downloads onto the rented GPU machine.
+# intel/llvm's own prebuilts are CUDA-only. The build takes hours on a standard runner, so it
+# runs only when its inputs change (or on demand) and is skipped when the release already exists.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/build-sycl-hip.sh
+      - .github/workflows/sycl-hip-toolchain.yml
+env:
+  # Bump these together with TAG; remote.py pins the resulting URL and sha256.
+  INTEL_LLVM_REF: dfcf0080a27749a5c8c73b9d83658593726b01ea  # intel/llvm tag nightly-2026-10-14
+  ROCM_VERSION: "7.0"
+  TAG: sycl-hip-nightly-2026-10-14-rocm7.0
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"; echo "release $TAG already published; skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Free disk space
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL \
+            /usr/local/share/boost /usr/local/.ghcup
+          sudo docker image prune -af >/dev/null || true
+          sudo mkdir -p /mnt/work && sudo chmod 777 /mnt/work
+          df -h / /mnt
+      - name: Build (Ubuntu 22.04 container)
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          # /mnt holds the multi-GB build tree; the root disk keeps the container and ROCm.
+          WORK=/mnt/work
+          [ "$(df --output=avail -B1G /mnt | tail -1)" -ge 40 ] || WORK="$RUNNER_TEMP/work"
+          mkdir -p "$WORK"
+          docker run --rm -e INTEL_LLVM_REF -e ROCM_VERSION -e JOBS=4 \
+            -v "$PWD:/src:ro" -v "$WORK:/work" ubuntu:22.04 \
+            bash /src/scripts/build-sycl-hip.sh /work
+          sudo mkdir -p out && sudo cp "$WORK"/out/* out/ && sudo chown -R "$USER" out
+          df -h / /mnt
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.exists == 'false'
+        with:
+          name: sycl-hip
+          path: out/
+          retention-days: 7
+
+  publish:
+    needs: build
+    if: needs.build.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sycl-hip
+          path: out/
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A release made with GITHUB_TOKEN triggers no other workflow, so publish.yml (PyPI)
+          # does not run; publish.yml also ignores sycl-hip-* tags.
+          gh release create "$TAG" out/sycl-hip-linux-x86_64.tar.gz out/sycl-hip-linux-x86_64.tar.gz.sha256 \
+            out/BUILD-INFO.txt out/ldd-adapter-hip.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "SYCL toolchain with AMD HIP support ($TAG)" \
+            --notes "intel/llvm $INTEL_LLVM_REF built with --hip against ROCm $ROCM_VERSION on Ubuntu 22.04 by scripts/build-sycl-hip.sh. Used by \`oneapi-agent remote-test --vendor amd\`. Needs ROCm 7.x on the GPU host. See BUILD-INFO.txt."
