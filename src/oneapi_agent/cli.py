@@ -6,6 +6,7 @@ Prints the ToolResult JSON to stdout. Exit code: 0 = ok, 1 = fail, 2 = anything 
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import shlex
 import sys
@@ -93,7 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     rt.add_argument("--provider", choices=["runpod", "vast", "vultr", "digitalocean"],
                     default="runpod",
                     help="GPU rental service; its API key comes from RUNPOD_API_KEY, "
-                         "VAST_API_KEY, VULTR_API_KEY or OCEAN_API_KEY (or DIGITALOCEAN_TOKEN)")
+                         "VAST_API_KEY, VULTR_API_KEY or OCEAN_API_KEY (or DIGITALOCEAN_TOKEN), "
+                         "else from `oneapi-agent login`")
     rt.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
     rt.add_argument("--gpu", dest="gpu_type", help="Runpod GPU type id (default per vendor)")
     rt.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE")
@@ -104,6 +106,15 @@ def build_parser() -> argparse.ArgumentParser:
     rt.add_argument("--keep-pod", action="store_true", help="do not delete the pod (debugging)")
     rt.add_argument("--boot-minutes", type=float, default=15,
                     help="replace a machine whose agent has not answered after this long")
+
+    providers = ["runpod", "vast", "vultr", "digitalocean"]
+    li = sub.add_parser("login", help="save a GPU provider's API key in the OS password store "
+                        "(hidden prompt, or read from stdin when piped; needs the keyring extra)")
+    li.add_argument("provider", choices=providers)
+    lo = sub.add_parser("logout", help="remove a saved GPU provider API key")
+    lo.add_argument("provider", choices=providers)
+    sub.add_parser("providers", help="show which GPU provider keys are found, where from, and "
+                   "whether each provider accepts its key (one read-only API call each)")
 
     sub.add_parser("serve", help="run the MCP server on stdio")
 
@@ -185,6 +196,20 @@ def _main(argv: Sequence[str] | None = None) -> int:
                                  max_usd=args.max_usd, into=args.into, keep_pod=args.keep_pod,
                                  boot_minutes=args.boot_minutes,
                                  log=lambda m: print(m, file=sys.stderr)), args.summary)
+    if args.cmd in ("login", "logout", "providers"):
+        from . import keys
+
+        if args.cmd == "providers":
+            return _emit(keys.providers(), args.summary)
+        if args.cmd == "logout":
+            return _emit(keys.logout(args.provider), args.summary)
+        if keys._keyring() is None:  # say so before the user types a key
+            return _emit(keys.login(args.provider, ""), args.summary)
+        if sys.stdin.isatty():
+            key = getpass.getpass(f"{args.provider} API key (input hidden): ")
+        else:
+            key = sys.stdin.readline()
+        return _emit(keys.login(args.provider, key), args.summary)
     if args.cmd == "setup":
         from .setup import setup
 
