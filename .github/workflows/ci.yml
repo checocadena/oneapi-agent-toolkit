@@ -12,7 +12,80 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -e ".[all]"
-      - run: ruff check src tests examples
-      - run: mypy src
+      - run: ruff check src tests examples scripts
+      - run: mypy src scripts/check_claims.py
       # No oneAPI toolchain on the runner: toolchain-marked tests skip themselves.
       - run: pytest -q
+
+  # Installs the REAL toolchain (conda-forge icpx + SYCLomatic GitHub release + CUDA 12.3 headers)
+  # with the repo's own script and re-checks the documented claims (scripts/check_claims.py).
+  # The only SYCL device on a GitHub runner is the OpenCL CPU device; there is no GPU.
+  toolchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash  # explicit => bash -eo pipefail, so `cmd | tee` keeps cmd's exit status
+    env:
+      TOOLCHAIN_ROOT: /home/runner/oneapi-toolchain
+      OUT: ci-out
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[all]"
+
+      - name: Cache toolchain
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/oneapi-toolchain
+          key: oneapi-toolchain-${{ runner.os }}-${{ hashFiles('scripts/install-toolchain.sh') }}
+      - name: Install toolchain (scripts/install-toolchain.sh)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: bash scripts/install-toolchain.sh "$TOOLCHAIN_ROOT"
+      - name: Activate toolchain (scripts/oneapi-env.sh)
+        run: |
+          export DPCPP_PREFIX="$TOOLCHAIN_ROOT/dpcpp" SYCLOMATIC_PREFIX="$TOOLCHAIN_ROOT/syclomatic"
+          export CUDA_HEADERS_PREFIX="$TOOLCHAIN_ROOT/cuda-headers"
+          source scripts/oneapi-env.sh
+          {
+            echo "PATH=$PATH"
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+            echo "ONEAPI_AGENT_CUDA_INCLUDE=$ONEAPI_AGENT_CUDA_INCLUDE"
+            echo "ONEAPI_AGENT_DPCT_INCLUDE=$ONEAPI_AGENT_DPCT_INCLUDE"
+            echo "CLAIMS_START=$(date -u +%Y-%m-%dT%H:%M:%S)"
+          } >> "$GITHUB_ENV"
+          mkdir -p "$OUT"
+
+      - name: oneapi-agent doctor (must be ok)
+        run: |
+          oneapi-agent doctor | tee "$OUT/doctor.json"
+          icpx --version | head -1
+          c2s --version | head -1
+          sycl-ls | tee "$OUT/sycl-ls.txt"
+          lscpu | grep -E 'Model name|Flags' | sed -E 's/^(Flags:).*(avx512f).*/\1 ... \2 .../' | tee "$OUT/cpu.txt"
+
+      - name: pytest (toolchain-marked tests must run, not skip)
+        run: pytest -q -rs --junitxml="$OUT/pytest.xml"
+
+      - name: Example pipeline (migrate / compile / verify / scan / benchmark)
+        run: |
+          python examples/gen_inputs.py
+          rm -f examples/results/*.json   # a committed result must never stand in for a fresh one
+          python examples/run_pipeline.py 2>&1 | tee "$OUT/run_pipeline.log"
+
+      - name: Check claims
+        run: python scripts/check_claims.py --not-before "$CLAIMS_START" --junit "$OUT/pytest.xml" | tee "$OUT/claims.txt"
+
+      - name: Upload pipeline output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolchain-pipeline-output
+          path: |
+            ci-out/
+            examples/RESULTS.md
+            examples/results/*.json
+          if-no-files-found: warn
