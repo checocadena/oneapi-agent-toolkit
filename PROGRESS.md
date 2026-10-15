@@ -10,8 +10,8 @@ Status legend: ✅ done · 🟡 in progress · ⛔ blocked · ⬜ not started
 | 3 | Agent skill | ✅ | `skills/oneapi-port/SKILL.md` |
 | 4 | Standalone agent loop | ✅ | `src/oneapi_agent/loop.py`; dry-run scenarios success/stuck/max_iterations verified. **No real-LLM run: no `ANTHROPIC_API_KEY` in this sandbox** |
 | 5 | Examples | ✅ | fuzz, fir, saxpy, HeCBench softmax; real pipeline results in `examples/RESULTS.md` |
-| 6 | Tests | ⬜ | |
-| 7 | Docs | ⬜ | |
+| 6 | Tests | ✅ | 78 tests: 78 pass with the toolchain; 75 pass + 3 skip without it; 73 pass + 5 skip in a minimal install without mcp/anthropic. ruff + mypy clean |
+| 7 | Docs | ✅ | README (pitch, problem, Mermaid architecture, quickstart, real example output, status, roadmap, credits), docs/install.md, examples/README.md |
 
 ## Milestone 0: environment probe (2026-10-15, about 8 minutes)
 
@@ -97,3 +97,39 @@ WAV inputs are generated procedurally by `examples/gen_inputs.py`.
 The scripted dry run with real tools on saxpy ended in `success` in 7 iterations, including a deliberately broken edit and its fix. Its trace and report are committed in `docs/example-run/`.
 
 Caveat: benchmarks are CPU-only and wall time includes JIT (see `examples/README.md`). The CUDA versions were never executed, since no NVIDIA GPU was available.
+
+## Milestone 6: tests
+
+`tests/` holds 78 tests:
+
+| File | Covers |
+|------|--------|
+| `test_parsers.py` | c2s/icpx parsers on **real captured output** in `tests/fixtures/`, the dpct scan, sycl-ls formats |
+| `test_verify_math.py` | tolerances, NaN/inf, ULP, the audio null test at thresholds around -96 dBFS on synthetic signals, WAV PCM16/24/float/extensible, output sniffing |
+| `test_tools.py` | every tool with fake runners; verify with real Python subprocesses (array, stdout and audio modes; crash semantics); `toolchain_missing` paths |
+| `test_loop.py` | dry-run success, stuck and max_iterations paths; best-snapshot retention; token budget; a verify on a stale binary does not count; `finish` rejected without evidence; path confinement |
+| `test_interfaces.py` | CLI and MCP server |
+| `test_toolchain_real.py` | real toolchain; auto-skipped when it is absent |
+
+One bug was found while writing the tests:
+- **Symptom:** a fixture patched `find_tool` on the wrong object, so the tests were not doing what they claimed.
+- **Cause:** `import oneapi_agent.tools.benchmark as tb` yields the re-exported *function*, not the submodule.
+- **Fix:** the tests now use `importlib.import_module`.
+
+CI (`.github/workflows/ci.yml`) runs ruff, mypy and pytest on Python 3.11 and 3.13 without the toolchain.
+
+## Milestone 7: docs
+
+- `README.md`:
+  - every number in it comes from `examples/RESULTS.md` or `docs/example-run/`;
+  - the example run is labelled as a *scripted* model driving real tools;
+  - the Status table separates working, documented-but-not-exercised, and not-done.
+- The README quickstart commands were run for real and all succeed.
+
+## Known gaps / next steps (honest list)
+
+- **Not run with a real LLM.** The `AnthropicModel` path is implemented following the SDK docs, but no API key was available. It is the first thing to try: `ANTHROPIC_API_KEY=... oneapi-agent loop --config examples/saxpy/task.json`.
+- **No GPU.** All SYCL execution and benchmarks used the OpenCL CPU device. Wall-clock benchmarks include JIT.
+- **CUDA versions of the examples were never compiled with nvcc or run.** They were only parsed and migrated by c2s.
+- MCP registration in Claude Code, Codex and Cursor is documented but was not exercised in those clients.
+- The idiomatic SYCL ports in `examples/*/sycl/` were written by hand as target end states, not produced by the loop.
