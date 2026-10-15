@@ -82,10 +82,11 @@ oneapi-agent serve
 # Standalone agent loop
 oneapi-agent loop --dry-run --mock-tools                 # no toolchain, no API key
 oneapi-agent loop --dry-run --config examples/saxpy/task.json   # scripted model, real tools
-ANTHROPIC_API_KEY=... oneapi-agent loop --config examples/fir/task.json   # real model
+ONEAPI_AGENT_API_KEY=... oneapi-agent loop --config examples/fir/task.json   # real model
 ```
 
 The loop's model comes from `ONEAPI_AGENT_MODEL` (default `claude-sonnet-5-5`).
+- The API key comes from `ONEAPI_AGENT_API_KEY` if set, otherwise `ANTHROPIC_API_KEY`. Use `ONEAPI_AGENT_API_KEY` inside Claude Code sessions, which blank `ANTHROPIC_API_KEY`; with it the loop always talks to `https://api.anthropic.com` (override with `ONEAPI_AGENT_BASE_URL`), never an inherited `ANTHROPIC_BASE_URL`.
 - Optional: `ONEAPI_AGENT_EFFORT` sets the effort level.
 - `ONEAPI_AGENT_FALLBACKS=0` disables the server-side refusal fallback, which is on by default.
 
