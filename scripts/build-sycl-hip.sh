@@ -30,7 +30,7 @@ export DEBIAN_FRONTEND=noninteractive
 echo "== dependencies (ROCm $ROCM_VERSION)"
 apt-get update -qq
 apt-get install -y -qq ca-certificates curl gnupg git python3 python3-pip build-essential \
-  ninja-build zstd file binutils >/dev/null
+  ninja-build zstd file binutils autoconf automake libtool pkg-config >/dev/null
 python3 -m pip install -q 'cmake>=3.27,<4'
 mkdir -p --mode=0755 /etc/apt/keyrings
 curl -fsSL https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor > /etc/apt/keyrings/rocm.gpg
