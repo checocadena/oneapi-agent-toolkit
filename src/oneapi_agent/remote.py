@@ -408,6 +408,15 @@ class VastProvider(Provider):
         return self._instance(machine_id) is not None
 
 
+def cloud_init_script(env: dict[str, str]) -> str:
+    """A cloud-init user-data shell script that starts the agent with ``env`` on port 8000."""
+    exports = "\n".join(f"export {k}={shlex.quote(v)}" for k, v in env.items())
+    return ("#!/bin/bash\n" + exports + "\n"
+            "(command -v ufw >/dev/null && ufw allow 8000/tcp) || true\n"
+            "mkdir -p /workspace && cd /workspace\n"
+            "nohup bash -c " + shlex.quote(START_CMD) + " > /var/log/gputest-agent.log 2>&1 &\n")
+
+
 class VultrProvider(Provider):
     """Vultr Cloud GPU (api.vultr.com/v2; fields as in the official govultr SDK / Terraform).
 
@@ -449,11 +458,7 @@ class VultrProvider(Provider):
         regions = (plan or {}).get("locations") or []
         if not regions:
             raise Unavailable("plan has no deployable locations right now")
-        exports = "\n".join(f"export {k}={shlex.quote(v)}" for k, v in env.items())
-        script = ("#!/bin/bash\n" + exports + "\n"
-                  "(command -v ufw >/dev/null && ufw allow 8000/tcp) || true\n"
-                  "mkdir -p /workspace && cd /workspace\n"
-                  "nohup bash -c " + shlex.quote(START_CMD) + " > /var/log/gputest-agent.log 2>&1 &\n")
+        script = cloud_init_script(env)
         body = {"region": regions[0], "plan": gpu, "os_id": self.UBUNTU_2404,
                 "label": f"oneapi-gputest-{secrets.token_hex(3)}",
                 "user_data": base64.b64encode(script.encode()).decode()}
@@ -489,6 +494,95 @@ class VultrProvider(Provider):
         return self._instance(machine_id) is not None
 
 
+class DigitalOceanProvider(Provider):
+    """DigitalOcean GPU Droplets (api.digitalocean.com/v2): the cheapest self-serve single AMD
+    Instinct MI300X found (``gpu-mi300x1-192gb``, ~$2.59/h on 2026-10-15), booted from the
+    ``gpu-amd-base`` image (Ubuntu + ROCm) with a cloud-init script that starts the agent.
+
+    Candidates come from the live ``/v2/sizes`` list: available single-GPU sizes of the vendor,
+    cheapest first. AMD GPU access may first need a support request on new accounts; the API's
+    error is reported as the create failure. Reached on the droplet's public IPv4, port 8000,
+    with pinned TLS.
+    """
+
+    name, key_env, tls = "digitalocean", "OCEAN_API_KEY", True
+    IMAGE = {"amd": "gpu-amd-base"}
+    AMD_MARKERS = ("mi300", "mi325", "mi350", "mi355")
+
+    def __init__(self, key: str, api: _JSONAPI | None = None) -> None:
+        self.api = api or _JSONAPI("https://api.digitalocean.com/v2", key)
+        self._sizes: dict[str, dict[str, Any]] | None = None
+
+    def sizes(self) -> dict[str, dict[str, Any]]:
+        if self._sizes is None:
+            try:
+                data = self.api.req("GET", "/sizes?per_page=200") or {}
+            except (urllib.error.URLError, ValueError):
+                data = {}
+            self._sizes = {z["slug"]: z for z in data.get("sizes", [])}
+        return self._sizes
+
+    def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
+        if gpu_type:
+            return [gpu_type]
+        out = []
+        for slug, z in self.sizes().items():
+            amd = any(m in slug for m in self.AMD_MARKERS)
+            single = "x1-" in slug
+            if slug.startswith("gpu-") and single and z.get("available") and z.get("regions") \
+                    and amd == (vendor == "amd"):
+                out.append(slug)
+        return sorted(out, key=lambda sl: float(self.sizes()[sl].get("price_hourly") or 1e9))
+
+    def price(self, gpu: str) -> float | None:
+        z = self.sizes().get(gpu)
+        return float(z["price_hourly"]) if z and z.get("price_hourly") else None
+
+    def create(self, gpu: str, *, vendor: str, image: str | None, env: dict[str, str]) -> str:
+        z = self.sizes().get(gpu) or {}
+        regions = z.get("regions") or []
+        if not regions:
+            raise Unavailable("size has no regions with capacity right now")
+        img = image or self.IMAGE.get(vendor)
+        if not img:
+            raise Unavailable(f"no default GPU image for {vendor}; pass --image")
+        body = {"name": f"oneapi-gputest-{secrets.token_hex(3)}", "region": regions[0],
+                "size": gpu, "image": img, "user_data": cloud_init_script(env),
+                "tags": ["oneapi-gputest"]}
+        try:
+            res = self.api.req("POST", "/droplets", body)
+        except urllib.error.HTTPError as e:
+            raise Unavailable(f"HTTP {e.code}: {e.read().decode(errors='replace')[:300]}") from e
+        return str(res["droplet"]["id"])
+
+    def _droplet(self, mid: str) -> dict[str, Any] | None:
+        try:
+            return (self.api.req("GET", f"/droplets/{mid}") or {}).get("droplet")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+
+    def agent_url(self, machine_id: str) -> str | None:
+        d = self._droplet(machine_id)
+        if not d or d.get("status") != "active":
+            return None
+        for net in (d.get("networks") or {}).get("v4", []):
+            if net.get("type") == "public" and net.get("ip_address"):
+                return f"https://{net['ip_address']}:8000"
+        return None
+
+    def delete(self, machine_id: str) -> None:
+        try:
+            self.api.req("DELETE", f"/droplets/{machine_id}")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+
+    def exists(self, machine_id: str) -> bool:
+        return self._droplet(machine_id) is not None
+
+
 def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = None) -> Provider:
     """Provider by name, keyed from its environment variable (or ``api_key``)."""
     key = api_key or os.environ.get(PROVIDER_KEY_ENV.get(name, ""), "")
@@ -498,10 +592,15 @@ def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = Non
         return VastProvider(key)
     if name == "vultr":
         return VultrProvider(key)
+    if name == "digitalocean":
+        return DigitalOceanProvider(key or os.environ.get("DIGITALOCEAN_TOKEN", ""))
     raise ValueError(f"unknown provider {name!r}")
 
 
-PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY", "vast": "VAST_API_KEY", "vultr": "VULTR_API_KEY"}
+PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY", "vast": "VAST_API_KEY", "vultr": "VULTR_API_KEY",
+                    "digitalocean": "OCEAN_API_KEY"}
+# Also accepted: the name doctl uses.
+PROVIDER_KEY_ALIASES = {"digitalocean": ("DIGITALOCEAN_TOKEN",)}
 
 
 def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None = None,
@@ -520,7 +619,8 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         if not env_name:
             return ToolResult("remote_test", "error", f"unknown provider {provider!r}; "
                               f"choose from {sorted(PROVIDER_KEY_ENV)}")
-        if not (api_key or os.environ.get(env_name)):
+        if not (api_key or os.environ.get(env_name)
+                or any(os.environ.get(a) for a in PROVIDER_KEY_ALIASES.get(provider, ()))):
             return ToolResult("remote_test", "toolchain_missing", f"{env_name} is not set", {},
                               [f"Create an API key in the {provider} console and export "
                                f"{env_name}."])

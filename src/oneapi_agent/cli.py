@@ -90,9 +90,10 @@ def build_parser() -> argparse.ArgumentParser:
     rt = sub.add_parser("remote-test", help="rent a Runpod GPU (NVIDIA or AMD), run gpu-test "
                         "there, import the results, delete the pod (needs RUNPOD_API_KEY)")
     rt.add_argument("task")
-    rt.add_argument("--provider", choices=["runpod", "vast", "vultr"], default="runpod",
+    rt.add_argument("--provider", choices=["runpod", "vast", "vultr", "digitalocean"],
+                    default="runpod",
                     help="GPU rental service; its API key comes from RUNPOD_API_KEY, "
-                         "VAST_API_KEY or VULTR_API_KEY")
+                         "VAST_API_KEY, VULTR_API_KEY or OCEAN_API_KEY (or DIGITALOCEAN_TOKEN)")
     rt.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
     rt.add_argument("--gpu", dest="gpu_type", help="Runpod GPU type id (default per vendor)")
     rt.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE")

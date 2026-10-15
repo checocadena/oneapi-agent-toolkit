@@ -203,3 +203,59 @@ def test_agent_rejects_unpinned_and_wrong_certificates(tmp_path):
         assert remote._agent_call(url, "tok")[0] == 0  # system CAs do not trust it
     finally:
         prov.delete("m1")
+
+
+# ---------------------------------------------------------------- DigitalOcean
+
+SIZES = {"sizes": [
+    {"slug": "gpu-mi300x1-192gb", "price_hourly": 2.59, "available": True, "regions": ["atl1"]},
+    {"slug": "gpu-mi300x8-1536gb", "price_hourly": 20.72, "available": True, "regions": ["atl1"]},
+    {"slug": "gpu-h100x1-80gb", "price_hourly": 3.39, "available": True, "regions": ["nyc2"]},
+    {"slug": "gpu-mi325x1-256gb", "price_hourly": 3.80, "available": True, "regions": []},
+    {"slug": "s-1vcpu-1gb", "price_hourly": 0.009, "available": True, "regions": ["nyc1"]},
+]}
+
+
+def test_digitalocean_picks_single_amd_gpu_and_boots_rocm_image():
+    created = {}
+
+    def create(body):
+        created.update(body)
+        return {"droplet": {"id": 4242}}
+
+    api = FakeJSON({("GET", "/sizes"): SIZES, ("POST", "/droplets"): create})
+    d = remote.DigitalOceanProvider("k", api=api)
+    assert d.candidates("amd", None) == ["gpu-mi300x1-192gb"]  # 8x and region-less sizes skipped
+    assert d.candidates("nvidia", None) == ["gpu-h100x1-80gb"]
+    assert d.price("gpu-mi300x1-192gb") == 2.59
+    mid = d.create("gpu-mi300x1-192gb", vendor="amd", image=None, env={"GT_TOKEN": "tok"})
+    assert mid == "4242" and created["region"] == "atl1" and created["image"] == "gpu-amd-base"
+    assert "export GT_TOKEN=tok" in created["user_data"] and created["tags"] == ["oneapi-gputest"]
+
+
+def test_digitalocean_reports_api_refusal_as_unavailable():
+    api = FakeJSON({("GET", "/sizes"): SIZES, ("POST", "/droplets"): http_error(422)})
+    with pytest.raises(remote.Unavailable, match="HTTP 422"):
+        remote.DigitalOceanProvider("k", api=api).create("gpu-mi300x1-192gb", vendor="amd",
+                                                          image=None, env={})
+
+
+def test_digitalocean_agent_url_from_public_ipv4():
+    new = {"droplet": {"status": "new", "networks": {"v4": []}}}
+    active = {"droplet": {"status": "active", "networks": {"v4": [
+        {"type": "private", "ip_address": "10.0.0.5"},
+        {"type": "public", "ip_address": "203.0.113.7"}]}}}
+    def do(resp):
+        return remote.DigitalOceanProvider("k", api=FakeJSON({("GET", "/droplets/1"): resp}))
+
+    assert do(new).agent_url("1") is None
+    assert do(active).agent_url("1") == "https://203.0.113.7:8000"
+    assert do(http_error(404)).exists("1") is False
+
+
+def test_digitalocean_accepts_doctl_token_name(monkeypatch):
+    monkeypatch.delenv("OCEAN_API_KEY", raising=False)
+    monkeypatch.delenv("DIGITALOCEAN_TOKEN", raising=False)
+    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider="digitalocean",
+                           log=lambda m: None)
+    assert r.status == "toolchain_missing" and "OCEAN_API_KEY" in r.summary

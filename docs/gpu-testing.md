@@ -63,17 +63,18 @@ oneapi-agent remote-test examples/softmax_hecbench/task.json --provider runpod -
 Spending is capped by `--max-minutes` (45 by default) and `--max-usd` ($2 by default), using the provider's own prices.
 
 **Login.**
-- Each provider reads one API key, from `RUNPOD_API_KEY`, `VAST_API_KEY` or `VULTR_API_KEY`.
+- Each provider reads one API key, from `RUNPOD_API_KEY`, `VAST_API_KEY`, `VULTR_API_KEY` or `OCEAN_API_KEY`.
 - The key is only sent to that provider's API. It is never written to disk or into the machine.
 - The machine's agent gets a fresh random token for each run.
 - Runpod is reached through its HTTPS proxy.
-- Vast.ai and Vultr machines are reached on a bare IP. There the agent serves TLS with a throwaway self-signed certificate made for the run (this needs `openssl`), and the client trusts only that certificate.
+- Vast.ai, Vultr and DigitalOcean machines are reached on a bare IP. There the agent serves TLS with a throwaway self-signed certificate made for the run (this needs `openssl`), and the client trusts only that certificate.
 
 | Provider | GPUs used | Status (2026-10-15) |
 |---|---|---|
 | Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
-| Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | Implemented against the official CLI and docs; unit-tested, not yet run against the live API. No AMD offers listed. |
-| Vultr | NVIDIA A16 / A40 Cloud GPU | Implemented against the official SDK and Terraform provider; unit-tested, not yet run against the live API. AMD Instinct plans are listed but not deployable on demand. |
+| Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | Create and delete verified live (RTX 3090); a full run not yet completed. No AMD offers listed. |
+| Vultr | NVIDIA A16 / A40 Cloud GPU | Create and delete verified live (A16); a full run not yet completed. AMD Instinct plans are listed but not deployable on demand. Note: the API key's access control must allow the caller's IP. |
+| DigitalOcean | **AMD Instinct MI300X** (single GPU, `gpu-mi300x1-192gb`, ~$2.59/h, ROCm image `gpu-amd-base`) | Implemented from the API docs; unit-tested, not yet run live. New accounts may need a support request to enable AMD GPUs. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
 | Intel | none to rent | No public API: use a bundle (below). |
 
 **Intel, as of 2026-10-15.**
