@@ -13,12 +13,12 @@ The *idiomatic* ports in `<name>/sycl/` were hand-written (they are the target e
 
 | step | status | summary |
 |---|---|---|
-| reference_build | rc=0 | `g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/fir/../common -I/home/user/oneapi-agent-toolkit/examples/fir /home/user/oneapi-agent-toolkit/examples/fir/fir_ref.cpp -o build/reference` |
+| reference_build | rc=0 | `g++ -O2 -std=c++17 -Iexamples/fir/../common -Iexamples/fir examples/fir/fir_ref.cpp -o build/reference` |
 | migrate | `ok` | migrated 1 CUDA file(s) -> 2 file(s); 4 DPCT warning(s) (DPCT1009x1, DPCT1010x1, DPCT1101x1, DPCT1113x1) |
-| compile_migrated | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fir/build/migrated (0 warning(s)) |
+| compile_migrated | `ok` | compiled 1 source(s) -> examples/results/work/fir/build/migrated (0 warning(s)) |
 | verify_migrated | `ok` | PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS) |
 | scan_migrated | `fail` | 14 dpct helper use(s) remain in 1 file(s) (macro=7, memory_management=3, device_queue_management=2, include=1) |
-| compile_idiomatic | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fir/build/idiomatic (0 warning(s)) |
+| compile_idiomatic | `ok` | compiled 1 source(s) -> examples/results/work/fir/build/idiomatic (0 warning(s)) |
 | verify_idiomatic | `ok` | PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS) |
 | benchmark_idiomatic | `ok` | 5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 226.17 ms, p95 259.53 ms |
 | benchmark_reference | `ok` | 5 run(s) each; none: median 13.02 ms, p95 14.67 ms |
@@ -28,12 +28,12 @@ The *idiomatic* ports in `<name>/sycl/` were hand-written (they are the target e
 
 | step | status | summary |
 |---|---|---|
-| reference_build | rc=0 | `g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/fuzz/../common /home/user/oneapi-agent-toolkit/examples/fuzz/fuzz_ref.cpp -o build/reference` |
+| reference_build | rc=0 | `g++ -O2 -std=c++17 -Iexamples/fuzz/../common examples/fuzz/fuzz_ref.cpp -o build/reference` |
 | migrate | `ok` | migrated 1 CUDA file(s) -> 1 file(s); 4 DPCT warning(s) (DPCT1009x1, DPCT1010x1, DPCT1024x2) |
-| compile_migrated | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/migrated (0 warning(s)) |
+| compile_migrated | `ok` | compiled 1 source(s) -> examples/results/work/fuzz/build/migrated (0 warning(s)) |
 | verify_migrated | `ok` | PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS) |
 | scan_migrated | `fail` | 22 dpct helper use(s) remain in 1 file(s) (macro=13, events_timing=3, device_queue_management=2, memory_management=2) |
-| compile_idiomatic | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/idiomatic (0 warning(s)) |
+| compile_idiomatic | `ok` | compiled 1 source(s) -> examples/results/work/fuzz/build/idiomatic (0 warning(s)) |
 | verify_idiomatic | `ok` | PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS) |
 | benchmark_idiomatic | `ok` | 5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 205.72 ms, p95 216.31 ms |
 | benchmark_reference | `ok` | 5 run(s) each; none: median 6.41 ms, p95 8.37 ms |
@@ -43,12 +43,12 @@ The *idiomatic* ports in `<name>/sycl/` were hand-written (they are the target e
 
 | step | status | summary |
 |---|---|---|
-| reference_build | rc=0 | `g++ -O2 -std=c++17 /home/user/oneapi-agent-toolkit/examples/saxpy/saxpy_ref.cpp -o build/reference` |
+| reference_build | rc=0 | `g++ -O2 -std=c++17 examples/saxpy/saxpy_ref.cpp -o build/reference` |
 | migrate | `ok` | migrated 1 CUDA file(s) -> 1 file(s); 1 DPCT warning(s) (DPCT1009x1) |
-| compile_migrated | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/saxpy/build/migrated (0 warning(s)) |
+| compile_migrated | `ok` | compiled 1 source(s) -> examples/results/work/saxpy/build/migrated (0 warning(s)) |
 | verify_migrated | `ok` | PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06) |
 | scan_migrated | `fail` | 11 dpct helper use(s) remain in 1 file(s) (events_timing=3, macro=2, device_queue_management=2, memory_management=2) |
-| compile_idiomatic | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/saxpy/build/idiomatic (0 warning(s)) |
+| compile_idiomatic | `ok` | compiled 1 source(s) -> examples/results/work/saxpy/build/idiomatic (0 warning(s)) |
 | verify_idiomatic | `ok` | PASS: 1/1 case(s) match (worst max abs err 4.77e-07, atol 1e-06) |
 | benchmark_idiomatic | `ok` | 5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 216.84 ms, p95 231.32 ms |
 | benchmark_reference | `ok` | 5 run(s) each; none: median 14.35 ms, p95 19.48 ms |
@@ -58,12 +58,12 @@ The *idiomatic* ports in `<name>/sycl/` were hand-written (they are the target e
 
 | step | status | summary |
 |---|---|---|
-| reference_build | rc=0 | `g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax_ref.cpp -o build/reference` |
+| reference_build | rc=0 | `g++ -O2 -std=c++17 -Iexamples/softmax_hecbench examples/softmax_hecbench/softmax_ref.cpp -o build/reference` |
 | migrate | `ok` | migrated 1 CUDA file(s) -> 2 file(s); 0 DPCT warning(s) |
-| compile_migrated | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated (0 warning(s)) |
+| compile_migrated | `ok` | compiled 1 source(s) -> examples/results/work/softmax_hecbench/build/migrated (0 warning(s)) |
 | verify_migrated | `fail` | FAIL: 0/1 case(s) match; first failure: 22156 of 524288 element(s) outside tolerance |
 | scan_migrated | `fail` | 9 dpct helper use(s) remain in 1 file(s) (types_launch=4, device_queue_management=2, memory_management=2, include=1) |
-| compile_idiomatic | `ok` | compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic (0 warning(s)) |
+| compile_idiomatic | `ok` | compiled 1 source(s) -> examples/results/work/softmax_hecbench/build/idiomatic (0 warning(s)) |
 | verify_idiomatic | `ok` | PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06) |
 | benchmark_idiomatic | `ok` | 5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 273.35 ms, p95 303.86 ms |
 | benchmark_reference | `ok` | 5 run(s) each; none: median 11.17 ms, p95 11.49 ms |

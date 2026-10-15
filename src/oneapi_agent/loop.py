@@ -900,7 +900,9 @@ def render_report(loop: AgentLoop, outcome: dict[str, Any]) -> str:
     cur = source_hash(loop.work)
     lines += ["", f"Current sources hash: `{cur}`. Success requires compile, verify and "
               "zero-helper scan all on this hash.", ""]
-    return "\n".join(lines)
+    # Paths relative to the run dir (where report.md lives), so a committed report does not
+    # leak the machine it ran on.
+    return "\n".join(lines).replace(str(loop.run_dir) + "/", "")
 
 
 # ----------------------------------------------------------------------------- dry run

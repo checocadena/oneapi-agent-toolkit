@@ -2,6 +2,7 @@
 
 The same model (`claude-sonnet-5-5`) and the same four tasks, 3 runs per task per arm, at most 10 iterations each.
 Runner: [`scripts/ablation.py`](../../scripts/ablation.py). Per-run rows: [`results.json`](results.json).
+Every run's trace, report and final sources: [`runs/<arm>/<example>/run<n>/`](runs/). The wrong softmax port is [`runs/baseline/softmax_hecbench/run1/final/`](runs/baseline/softmax_hecbench/run1/final/).
 
 - **toolkit:** the normal loop. The agent has migrate, compile, scan_helpers, verify, benchmark and file tools. It is done only when compile, verify and a zero-helper scan all hold on the same sources.
 - **baseline:** `--baseline`. The agent has migrate, compile and the file tools, and is told the tolerance. The run ends when the agent calls `finish`.
