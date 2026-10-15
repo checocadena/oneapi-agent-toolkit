@@ -177,3 +177,59 @@ def test_detect_cuda_arch_parses_nvidia_smi(monkeypatch):
     assert detect_cuda_arch(runner, 2) is None
     monkeypatch.setenv("CUDA_ARCH", "sm_89")
     assert detect_cuda_arch(runner) == "89"
+
+
+def _hip_tree(root: Path, headers: bool) -> Path:
+    (root / "bin").mkdir(parents=True)
+    hipcc = root / "bin" / "hipcc"
+    hipcc.write_text("#!/bin/sh\n")
+    if headers:
+        (root / "include" / "hip").mkdir(parents=True)
+        (root / "include" / "hip" / "hip_runtime.h").write_text("")
+    return hipcc
+
+
+def test_find_hip_include_prefers_hipccs_root_then_other_installs(tmp_path, monkeypatch):
+    from oneapi_agent.tools.gpu_test import find_hip_include
+
+    monkeypatch.delenv("HIP_PATH", raising=False)
+    monkeypatch.delenv("ROCM_PATH", raising=False)
+    rocm = tmp_path / "rocm"
+    hipcc = _hip_tree(rocm / "core-7.14", headers=False)  # DigitalOcean gpu-amd-base layout
+    assert find_hip_include(str(hipcc), roots=(str(rocm),)) is None
+    _hip_tree(rocm / "core-7.13", headers=True)
+    assert find_hip_include(str(hipcc), roots=(str(rocm),)) == rocm / "core-7.13" / "include"
+    monkeypatch.setenv("HIP_PATH", str(tmp_path / "hip"))
+    _hip_tree(tmp_path / "hip", headers=True)
+    assert find_hip_include(str(hipcc), roots=(str(rocm),)) == tmp_path / "hip" / "include"
+    (rocm / "core-7.14" / "include" / "hip").mkdir(parents=True)
+    (rocm / "core-7.14" / "include" / "hip" / "hip_runtime.h").write_text("")
+    assert find_hip_include(str(hipcc), roots=(str(rocm),)) == rocm / "core-7.14" / "include"
+
+
+def test_native_hip_build_without_headers_is_a_stated_limitation(tmp_path, monkeypatch):
+    gt = importlib.import_module("oneapi_agent.tools.gpu_test")
+
+    hipcc = _hip_tree(tmp_path / "core-7.14", headers=False)
+    monkeypatch.setenv("HIPCC", str(hipcc))
+    monkeypatch.setenv("HIPIFY", "/bin/hipify-perl")
+    calls = []
+
+    def runner(argv, **kw):
+        calls.append(list(argv))
+        return CommandResult(list(argv), 0, "#include \"hip/hip_runtime.h\"\n", "", 0.0)
+
+    task = {"cuda_path_abs": str(tmp_path / "k.cu")}
+    monkeypatch.setattr(gt, "find_hip_include", lambda hipcc: None)
+    res, note = gt._native_build(task, "amd", tmp_path, ["-Ia"], "gfx950", runner)
+    assert res is None and calls == [] and note.startswith("no HIP headers on this host")
+
+    other = tmp_path / "elsewhere" / "include"
+    monkeypatch.setattr(gt, "find_hip_include", lambda hipcc: other)
+    res, note = gt._native_build(task, "amd", tmp_path, ["-Ia"], "gfx950", runner)
+    assert note is None and res.returncode == 0
+    assert calls[-1][0] == str(hipcc) and f"-I{other}" in calls[-1]
+
+    monkeypatch.setattr(gt, "find_hip_include", lambda hipcc: tmp_path / "core-7.14" / "include")
+    gt._native_build(task, "amd", tmp_path, ["-Ia"], "gfx950", runner)
+    assert not any(a.startswith(f"-I{tmp_path / 'core-7.14'}") for a in calls[-1])

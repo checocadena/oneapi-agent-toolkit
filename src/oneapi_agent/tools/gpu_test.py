@@ -117,6 +117,23 @@ def load_task(task_file: str | os.PathLike[str]) -> dict[str, Any]:
     return task
 
 
+def find_hip_include(hipcc: str, roots: tuple[str, ...] = ("/opt/rocm",)) -> Path | None:
+    """The include dir holding ``hip/hip_runtime.h`` for this ``hipcc``, or None.
+
+    Looks in hipcc's own ROCm root first (``<root>/bin/hipcc``), then ``$HIP_PATH``,
+    ``$ROCM_PATH`` and ``roots`` (each root and its ``core-*`` installs). ROCm 7.14 "core"
+    installs without the runtime dev package have hipcc but no headers anywhere.
+    """
+    cands = [Path(os.path.realpath(hipcc)).parent.parent]
+    cands += [Path(os.environ[v]) for v in ("HIP_PATH", "ROCM_PATH") if os.environ.get(v)]
+    for r in roots:
+        cands += [Path(r), *sorted(Path(r).glob("core-*"), reverse=True)]
+    for c in cands:
+        if (c / "include" / "hip" / "hip_runtime.h").is_file():
+            return c / "include"
+    return None
+
+
 def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str],
                   amd_arch: str | None, runner: Runner | None):
     """Build the original CUDA for this GPU, or return (None, reason)."""
@@ -134,6 +151,14 @@ def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str]
         hipify = os.environ.get("HIPIFY") or shutil.which("hipify-perl")
         if not (hipcc and hipify and amd_arch):
             return None, "hipcc, hipify-perl or the gfx arch not found"
+        hip_inc = find_hip_include(hipcc)
+        if hip_inc is None:
+            return None, ("no HIP headers on this host (hip/hip_runtime.h not found next to "
+                          f"{hipcc} or under /opt/rocm; ROCm 7.14+ ships them in "
+                          "amdrocm-runtime-dev<X.Y>)")
+        # hipcc finds headers in its own ROCm root; name any other location explicitly.
+        if hip_inc != Path(os.path.realpath(hipcc)).parent.parent / "include":
+            incs = [*incs, f"-I{hip_inc}"]
         conv = run([hipify, str(src)], cwd=str(work), timeout=300)
         if conv.returncode != 0:
             return conv, None

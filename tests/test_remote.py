@@ -213,6 +213,79 @@ def test_setup_installs_the_sycl_tarball_and_checks_its_sha256(tmp_path):
     assert (tmp_path / "sycl" / "bin" / "clang++").exists() and "intel/llvm commit" in ok.stdout
 
 
+def _hip_headers_setup(tmp_path, *, headers=False, runtime="7.14.0-3",
+                       madison=("7.14.1-0", "7.14.0-3")):
+    """Run the agent's HIP-headers step against a fake ROCm core-7.14 install and stub apt."""
+    setup = remote.POD_AGENT.split('SETUP = r"""', 1)[1].split('"""', 1)[0]
+    block = setup[setup.index("# HIP headers for the native"):setup.index("fi  # end HIP headers")]
+    etc = tmp_path / "etc"
+    (etc / "apt" / "sources.list.d").mkdir(parents=True)
+    (etc / "os-release").write_text('ID=ubuntu\nVERSION_ID="24.04"\n')
+    script = (block.replace("/etc/os-release", str(etc / "os-release"))
+              .replace("/etc/apt", str(etc / "apt"))
+              .replace("/opt/rocm/.info", str(tmp_path / "none")) + "fi\n")
+    root = tmp_path / "opt" / "rocm" / "core-7.14"
+    (root / "bin").mkdir(parents=True)
+    (root / "bin" / "hipcc").write_text("#!/bin/sh\n")
+    if headers:
+        (root / "include" / "hip").mkdir(parents=True)
+        (root / "include" / "hip" / "hip_runtime.h").write_text("")
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "hipcc").symlink_to(root / "bin" / "hipcc")  # like /opt/rocm/bin -> core-7.14
+    log = tmp_path / "calls.log"
+    rows = "".join(f"echo 'amdrocm-runtime-dev7.14 | {v} | https://repo.amd.com x'; "
+                   for v in madison)
+    stubs = {
+        "dpkg-query": f'[ -n "{runtime}" ] && printf %s "{runtime}" || exit 1',
+        "apt-cache": f'[ "$1" = madison ] && {{ {rows}:; }}',
+        "apt-get": '[ "$1" = download ] && touch "${2%%=*}_${2#*=}_amd64.deb"; :',
+        "dpkg-deb": ('d="$3/opt/rocm/core-7.14/include/hip"; mkdir -p "$d" && '
+                     'touch "$d/hip_runtime.h"'),
+        "curl": 'touch "$5"',  # -fsSL --retry 3 -o FILE URL
+    }
+    for name, body in stubs.items():
+        f = bin_ / name
+        f.write_text(f'#!/bin/bash\necho "{name} $*" >> "{log}"\n{body}\n')
+        f.chmod(0o755)
+    env = {**os.environ, "PATH": f"{bin_}:{os.environ['PATH']}"}
+    out = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+    calls = log.read_text() if log.exists() else ""
+    return out, calls, root, etc
+
+
+@pytest.mark.skipif(not shutil.which("bash"), reason="needs bash")
+def test_setup_unpacks_hip_headers_matching_the_installed_runtime(tmp_path):
+    out, calls, root, etc = _hip_headers_setup(tmp_path)
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert (root / "include" / "hip" / "hip_runtime.h").exists()
+    # The exact runtime version, downloaded rather than installed (no 2 GB amdrocm-llvm-dev).
+    assert "apt-get download amdrocm-runtime-dev7.14=7.14.0-3" in calls
+    assert "apt-get install" not in calls
+    assert "unpacked amdrocm-runtime-dev7.14=7.14.0-3" in out.stdout
+    src = (etc / "apt" / "sources.list.d" / "gt-amdrocm.list").read_text()
+    assert "packages-multi-arch/ubuntu2404 stable main" in src and "gt-amdrocm.asc" in src
+    assert (etc / "apt" / "keyrings" / "gt-amdrocm.asc").exists()
+
+
+@pytest.mark.skipif(not shutil.which("bash"), reason="needs bash")
+def test_setup_leaves_existing_hip_headers_alone(tmp_path):
+    out, calls, _, _ = _hip_headers_setup(tmp_path, headers=True)
+    assert out.returncode == 0 and calls == ""
+    assert "HIP headers: " in out.stdout and "missing" not in out.stdout
+
+
+@pytest.mark.skipif(not shutil.which("bash"), reason="needs bash")
+def test_setup_says_so_when_no_matching_hip_headers_exist(tmp_path):
+    out, calls, root, _ = _hip_headers_setup(tmp_path, madison=("7.14.1-0",))
+    assert "NOT INSTALLED: no amdrocm-runtime-dev7.14 matching the installed runtime (7.14.0-3)" \
+        in out.stdout
+    assert "still missing" in out.stdout and "apt-get download" not in calls
+    assert not (root / "include").exists()
+    out, calls, _, _ = _hip_headers_setup(tmp_path / "u", runtime="")
+    assert "version unknown" in out.stdout and "apt-get download" not in calls
+
+
 class SlowDeleteProvider(StuckThenSlowProvider):
     """Like a DigitalOcean droplet: still listed for a few checks after the DELETE."""
 

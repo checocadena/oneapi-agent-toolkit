@@ -104,6 +104,53 @@ export LD_LIBRARY_PATH="/opt/sycl/lib:/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
 nvidia-smi || rocm-smi || true
 cat /opt/rocm/.info/version 2>/dev/null || true
 [ -e /opt/sycl/lib/libur_adapter_hip.so ] && ldd /opt/sycl/lib/libur_adapter_hip.so | grep -i amdhip
+# HIP headers for the native (hipified CUDA) build. ROCm 7.14+ "core" installs (DigitalOcean's
+# gpu-amd-base: /opt/rocm/core-7.14) ship hipcc and the HIP runtime but not its dev package, so
+# hip/hip_runtime.h is missing. Unpack only amdrocm-runtime-dev<X.Y> (headers + CMake files,
+# ~0.5 MB) at the installed runtime's version into hipcc's ROCm root: `apt-get install` would also
+# pull amdrocm-llvm-dev (~2 GB). If this fails, gpu_test reports "no HIP headers on this host".
+if HIPCC_BIN="$(command -v hipcc)"; then
+  HIP_ROOT="$(dirname "$(dirname "$(readlink -f "$HIPCC_BIN")")")"
+  if [ -e "$HIP_ROOT/include/hip/hip_runtime.h" ]; then
+    echo "HIP headers: $HIP_ROOT/include/hip"
+  else
+    echo "HIP headers: hip/hip_runtime.h missing under $HIP_ROOT/include"
+    RV="$(basename "$HIP_ROOT" | sed -n 's/^core-\([0-9]*\.[0-9]*\).*/\1/p')"
+    PKG="amdrocm-runtime-dev$RV"
+    WANT="$(dpkg-query -W -f='${Version}' "amdrocm-runtime$RV" 2>/dev/null || true)"
+    [ -n "$WANT" ] || WANT="$(cat "$HIP_ROOT/.info/version" /opt/rocm/.info/version 2>/dev/null | head -n1)"
+    if [ -z "$RV" ]; then
+      echo "HIP headers: NOT INSTALLED: $HIP_ROOT is not a ROCm core-X.Y install, no package to fetch"
+    else
+      if ! grep -rqs 'repo.amd.com/rocm/packages' /etc/apt/sources.list /etc/apt/sources.list.d; then
+        . /etc/os-release
+        mkdir -p /etc/apt/keyrings
+        AMD_REPO=https://repo.amd.com/rocm/packages-multi-arch
+        curl -fsSL --retry 3 -o /etc/apt/keyrings/gt-amdrocm.asc "$AMD_REPO/gpg/rocm.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/gt-amdrocm.asc]" \
+          "$AMD_REPO/ubuntu${VERSION_ID//./} stable main" > /etc/apt/sources.list.d/gt-amdrocm.list
+      fi
+      apt-get update -qq || echo "HIP headers: apt-get update failed"
+      VER="$(apt-cache madison "$PKG" 2>/dev/null \
+             | awk -v w="$WANT" 'w != "" && index($3, w) == 1 {print $3; exit}')"
+      if [ -z "$VER" ]; then
+        echo "HIP headers: NOT INSTALLED: no $PKG matching the installed runtime" \
+          "(${WANT:-version unknown}) in apt"
+      else
+        D="$(mktemp -d)"
+        if (cd "$D" && apt-get download "$PKG=$VER") && dpkg-deb -x "$D"/*.deb "$D/x" \
+            && cp -rn "$D/x/opt/rocm/core-$RV/." "$HIP_ROOT/"; then
+          echo "HIP headers: unpacked $PKG=$VER into $HIP_ROOT"
+        else
+          echo "HIP headers: NOT INSTALLED: download or unpack of $PKG=$VER failed"
+        fi
+        rm -rf "$D"
+      fi
+      [ -e "$HIP_ROOT/include/hip/hip_runtime.h" ] \
+        || echo "HIP headers: still missing, the native build will be skipped"
+    fi
+  fi
+fi  # end HIP headers
 sycl-ls
 """
 ENV = dict(os.environ)
