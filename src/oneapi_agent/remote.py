@@ -34,6 +34,9 @@ from .bundle import ingest_results, make_bundle
 from .result import ToolResult
 
 API = "https://api.runpod.io/v2"
+# Runpod's proxy sits behind Cloudflare, which rejects Python's default "Python-urllib" agent
+# (HTTP 403, "error code: 1010"), so every request names itself.
+USER_AGENT = "oneapi-agent-toolkit (+https://github.com/checocadena/oneapi-agent-toolkit)"
 # Tried in order until one is in stock: cheap cards first (Runpod catalog ids).
 DEFAULT_GPUS = {
     "nvidia": ["NVIDIA RTX A4500", "NVIDIA RTX 2000 Ada Generation", "NVIDIA RTX A4000",
@@ -148,7 +151,8 @@ class RunpodAPI:
     def _req(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(self.base + path, data=data, method=method, headers={
-            "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"})
+            "Authorization": f"Bearer {self.key}", "Content-Type": "application/json",
+            "User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=60) as r:
             raw = r.read()
             return json.loads(raw) if raw else None
@@ -186,7 +190,8 @@ class RunpodAPI:
 def _agent_call(url: str, token: str, method: str = "GET", data: bytes | None = None,
                 headers: dict[str, str] | None = None, timeout: float = 60) -> tuple[int, bytes]:
     req = urllib.request.Request(url, data=data, method=method,
-                                 headers={"X-Token": token, **(headers or {})})
+                                 headers={"X-Token": token, "User-Agent": USER_AGENT,
+                                          **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, r.read()
@@ -265,10 +270,14 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         log(f"created pod {pod_id} ({gpu}, ${price}/h)")
         url = agent_url(pod_id) if agent_url else f"https://{pod_id}-8000.proxy.runpod.net"
         # Wait for the agent to answer, then upload the bundle.
+        seen_codes: set[int] = set()
         while time.time() < deadline:
             code, _ = _agent_call(url + "/status", token, timeout=20)
             if code == 200:
                 break
+            if code not in seen_codes:  # 0 = not reachable yet, 502/404 = proxy still starting
+                seen_codes.add(code)
+                log(f"waiting for the pod agent (HTTP {code or 'no answer'})")
             time.sleep(poll_s)
         else:
             raise TimeoutError("the pod's agent never answered before the time limit")
