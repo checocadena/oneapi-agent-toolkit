@@ -70,11 +70,27 @@ def test_bundle_keeps_relative_layout_and_ships_the_package(tmp_path):
     # saxpy has no shared include dirs, so the task dir itself is the bundle's task/ root
     assert "task/task.json" in names and "task/sycl/saxpy.cpp" in names
     assert '"task/task.json"' in script
-    fir = make_bundle(str(REPO / "examples/fir/task.json"), str(tmp_path / "f.sh"))
-    fir_names = _payload(tmp_path / "f.sh").getnames()
-    # fir uses ../common and ../data: the common root is examples/, layout preserved
-    assert "task/fir/task.json" in fir_names and "task/common" in "".join(fir_names)
-    assert fir.status == "ok"
+
+
+def test_bundle_preserves_sibling_dirs(tmp_path):
+    # A task that uses ../common and ../data (like examples/fir) keeps that layout.
+    root = tmp_path / "proj"
+    for d in ("app/sycl", "common", "data"):
+        (root / d).mkdir(parents=True)
+    (root / "app/k.cu").write_text("// cuda")
+    (root / "app/sycl/k.cpp").write_text("// sycl")
+    (root / "common/h.hpp").write_text("// header")
+    (root / "data/in.bin").write_bytes(b"\0" * 8)
+    (root / "app/task.json").write_text(json.dumps({
+        "cuda_path": "k.cu", "include_dirs": ["../common"], "inputs": ["../data/in.bin"],
+        "reference_build": ["true"], "reference_cmd": "r", "candidate_cmd": "c"}))
+    r = make_bundle(str(root / "app/task.json"), str(tmp_path / "f.sh"))
+    assert r.status == "ok", r.summary
+    names = _payload(tmp_path / "f.sh").getnames()
+    for n in ("task/app/task.json", "task/app/sycl/k.cpp", "task/common/h.hpp",
+              "task/data/in.bin"):
+        assert n in names, n
+    assert '"task/app/task.json"' in (tmp_path / "f.sh").read_text()
     assert "pkg/oneapi_agent/tools/gpu_test.py" in names
     assert not any("__pycache__" in n for n in names)
 
