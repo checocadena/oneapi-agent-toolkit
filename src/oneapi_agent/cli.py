@@ -86,6 +86,11 @@ def build_parser() -> argparse.ArgumentParser:
     lp.add_argument("--scenario", default="success", choices=["success", "stuck", "max_iterations"],
                     help="dry-run script to play")
     lp.add_argument("--max-iterations", type=int)
+    lp.add_argument("--baseline", action="store_true",
+                    help="ablation: no scan_helpers/verify/benchmark; run ends when the model "
+                         "calls finish")
+    lp.add_argument("--evaluate", action="store_true",
+                    help="grade the final sources with a hidden compile + verify + scan")
     lp.add_argument("--runs-dir", default="runs")
     return p
 
@@ -130,6 +135,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         outcome = cli_entry(args)
         print(json.dumps(outcome, indent=2, default=str))
+        if args.baseline:
+            return 0 if outcome.get("stop_reason") == "model_finished" else 1
         return 0 if outcome.get("stop_reason") == "success" else 1
     return 2
 
