@@ -36,9 +36,9 @@ apt-get update -qq && apt-get install -y -qq git g++ curl bzip2 xz-utils gnupg p
   || echo "WARN: apt-get install failed"
 
 phase "0 python env"
-python3 -m venv /opt/gpu-venv && . /opt/gpu-venv/bin/activate
-pip install -q -e "$REPO_DIR" || { echo "FATAL: pip install failed"; phase "FAILED pip"; touch "$OUT/DONE"; exit 1; }
-python "$REPO_DIR/examples/gen_inputs.py"
+if python3 -m venv /opt/gpu-venv; then . /opt/gpu-venv/bin/activate; else echo "WARN: no venv; installing into system python"; fi
+python3 -m pip install -q -e "$REPO_DIR" || { echo "FATAL: pip install failed"; phase "FAILED pip"; touch "$OUT/DONE"; sleep infinity; }
+python3 "$REPO_DIR/examples/gen_inputs.py"
 
 phase "B sycl compiler"
 SYCL_CXX=""
@@ -89,7 +89,7 @@ echo "SYCL_CXX=${SYCL_CXX:-<none>}"
 command -v sycl-ls >/dev/null && sycl-ls
 
 phase "A+C examples"
-SYCL_CXX="$SYCL_CXX" NVCC="$NVCC" python "$REPO_DIR/scripts/gpu_run.py" "$OUT/results" || echo "WARN: gpu_run.py exited $?"
+SYCL_CXX="$SYCL_CXX" NVCC="$NVCC" python3 "$REPO_DIR/scripts/gpu_run.py" "$OUT/results" || echo "WARN: gpu_run.py exited $?"
 
 phase "DONE"
 date -u >"$OUT/DONE"
