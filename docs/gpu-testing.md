@@ -94,7 +94,7 @@ A self-hosted Intel Arc or Flex machine registered as a GitHub Actions runner is
 
 The original Intel DevCloud for oneAPI was retired on 2024-10-31.
 
-## Same port, four GPUs, three rental services
+## Same port, three GPUs, three rental services
 
 Every run is fully automated with `remote-test`, the machine deletion is confirmed, and every result is graded the same way:
 
@@ -103,9 +103,8 @@ Every run is fully automated with `remote-test`, the machine deletion is confirm
 | RTX 2000 Ada | Runpod | 9.69e-8 | 7.45e-9 |
 | A16 | Vultr | 9.69e-8 | 7.45e-9 |
 | RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
-| RTX 4000 Ada (earlier manual run) | Runpod | ✅ | 7.45e-9 |
 
-The values are max abs error on HeCBench softmax, atol 1e-6.
+The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
 
 ## Problems found on real clouds, and what the tool does about them
 
