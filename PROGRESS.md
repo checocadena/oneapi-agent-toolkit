@@ -8,7 +8,7 @@ Status legend: ✅ done · 🟡 in progress · ⛔ blocked · ⬜ not started
 | 1 | Core tool library | ✅ | 5 tools + parsers; smoke-tested on the real toolchain |
 | 2 | MCP server + CLI | ✅ | 5 tools + `doctor` over stdio; `oneapi-agent` CLI; registration docs for Claude Code, Codex, Cursor |
 | 3 | Agent skill | ✅ | `skills/oneapi-port/SKILL.md` |
-| 4 | Standalone agent loop | ✅ | `src/oneapi_agent/loop.py`; dry-run scenarios success/stuck/max_iterations verified. **No real-LLM run: no `ANTHROPIC_API_KEY` in this sandbox** |
+| 4 | Standalone agent loop | ✅ | `src/oneapi_agent/loop.py`; dry-run scenarios success/stuck/max_iterations verified. Real-model runs: 4/4 `success` on `claude-sonnet-5-5` (see below) |
 | 5 | Examples | ✅ | fuzz, fir, saxpy, HeCBench softmax; real pipeline results in `examples/RESULTS.md` |
 | 6 | Tests | ✅ | 78 tests: 78 pass with the toolchain; 75 pass + 3 skip without it; 73 pass + 5 skip in a minimal install without mcp/anthropic. ruff + mypy clean |
 | 7 | Docs | ✅ | README (pitch, problem, Mermaid architecture, quickstart, real example output, status, roadmap, credits), docs/install.md, examples/README.md |
@@ -82,7 +82,7 @@ The same rules are enforced in code by the standalone loop (M4).
 - **`--dry-run`:** a scripted fake model. `--mock-tools` adds canned tool results that are clearly marked MOCK. Without `--mock-tools`, the scripted model drives the *real* tools.
 
 Verified: the mocked scenarios end with `success` (7 iterations), `stuck` (3) and `max_iterations` (6).
-**Not verified: a run with a real model.** No API key is available in this sandbox.
+Real model (later, with `ONEAPI_AGENT_API_KEY`): `claude-sonnet-5-5` reached `success` on saxpy (8 it.), fuzz (5), fir (6) and softmax (6) for about $0.30 in total. Traces in `docs/real-runs/`.
 
 ## Milestone 5: examples
 
@@ -96,7 +96,7 @@ WAV inputs are generated procedurally by `examples/gen_inputs.py`.
 
 The scripted dry run with real tools on saxpy ended in `success` in 7 iterations, including a deliberately broken edit and its fix. Its trace and report are committed in `docs/example-run/`.
 
-Caveat: benchmarks are CPU-only and wall time includes JIT (see `examples/README.md`). The CUDA versions were never executed, since no NVIDIA GPU was available.
+Caveat: benchmarks are CPU-only and wall time includes JIT (see `examples/README.md`). The CUDA versions were later executed on an NVIDIA RTX 2000 Ada (see "NVIDIA GPU run" below).
 
 ## Milestone 6: tests
 
@@ -126,10 +126,18 @@ CI (`.github/workflows/ci.yml`) runs ruff, mypy and pytest on Python 3.11 and 3.
   - the Status table separates working, documented-but-not-exercised, and not-done.
 - The README quickstart commands were run for real and all succeed.
 
+## NVIDIA GPU run (Runpod)
+
+`scripts/gpu-run.sh` on an RTX 2000 Ada pod (the first pod, an RTX 3070 community host, failed `cuInit` with error 999 and was replaced; that log is in `docs/gpu-run/attempt1-broken-host/`).
+All four CUDA examples compile with nvcc and verify against the C++ references; all four SYCL ports compile with open-source DPC++ for `nvptx64-nvidia-cuda`, verify against both the C++ reference and the CUDA binary (fuzz and fir bit-exact, saxpy max err 0, softmax 7.45e-9). Results: `docs/gpu-run/rtx2000ada/`. The pod was deleted afterwards.
+
+## Setup command
+
+`oneapi-agent setup` registers the MCP server with Claude Code, Codex, Cursor and Gemini CLI, and installs the skill for Claude Code. Verified against the real `claude` CLI in a temporary HOME (`claude mcp list` → Connected; re-run leaves one entry). The other three are unit-tested config merges.
+
 ## Known gaps / next steps (honest list)
 
-- **Not run with a real LLM.** The `AnthropicModel` path is implemented following the SDK docs, but no API key was available. It is the first thing to try: `ANTHROPIC_API_KEY=... oneapi-agent loop --config examples/saxpy/task.json`.
-- **No GPU.** All SYCL execution and benchmarks used the OpenCL CPU device. Wall-clock benchmarks include JIT.
-- **CUDA versions of the examples were never compiled with nvcc or run.** They were only parsed and migrated by c2s.
-- MCP registration in Claude Code, Codex and Cursor is documented but was not exercised in those clients.
-- The idiomatic SYCL ports in `examples/*/sycl/` were written by hand as target end states, not produced by the loop.
+- One real-model run per example; no comparison yet against the same agent without the toolkit.
+- No Intel GPU tested. GPU kernel timings are single small launches, not a performance claim.
+- Codex, Cursor and Gemini registration is unit-tested but not exercised in those clients.
+- The idiomatic SYCL ports in `examples/*/sycl/` were written by hand as target end states; the loop's own edits are recorded in `docs/real-runs/*/trace.jsonl`.

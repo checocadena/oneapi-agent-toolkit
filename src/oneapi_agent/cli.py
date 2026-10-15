@@ -70,6 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("serve", help="run the MCP server on stdio")
 
+    st = sub.add_parser("setup", help="register the MCP server (and skill) with coding agents")
+    st.add_argument("--agent", action="append", dest="agents",
+                    choices=["claude", "codex", "cursor", "gemini"],
+                    help="agent to configure (repeatable); default: every agent detected")
+    st.add_argument("--dry-run", action="store_true", help="show what would change, write nothing")
+    st.add_argument("--no-skill", action="store_true", help="do not install the oneapi-port skill")
+
     lp = sub.add_parser("loop", help="run the standalone agent loop")
     lp.add_argument("--config", help="JSON task file (see examples/*/task.json)")
     lp.add_argument("--dry-run", action="store_true",
@@ -108,6 +115,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.cmd == "benchmark":
         return _emit(benchmark(args.command, args.runs, args.devices, warmup=args.warmup,
                                report_regex=args.report_regex), args.summary)
+    if args.cmd == "setup":
+        from .setup import setup
+
+        return _emit(setup(args.agents, dry_run=args.dry_run, skill=not args.no_skill),
+                     args.summary)
     if args.cmd == "serve":
         from .server import main as serve_main
 

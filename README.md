@@ -29,6 +29,35 @@ For softmax, c2s produced code that compiles cleanly with **zero migration warni
 Only behavioural verification caught it. Swapping in `sycl::exp` brings it back to 9.3e-8.
 `scan_helpers` now flags `sycl::native::` math as an advisory. That is the evidence-first loop in practice.
 
+## A real model closing the gap
+
+`oneapi-agent loop` with `claude-sonnet-5-5` driving the real tools (c2s 21.0.0, icpx 2026.1.1, OpenCL CPU device).
+The loop declares success only when compile, verify and a zero-helper scan all hold on the same source tree.
+Traces and reports: [`docs/real-runs/`](docs/real-runs/).
+
+| Example | Stop reason | Iterations (max 8) | Estimated cost |
+|---|---|---|---|
+| saxpy | `success` | 8 | $0.082 |
+| fuzz (audio) | `success` | 5 | $0.075 |
+| FIR 64-tap (audio) | `success` | 6 | $0.067 |
+| HeCBench softmax | `success` | 6 | $0.079 |
+
+All four end with 0 dpct helpers and a passing `verify`. That is one run per example, so treat iteration counts as anecdotes, not a distribution.
+
+## Checked on an NVIDIA GPU
+
+The CUDA originals and the SYCL ports were then run on an NVIDIA RTX 2000 Ada (Runpod), with SYCL built by open-source DPC++ for `nvptx64-nvidia-cuda`.
+Script: [`scripts/gpu-run.sh`](scripts/gpu-run.sh). Every result JSON and the full log: [`docs/gpu-run/rtx2000ada/`](docs/gpu-run/rtx2000ada/SUMMARY.md).
+
+| Example | CUDA vs C++ reference | SYCL-on-GPU vs C++ reference | SYCL-on-GPU vs CUDA binary |
+|---|---|---|---|
+| fuzz | ✅ -138.5 dBFS | ✅ -138.5 dBFS | ✅ bit-exact |
+| FIR | ✅ -135.0 dBFS | ✅ -135.0 dBFS | ✅ bit-exact |
+| saxpy | ✅ | ✅ | ✅ max abs err 0 |
+| softmax | ✅ | ✅ | ✅ max abs err 7.45e-9 |
+
+So the reference can be the real CUDA binary, not only a C++ stand-in. Kernel timings were also recorded, but they come from single small launches and are not a performance claim.
+
 ## Architecture
 
 ```mermaid
@@ -76,8 +105,10 @@ g++ -O2 examples/saxpy/saxpy_ref.cpp -o /tmp/saxpy_ref
 oneapi-agent verify --ref "/tmp/saxpy_ref {output}" --cand "/tmp/saxpy_sycl {output}" --atol 1e-6
 oneapi-agent benchmark "/tmp/saxpy_sycl /tmp/out.bin" --runs 5
 
-# Serve them to an agent over MCP (registration for Claude Code / Codex / Cursor: docs/install.md)
-oneapi-agent serve
+# Register the MCP server (and the oneapi-port skill) with your agents, in one command
+oneapi-agent setup --dry-run             # show what would change
+oneapi-agent setup                       # every detected agent: claude, codex, cursor, gemini
+oneapi-agent setup --agent claude        # or pick
 
 # Standalone agent loop
 oneapi-agent loop --dry-run --mock-tools                 # no toolchain, no API key
@@ -125,19 +156,20 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | `compile` (icpx) | ✅ working | verified with icpx 2026.1.1 (conda-forge) |
 | `scan_helpers` | ✅ working | static text scan; 11 categories plus advisories |
 | `verify` array / audio | ✅ working | real subprocesses; 32-bit float WAV recommended for the -96 dBFS test |
-| `benchmark` | ✅ working | verified on the OpenCL CPU device only; **no GPU tested** |
+| `benchmark` | ✅ working | OpenCL CPU device and NVIDIA `cuda:0` (RTX 2000 Ada); no Intel GPU tested yet |
 | MCP server | ✅ working | in-process `list_tools` / `call_tool` tested (mcp 2.3.0; mcp 1.x import path supported) |
-| Registration in Claude Code / Codex / Cursor | 🟡 documented, not exercised | configs follow each client's documented format; no client available in the build sandbox |
+| `oneapi-agent setup` | ✅ working | Claude Code verified end to end (`claude mcp list` → Connected, idempotent re-run); Codex / Cursor / Gemini config writes unit-tested, not yet exercised in those clients |
 | Skill `oneapi-port` | ✅ written | the procedure, loop rules and report template |
 | Standalone loop, dry run (scripted model) | ✅ working | mocked and real-tool runs; success, stuck, max-iterations and budget paths are tested |
-| Standalone loop with a real model | 🟡 implemented, **not run** | no `ANTHROPIC_API_KEY` in the build sandbox |
-| CUDA examples executed on NVIDIA hardware | ⬜ not done | no NVIDIA GPU; the plain C++ references are the ground truth |
-| Tests | ✅ 78 tests | pass with and without the toolchain (toolchain tests auto-skip) |
+| Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success`, see [docs/real-runs](docs/real-runs/) |
+| CUDA examples executed on NVIDIA hardware | ✅ done | RTX 2000 Ada; CUDA and SYCL-on-GPU both verify, see [docs/gpu-run](docs/gpu-run/rtx2000ada/SUMMARY.md) |
+| Tests | ✅ 84 passed, 3 skipped | pass with and without the toolchain (toolchain tests auto-skip) |
 
 ## Roadmap
 
-- Run the real-model loop on all four examples and publish the traces, including how many iterations each takes.
-- GPU validation: Intel Arc/Max through Level Zero, and NVIDIA through the CUDA plugin, so the reference can be the actual CUDA binary.
+- Repeat the real-model runs (several seeds per example) and compare against the same agent **without** the toolkit.
+- A oneMath example (cuBLAS/cuFFT → oneMath) and a multi-file HeCBench app.
+- Intel GPU validation (Arc/Max through Level Zero).
 - AOT builds (`-fsycl-targets=`) and in-process kernel timing by default, so benchmarks exclude JIT.
 - `verify` input generators (random arrays, edge cases such as denormals, NaN and huge values) and multi-output programs.
 - More scan rules: `sycl::ext::oneapi::experimental` usage, implicit `double` on devices without fp64, USM `malloc_shared` in hot loops.
