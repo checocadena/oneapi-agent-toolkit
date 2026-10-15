@@ -23,6 +23,9 @@ jobs:
   toolchain:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash  # explicit => bash -eo pipefail, so `cmd | tee` keeps cmd's exit status
     env:
       TOOLCHAIN_ROOT: /home/runner/oneapi-toolchain
       OUT: ci-out
@@ -62,6 +65,7 @@ jobs:
           icpx --version | head -1
           c2s --version | head -1
           sycl-ls | tee "$OUT/sycl-ls.txt"
+          lscpu | grep -E 'Model name|Flags' | sed -E 's/^(Flags:).*(avx512f).*/\1 ... \2 .../' | tee "$OUT/cpu.txt"
 
       - name: pytest (toolchain-marked tests must run, not skip)
         run: pytest -q -rs --junitxml="$OUT/pytest.xml"
