@@ -35,8 +35,8 @@ def test_pod_is_deleted_when_the_agent_never_answers(tmp_path):
     r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), api=api, poll_s=0.01,
                            max_minutes=0.01, into=str(tmp_path), log=lambda m: None,
                            agent_url=lambda pid: "http://127.0.0.1:9")  # nothing listens there
-    assert r.status == "error" and "TimeoutError" in r.summary
-    assert api.deleted == ["p1"] and r.evidence["pod_deleted"] is True
+    assert r.status == "error" and "became ready" in r.summary
+    assert api.deleted == ["p1"] and "stuck" in r.evidence["create_attempts"][-1]["error"]
 
 
 def test_create_body_carries_token_agent_and_port(monkeypatch):
@@ -88,5 +88,52 @@ def test_falls_back_to_the_next_gpu_when_one_is_out_of_stock(tmp_path):
     r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), api=api, poll_s=0.01,
                            max_minutes=0.01, into=str(tmp_path), log=lambda m: None,
                            agent_url=lambda pid: "http://127.0.0.1:9")
-    assert len(tried) == 2 and r.evidence["gpu"] == tried[1]
+    assert len(tried) == 2
     assert "HTTP 400" in r.evidence["create_attempts"][0]["error"] and api.deleted == ["p1"]
+    assert r.evidence["create_attempts"][1]["gpu"] == tried[1]
+
+
+
+class StuckThenSlowProvider(remote.Provider):
+    """First machine reports a broken host; the replacement never answers (boot timeout)."""
+
+    name = "fake"
+
+    def __init__(self):
+        self.created, self.deleted, self.bad = [], [], []
+
+    def candidates(self, vendor, gpu_type):
+        return ["G"]
+
+    def price(self, gpu):
+        return None
+
+    def create(self, gpu, *, vendor, image, env):
+        mid = f"m{len(self.created) + 1}"
+        self.created.append(mid)
+        return mid
+
+    def agent_url(self, machine_id):
+        if machine_id == "m1":
+            raise remote.MachineStuck("host cannot pull the image: TLS handshake timeout")
+        return "http://127.0.0.1:9"
+
+    def delete(self, machine_id):
+        self.deleted.append(machine_id)
+
+    def exists(self, machine_id):
+        return machine_id not in self.deleted
+
+    def mark_bad(self, machine_id):
+        self.bad.append(machine_id)
+
+
+def test_stuck_machines_are_replaced_then_given_up(tmp_path):
+    prov = StuckThenSlowProvider()
+    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider=prov, poll_s=0.01,
+                           boot_minutes=0.002, max_stuck=2, max_minutes=5, into=str(tmp_path),
+                           log=lambda m: None)
+    assert prov.created == ["m1", "m2"] and prov.deleted == ["m1", "m2"] and prov.bad == ["m1", "m2"]
+    reasons = [a["error"] for a in r.evidence["create_attempts"]]
+    assert "TLS handshake timeout" in reasons[0] and "did not answer within" in reasons[1]
+    assert r.status == "error" and "2 stuck machine(s) replaced" in r.summary

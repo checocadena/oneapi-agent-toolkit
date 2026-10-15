@@ -241,6 +241,10 @@ class Unavailable(Exception):
     """The provider could not create this GPU right now (no stock, quota): try the next one."""
 
 
+class MachineStuck(Exception):
+    """A created machine will not come up (image pull failing, host offline): replace it."""
+
+
 START_CMD = 'echo "$GT_AGENT" | base64 -d > /gt_agent.py && exec python3 /gt_agent.py'
 
 
@@ -271,6 +275,9 @@ class Provider:
 
     def exists(self, machine_id: str) -> bool:
         raise NotImplementedError
+
+    def mark_bad(self, machine_id: str) -> None:
+        """Remember that this machine's host is broken, so the next create avoids it."""
 
 
 class RunpodProvider(Provider):
@@ -338,11 +345,23 @@ class VastProvider(Provider):
     GPUS = {"nvidia": ["RTX A4000", "RTX 3090", "RTX A5000", "RTX 4090", "RTX 4080"], "amd": []}
     IMAGE = {"nvidia": "pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel"}  # python3 + nvcc
 
+    # status_msg fragments that mean the host cannot pull the image (seen live: Docker Hub
+    # "TLS handshake timeout"); Vast keeps such instances in "loading" indefinitely.
+    PULL_ERRORS = ("Error response from daemon", "TLS handshake timeout", "error pulling",
+                   "manifest unknown", "no space left on device")
+
     def __init__(self, key: str, api: _JSONAPI | None = None) -> None:
         self.api = api or _JSONAPI("https://console.vast.ai/api/v0", key)
+        self._host_of: dict[str, Any] = {}  # instance id -> host machine id
+        self.bad_hosts: set[Any] = set()
 
     def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
         return [gpu_type] if gpu_type else self.GPUS.get(vendor, [])
+
+    def mark_bad(self, machine_id: str) -> None:
+        host = self._host_of.get(machine_id)
+        if host is not None:
+            self.bad_hosts.add(host)
 
     def _offers(self, gpu: str) -> list[dict[str, Any]]:
         q = {"gpu_name": {"in": [gpu]}, "num_gpus": {"eq": 1}, "rentable": {"eq": True},
@@ -350,9 +369,10 @@ class VastProvider(Provider):
              "direct_port_count": {"gte": 1}, "type": "ondemand",
              "order": [["dph_total", "asc"]], "limit": 5}
         try:
-            return list((self.api.req("POST", "/bundles/", q) or {}).get("offers") or [])
+            offers = list((self.api.req("POST", "/bundles/", q) or {}).get("offers") or [])
         except (urllib.error.URLError, ValueError):
             return []
+        return [o for o in offers if o.get("machine_id") not in self.bad_hosts]
 
     def price(self, gpu: str) -> float | None:
         offers = self._offers(gpu)
@@ -374,7 +394,9 @@ class VastProvider(Provider):
                     continue
                 raise Unavailable(f"HTTP {e.code}: {e.read().decode(errors='replace')[:200]}") from e
             if res and res.get("success") and res.get("new_contract"):
-                return str(res["new_contract"])
+                mid = str(res["new_contract"])
+                self._host_of[mid] = offer.get("machine_id")
+                return mid
         raise Unavailable("every offer was taken before it could be rented")
 
     def _instance(self, mid: str) -> dict[str, Any] | None:
@@ -391,9 +413,11 @@ class VastProvider(Provider):
         inst = self._instance(machine_id)
         if not inst:
             return None
+        msg = str(inst.get("status_msg") or "")
         if inst.get("actual_status") in ("exited", "unknown", "offline"):
-            raise RuntimeError(f"vast instance is {inst.get('actual_status')}: "
-                               f"{inst.get('status_msg', '')}"[:300])
+            raise MachineStuck(f"vast instance is {inst.get('actual_status')}: {msg}"[:300])
+        if inst.get("actual_status") != "running" and any(e in msg for e in self.PULL_ERRORS):
+            raise MachineStuck(f"host cannot pull the image: {msg.strip()}"[:300])
         mapped = (inst.get("ports") or {}).get("8000/tcp") or []
         ip = inst.get("public_ipaddr")
         if inst.get("actual_status") == "running" and mapped and ip:
@@ -658,7 +682,8 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                 image: str | None = None, max_minutes: float = 45, max_usd: float = 2.0,
                 into: str = "docs/gpu-run", keep_pod: bool = False, api_key: str | None = None,
                 api: RunpodAPI | None = None, log: Callable[[str], None] = print,
-                poll_s: float = 10, agent_url: Callable[[str], str] | None = None) -> ToolResult:
+                poll_s: float = 10, agent_url: Callable[[str], str] | None = None,
+                boot_minutes: float = 15, max_stuck: int = 3) -> ToolResult:
     """Rent a GPU, run ``gpu_test`` there through a bundle, import the results, delete it."""
     if isinstance(provider, Provider):
         prov = provider
@@ -711,40 +736,69 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
     result: ToolResult
     gpu, price = affordable[0][0], affordable[0][1]
     try:
-        for cand in affordable:
+        # Create a machine and wait for its agent. A machine that never comes up (bad host,
+        # failing image pull, boot timeout) is deleted and replaced, like a sold-out GPU.
+        queue = list(affordable)
+        url: str | None = None
+        stuck = 0
+        while queue and url is None and stuck < max_stuck:
+            cand = queue[0]
             try:
                 mid = prov.create(cand[0], vendor=vendor, image=image, env=env)
             except Unavailable as e:
                 ev["create_attempts"].append({"gpu": cand[0], "error": str(e)})
                 log(f"{cand[0]}: not created ({str(e)[:400]}); trying the next GPU")
+                queue.pop(0)
                 continue
             gpu, price, max_minutes = cand
-            break
-        if mid is None:
+            deadline = t0 + max_minutes * 60
+            log(f"created {prov.name} machine {mid} ({gpu}, ${price}/h)")
+            boot_deadline = min(deadline, time.time() + boot_minutes * 60)
+            reason = ""
+            seen_codes: set[int] = set()
+            while url is None:
+                if time.time() >= boot_deadline:
+                    reason = (f"its agent did not answer within {boot_minutes:.0f} min"
+                              if boot_deadline < deadline else
+                              "its agent did not answer before the overall time limit")
+                    break
+                try:
+                    u = agent_url(mid) if agent_url else prov.agent_url(mid)
+                except MachineStuck as e:
+                    reason = str(e)
+                    break
+                if u:
+                    code, _ = _agent_call(u + "/status", token, timeout=20, context=ctx)
+                    if code == 200:
+                        url = u
+                        break
+                    if code not in seen_codes:  # 0 = not reachable yet; 502/404 = starting
+                        seen_codes.add(code)
+                        log(f"waiting for the agent (HTTP {code or 'no answer'})")
+                time.sleep(poll_s)
+            if url is not None:
+                break
+            stuck += 1
+            ev["create_attempts"].append({"gpu": gpu, "machine_id": mid, "error": f"stuck: {reason}"})
+            log(f"{prov.name} machine {mid} is stuck ({reason[:200]}); deleting it and trying "
+                "another")
+            prov.mark_bad(mid)
+            if not keep_pod:
+                prov.delete(mid)
+                log(f"deleted {prov.name} machine {mid}: "
+                    f"{'confirmed' if not prov.exists(mid) else 'NOT CONFIRMED'}")
+            mid = None
+            if time.time() >= t0 + max_minutes * 60:
+                break
+        if url is None:
             getattr(prov, "cleanup", lambda: None)()
             return ToolResult("remote_test", "error",
-                              f"no candidate GPU could be created on {prov.name} "
-                              f"({len(affordable)} tried)", ev,
-                              ["Usually means no stock right now; retry later or pass --gpu."])
+                              f"no {prov.name} machine became ready ({len(affordable)} GPU "
+                              f"type(s) tried, {stuck} stuck machine(s) replaced)", ev,
+                              ["Usually means no stock or unhealthy hosts right now; retry later "
+                               "or pass --gpu."])
         ev.update(gpu=gpu, price_per_hour=price, max_minutes=round(max_minutes, 1),
                   machine_id=mid)
-        deadline = t0 + max_minutes * 60
-        log(f"created {prov.name} machine {mid} ({gpu}, ${price}/h)")
-        # Wait until the agent's address is known and it answers, then upload the bundle.
-        url: str | None = None
-        seen_codes: set[int] = set()
-        while time.time() < deadline:
-            url = agent_url(mid) if agent_url else prov.agent_url(mid)
-            if url:
-                code, _ = _agent_call(url + "/status", token, timeout=20, context=ctx)
-                if code == 200:
-                    break
-                if code not in seen_codes:  # 0 = not reachable yet; 502/404 = still starting
-                    seen_codes.add(code)
-                    log(f"waiting for the agent (HTTP {code or 'no answer'})")
-            time.sleep(poll_s)
-        else:
-            raise TimeoutError("the machine's agent never answered before the time limit")
         assert url is not None
         ev["agent_url"] = url
         code, resp = _agent_call(url + "/bundle", token, "PUT", (tmp / "bundle.sh").read_bytes(),

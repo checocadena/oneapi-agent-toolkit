@@ -77,7 +77,7 @@ def test_vast_agent_url_from_mapped_port_and_dead_instance_raises():
     loading = {"instances": {"actual_status": "loading", "ports": {}}}
     assert remote.VastProvider("k", api=FakeJSON({("GET", "/instances/9/"): loading})).agent_url("9") is None
     dead = {"instances": {"actual_status": "exited", "status_msg": "image pull failed"}}
-    with pytest.raises(RuntimeError, match="exited"):
+    with pytest.raises(remote.MachineStuck, match="exited"):
         remote.VastProvider("k", api=FakeJSON({("GET", "/instances/9/"): dead})).agent_url("9")
     gone = remote.VastProvider("k", api=FakeJSON({("GET", "/instances/9/"): {"instances": None}}))
     assert gone.exists("9") is False
@@ -288,3 +288,21 @@ def test_digitalocean_ssh_keys_env_override(monkeypatch):
     monkeypatch.setenv("ONEAPI_DO_SSH_KEYS", "aa:bb, 123")
     d = remote.DigitalOceanProvider("k", api=FakeJSON({}))
     assert d.ssh_keys() == ["aa:bb", "123"]
+
+
+
+def test_vast_pull_error_marks_the_host_bad_and_skips_it_next_time():
+    offers = {"offers": [{"id": 1, "machine_id": 501, "dph_total": 0.16},
+                         {"id": 2, "machine_id": 502, "dph_total": 0.17}]}
+    api = FakeJSON({("POST", "/bundles/"): offers,
+                    ("PUT", "/asks/1/"): {"success": True, "new_contract": 71},
+                    ("PUT", "/asks/2/"): {"success": True, "new_contract": 72},
+                    ("GET", "/instances/71/"): {"instances": {
+                        "actual_status": "loading", "status_msg": 'Error response from daemon: '
+                        'Get "https://registry-1.docker.io/v2/": net/http: TLS handshake timeout'}}})
+    v = remote.VastProvider("k", api=api)
+    assert v.create("RTX 3090", vendor="nvidia", image=None, env={}) == "71"
+    with pytest.raises(remote.MachineStuck, match="cannot pull the image"):
+        v.agent_url("71")
+    v.mark_bad("71")
+    assert v.create("RTX 3090", vendor="nvidia", image=None, env={}) == "72"  # host 501 skipped

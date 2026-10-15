@@ -102,6 +102,8 @@ def build_parser() -> argparse.ArgumentParser:
     rt.add_argument("--max-usd", type=float, default=2.0)
     rt.add_argument("--into", default="docs/gpu-run")
     rt.add_argument("--keep-pod", action="store_true", help="do not delete the pod (debugging)")
+    rt.add_argument("--boot-minutes", type=float, default=15,
+                    help="replace a machine whose agent has not answered after this long")
 
     sub.add_parser("serve", help="run the MCP server on stdio")
 
@@ -133,6 +135,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    try:
+        return _main(argv)
+    except KeyboardInterrupt:  # remote-test has already deleted its machine in a finally block
+        print("[oneapi-agent] interrupted", file=sys.stderr)
+        return 130
+
+
+def _main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.cmd == "doctor":
         rep = toolchain_report()
@@ -173,6 +183,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                  provider=args.provider,
                                  cloud=args.cloud, image=args.image, max_minutes=args.max_minutes,
                                  max_usd=args.max_usd, into=args.into, keep_pod=args.keep_pod,
+                                 boot_minutes=args.boot_minutes,
                                  log=lambda m: print(m, file=sys.stderr)), args.summary)
     if args.cmd == "setup":
         from .setup import setup
