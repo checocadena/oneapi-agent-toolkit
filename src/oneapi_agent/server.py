@@ -11,6 +11,7 @@ from typing import Any
 from .toolchain import toolchain_report
 from .tools import benchmark as _benchmark
 from .tools import compile_sycl as _compile
+from .tools import gpu_test as _gpu_test
 from .tools import migrate as _migrate
 from .tools import scan_helpers as _scan_helpers
 from .tools import verify as _verify
@@ -113,6 +114,25 @@ def benchmark(cmd: str, runs: int = 10, devices: list[str] | None = None, warmup
               cwd: str | None = None, report_regex: str | None = None) -> dict[str, Any]:
     return _benchmark(cmd, runs, devices, warmup=warmup, cwd=cwd,
                       report_regex=report_regex).to_dict()
+
+
+@mcp.tool(
+    name="gpu_test",
+    description=(
+        "Verify a task's SYCL port on this machine's GPU (NVIDIA via CUDA, AMD via HIP, or Intel "
+        "via Level Zero), found with sycl-ls. Builds the task's C++ reference and, where "
+        "possible, the ORIGINAL CUDA (nvcc, or hipify+hipcc on AMD); compiles the port ahead of "
+        "time for the GPU; verifies it against both; benchmarks it. task_file uses the "
+        "examples/*/task.json format. Writes results/, SUMMARY.md and summary.json under "
+        "out_dir. For a GPU this machine does not have, use the CLI: `oneapi-agent bundle "
+        "task.json` makes a one-file test to run there, `oneapi-agent ingest` imports the "
+        "results." + STATUS_NOTE
+    ),
+)
+def gpu_test(task_file: str, out_dir: str, vendor: str | None = None,
+             device: str | None = None, allow_cpu: bool = False) -> dict[str, Any]:
+    return _gpu_test(task_file, out_dir, vendor=vendor, device=device,
+                     allow_cpu=allow_cpu).to_dict()
 
 
 @mcp.tool(

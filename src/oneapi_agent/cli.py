@@ -13,7 +13,7 @@ from collections.abc import Sequence
 
 from .result import ToolResult
 from .toolchain import toolchain_report
-from .tools import benchmark, compile_sycl, migrate, scan_helpers, verify
+from .tools import benchmark, compile_sycl, gpu_test, migrate, scan_helpers, verify
 
 EXIT = {"ok": 0, "fail": 1}
 
@@ -67,6 +67,25 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--device", action="append", dest="devices",
                    help="ONEAPI_DEVICE_SELECTOR value (repeatable); 'none' = no selector")
     b.add_argument("--report-regex")
+
+    g = sub.add_parser("gpu-test", help="verify a task's SYCL port on this machine's GPU "
+                       "(NVIDIA, AMD or Intel), against the C++ reference and the original CUDA")
+    g.add_argument("task", help="task.json (examples/*/task.json format)")
+    g.add_argument("--out", default="gputest-out", help="output dir (results/, SUMMARY.md)")
+    g.add_argument("--vendor", choices=["nvidia", "amd", "intel"], help="only use this vendor's GPU")
+    g.add_argument("--device", help="exact ONEAPI_DEVICE_SELECTOR value, e.g. level_zero:0")
+    g.add_argument("--allow-cpu", action="store_true", help="fall back to a CPU device (testing)")
+    g.add_argument("--no-native", action="store_true", help="skip building the original CUDA")
+    g.add_argument("--runs", type=int, default=10)
+
+    bu = sub.add_parser("bundle", help="pack a task + this toolkit into one .sh to run gpu-test "
+                        "on a machine this tool cannot reach (SSH box, Jupyter, CI)")
+    bu.add_argument("task")
+    bu.add_argument("-o", "--output", help="bundle path (default gputest-<name>.sh)")
+
+    ig = sub.add_parser("ingest", help="import a gpu-test results archive from a bundle run")
+    ig.add_argument("archive")
+    ig.add_argument("--into", default="docs/gpu-run")
 
     sub.add_parser("serve", help="run the MCP server on stdio")
 
@@ -122,6 +141,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.cmd == "benchmark":
         return _emit(benchmark(args.command, args.runs, args.devices, warmup=args.warmup,
                                report_regex=args.report_regex), args.summary)
+    if args.cmd == "gpu-test":
+        return _emit(gpu_test(args.task, args.out, vendor=args.vendor, device=args.device,
+                              allow_cpu=args.allow_cpu, native=not args.no_native,
+                              runs=args.runs), args.summary)
+    if args.cmd in ("bundle", "ingest"):
+        from .bundle import ingest_results, make_bundle
+
+        return _emit(make_bundle(args.task, args.output) if args.cmd == "bundle"
+                     else ingest_results(args.archive, args.into), args.summary)
     if args.cmd == "setup":
         from .setup import setup
 
