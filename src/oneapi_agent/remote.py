@@ -23,6 +23,7 @@ import json
 import os
 import secrets
 import shlex
+import shutil
 import ssl
 import tempfile
 import time
@@ -512,6 +513,42 @@ class DigitalOceanProvider(Provider):
     def __init__(self, key: str, api: _JSONAPI | None = None) -> None:
         self.api = api or _JSONAPI("https://api.digitalocean.com/v2", key)
         self._sizes: dict[str, dict[str, Any]] | None = None
+        self._temp_key_id: int | None = None  # throwaway SSH key registered by this run
+
+    def ssh_keys(self) -> list[Any]:
+        """SSH keys for the droplet: DigitalOcean's GPU images refuse root passwords.
+
+        ONEAPI_DO_SSH_KEYS (comma-separated ids/fingerprints) wins; otherwise the account's
+        existing keys; otherwise a throwaway ed25519 key made and registered for this run only
+        (deleted again with the droplet). The agent never needs SSH; the key just satisfies
+        the image.
+        """
+        env = os.environ.get("ONEAPI_DO_SSH_KEYS", "").strip()
+        if env:
+            return [k.strip() for k in env.split(",") if k.strip()]
+        try:
+            existing = (self.api.req("GET", "/account/keys?per_page=200") or {}).get("ssh_keys")
+        except (urllib.error.URLError, ValueError):
+            existing = None
+        if existing:
+            return [k["id"] for k in existing]
+        tmp = Path(tempfile.mkdtemp(prefix="do-key-"))
+        res = run_command(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C",
+                           "oneapi-gputest-temp", "-f", str(tmp / "k")], timeout=60)
+        if res.returncode != 0:
+            raise Unavailable("no SSH key on the account and ssh-keygen failed: "
+                              + (res.stderr or res.stdout)[-200:])
+        try:
+            key = self.api.req("POST", "/account/keys", {
+                "name": f"oneapi-gputest-temp-{secrets.token_hex(3)}",
+                "public_key": (tmp / "k.pub").read_text().strip()})["ssh_key"]
+        except urllib.error.HTTPError as e:
+            raise Unavailable(f"could not register a temporary SSH key: HTTP {e.code}: "
+                              f"{e.read().decode(errors='replace')[:300]}") from e
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)  # the private half is never needed
+        self._temp_key_id = int(key["id"])
+        return [key["id"]]
 
     def sizes(self) -> dict[str, dict[str, Any]]:
         if self._sizes is None:
@@ -548,7 +585,7 @@ class DigitalOceanProvider(Provider):
             raise Unavailable(f"no default GPU image for {vendor}; pass --image")
         body = {"name": f"oneapi-gputest-{secrets.token_hex(3)}", "region": regions[0],
                 "size": gpu, "image": img, "user_data": cloud_init_script(env),
-                "tags": ["oneapi-gputest"]}
+                "ssh_keys": self.ssh_keys(), "tags": ["oneapi-gputest"]}
         try:
             res = self.api.req("POST", "/droplets", body)
         except urllib.error.HTTPError as e:
@@ -578,6 +615,17 @@ class DigitalOceanProvider(Provider):
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 raise
+        self.cleanup()
+
+    def cleanup(self) -> None:
+        """Remove the throwaway SSH key, if this run registered one."""
+        if self._temp_key_id is not None:
+            try:
+                self.api.req("DELETE", f"/account/keys/{self._temp_key_id}")
+            except urllib.error.HTTPError as e:
+                if e.code != 404:
+                    raise
+            self._temp_key_id = None
 
     def exists(self, machine_id: str) -> bool:
         return self._droplet(machine_id) is not None
@@ -666,11 +714,12 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                 mid = prov.create(cand[0], vendor=vendor, image=image, env=env)
             except Unavailable as e:
                 ev["create_attempts"].append({"gpu": cand[0], "error": str(e)})
-                log(f"{cand[0]}: not created ({str(e)[:80]}); trying the next GPU")
+                log(f"{cand[0]}: not created ({str(e)[:400]}); trying the next GPU")
                 continue
             gpu, price, max_minutes = cand
             break
         if mid is None:
+            getattr(prov, "cleanup", lambda: None)()
             return ToolResult("remote_test", "error",
                               f"no candidate GPU could be created on {prov.name} "
                               f"({len(affordable)} tried)", ev,

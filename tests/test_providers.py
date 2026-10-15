@@ -223,7 +223,8 @@ def test_digitalocean_picks_single_amd_gpu_and_boots_rocm_image():
         created.update(body)
         return {"droplet": {"id": 4242}}
 
-    api = FakeJSON({("GET", "/sizes"): SIZES, ("POST", "/droplets"): create})
+    api = FakeJSON({("GET", "/sizes"): SIZES, ("POST", "/droplets"): create,
+                    ("GET", "/account/keys"): {"ssh_keys": [{"id": 11}, {"id": 12}]}})
     d = remote.DigitalOceanProvider("k", api=api)
     assert d.candidates("amd", None) == ["gpu-mi300x1-192gb"]  # 8x and region-less sizes skipped
     assert d.candidates("nvidia", None) == ["gpu-h100x1-80gb"]
@@ -231,10 +232,12 @@ def test_digitalocean_picks_single_amd_gpu_and_boots_rocm_image():
     mid = d.create("gpu-mi300x1-192gb", vendor="amd", image=None, env={"GT_TOKEN": "tok"})
     assert mid == "4242" and created["region"] == "atl1" and created["image"] == "gpu-amd-base"
     assert "export GT_TOKEN=tok" in created["user_data"] and created["tags"] == ["oneapi-gputest"]
+    assert created["ssh_keys"] == [11, 12]  # GPU images refuse root passwords
 
 
 def test_digitalocean_reports_api_refusal_as_unavailable():
-    api = FakeJSON({("GET", "/sizes"): SIZES, ("POST", "/droplets"): http_error(422)})
+    api = FakeJSON({("GET", "/sizes"): SIZES, ("POST", "/droplets"): http_error(422),
+                    ("GET", "/account/keys"): {"ssh_keys": [{"id": 11}]}})
     with pytest.raises(remote.Unavailable, match="HTTP 422"):
         remote.DigitalOceanProvider("k", api=api).create("gpu-mi300x1-192gb", vendor="amd",
                                                           image=None, env={})
@@ -259,3 +262,29 @@ def test_digitalocean_accepts_doctl_token_name(monkeypatch):
     r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider="digitalocean",
                            log=lambda m: None)
     assert r.status == "toolchain_missing" and "OCEAN_API_KEY" in r.summary
+
+
+@pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs ssh-keygen")
+def test_digitalocean_registers_and_removes_a_throwaway_key(monkeypatch):
+    monkeypatch.delenv("ONEAPI_DO_SSH_KEYS", raising=False)
+    registered = {}
+
+    def add_key(body):
+        registered.update(body)
+        return {"ssh_key": {"id": 99}}
+
+    api = FakeJSON({("GET", "/sizes"): SIZES, ("GET", "/account/keys"): {"ssh_keys": []},
+                    ("POST", "/account/keys"): add_key,
+                    ("POST", "/droplets"): {"droplet": {"id": 5}},
+                    ("DELETE", "/droplets/5"): None, ("DELETE", "/account/keys/99"): None})
+    d = remote.DigitalOceanProvider("k", api=api)
+    d.create("gpu-mi300x1-192gb", vendor="amd", image=None, env={})
+    assert registered["public_key"].startswith("ssh-ed25519 ")
+    d.delete("5")
+    assert ("DELETE", "/account/keys/99", None) in api.calls
+
+
+def test_digitalocean_ssh_keys_env_override(monkeypatch):
+    monkeypatch.setenv("ONEAPI_DO_SSH_KEYS", "aa:bb, 123")
+    d = remote.DigitalOceanProvider("k", api=FakeJSON({}))
+    assert d.ssh_keys() == ["aa:bb", "123"]
