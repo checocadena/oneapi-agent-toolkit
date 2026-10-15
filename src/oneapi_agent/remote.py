@@ -34,7 +34,13 @@ from .bundle import ingest_results, make_bundle
 from .result import ToolResult
 
 API = "https://api.runpod.io/v2"
-DEFAULT_GPU = {"nvidia": "NVIDIA RTX A4500", "amd": "AMD Instinct MI300X OAM"}
+# Tried in order until one is in stock: cheap cards first (Runpod catalog ids).
+DEFAULT_GPUS = {
+    "nvidia": ["NVIDIA RTX A4500", "NVIDIA RTX 2000 Ada Generation", "NVIDIA RTX A4000",
+               "NVIDIA RTX A5000", "NVIDIA RTX 4000 Ada Generation", "NVIDIA L4",
+               "NVIDIA GeForce RTX 4090", "NVIDIA A40", "NVIDIA RTX A6000"],
+    "amd": ["AMD Instinct MI300X OAM"],
+}
 DEFAULT_IMAGE = {
     "nvidia": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",  # devel: has nvcc
     "amd": "runpod/pytorch:2.4.0-py3.10-rocm6.1.0-ubuntu22.04",  # has hipcc, hipify-perl
@@ -203,14 +209,17 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                           "RUNPOD_API_KEY is not set", {},
                           ["Create an API key in the Runpod console and export RUNPOD_API_KEY."])
     api = api or RunpodAPI(key)
-    gpu = gpu_type or DEFAULT_GPU[vendor]
-    price = api.gpu_price(gpu, cloud)
-    if price is not None:
-        max_minutes = min(max_minutes, max_usd / price * 60)
-        if max_minutes < 10:
-            return ToolResult("remote_test", "error",
-                              f"{gpu} costs ${price}/h: max_usd ${max_usd} allows only "
-                              f"{max_minutes:.0f} min", {"price_per_hour": price})
+    candidates = [gpu_type] if gpu_type else DEFAULT_GPUS[vendor]
+    affordable: list[tuple[str, float | None, float]] = []
+    for g in candidates:
+        p = api.gpu_price(g, cloud)
+        budget_minutes = max_usd / p * 60 if p else float("inf")
+        if budget_minutes >= 10:  # a GPU the budget can't keep for 10 minutes is skipped
+            affordable.append((g, p, min(max_minutes, budget_minutes)))
+    if not affordable:
+        return ToolResult("remote_test", "error",
+                          f"no candidate GPU fits max_usd ${max_usd} for 10+ minutes",
+                          {"candidates": candidates})
     tmp = Path(tempfile.mkdtemp(prefix="remote-test-"))
     b = make_bundle(task_file, str(tmp / "bundle.sh"))
     if not b.ok:
@@ -218,7 +227,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
     token = secrets.token_urlsafe(24)
     body: dict[str, Any] = {
         "name": f"oneapi-gputest-{secrets.token_hex(3)}", "cloud": cloud,
-        "gpu": {"id": gpu, "count": 1}, "image": image or DEFAULT_IMAGE[vendor],
+        "gpu": {"id": affordable[0][0], "count": 1}, "image": image or DEFAULT_IMAGE[vendor],
         "disk": 60, "ports": ["8000/http"],
         "env": {"GT_TOKEN": token, "GT_AGENT": base64.b64encode(POD_AGENT.encode()).decode()},
         "entrypoint": ["bash", "-c"],
@@ -227,19 +236,30 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
     if vendor == "nvidia":
         body["gpu"]["minCudaVersion"] = "12.4"
     t0 = time.time()
-    deadline = t0 + max_minutes * 60
     pod_id: str | None = None
-    ev: dict[str, Any] = {"gpu": gpu, "cloud": cloud, "image": body["image"],
-                          "price_per_hour": price, "max_minutes": round(max_minutes, 1)}
+    ev: dict[str, Any] = {"cloud": cloud, "image": body["image"], "create_attempts": []}
     status: dict[str, Any] = {}
     result: ToolResult
+    gpu, price = affordable[0][0], affordable[0][1]
     try:
-        try:
-            pod = api.create_pod(body)
-        except urllib.error.HTTPError as e:
-            msg = e.read().decode(errors="replace")[:500]
-            return ToolResult("remote_test", "error", f"pod create failed: HTTP {e.code}: {msg}",
-                              ev, ["Often means no stock for this GPU right now."])
+        pod = None
+        for cand in affordable:
+            body["gpu"]["id"] = cand[0]
+            try:
+                pod = api.create_pod(body)
+            except urllib.error.HTTPError as e:
+                msg = e.read().decode(errors="replace")[:300]
+                ev["create_attempts"].append({"gpu": cand[0], "http": e.code, "error": msg})
+                log(f"{cand[0]}: not created (HTTP {e.code}); trying the next GPU")
+                continue
+            gpu, price, max_minutes = cand
+            break
+        if pod is None:
+            return ToolResult("remote_test", "error",
+                              f"no candidate GPU could be created ({len(affordable)} tried)", ev,
+                              ["Usually means no stock right now; retry later or pass --gpu."])
+        ev.update(gpu=gpu, price_per_hour=price, max_minutes=round(max_minutes, 1))
+        deadline = t0 + max_minutes * 60
         pod_id = pod["id"]
         ev["pod_id"] = pod_id
         log(f"created pod {pod_id} ({gpu}, ${price}/h)")

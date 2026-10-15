@@ -60,7 +60,7 @@ def test_budget_too_small_for_the_gpu_price_refuses_before_creating():
     api = FakeAPI(price=6.0)
     r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), api=api, max_usd=0.5,
                            log=lambda m: None)
-    assert r.status == "error" and "allows only" in r.summary and api.deleted == []
+    assert r.status == "error" and "fits max_usd" in r.summary and api.deleted == []
     assert api.pods == {}
 
 
@@ -68,3 +68,25 @@ def test_missing_api_key(monkeypatch):
     monkeypatch.delenv("RUNPOD_API_KEY", raising=False)
     r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), log=lambda m: None)
     assert r.status == "toolchain_missing"
+
+
+def test_falls_back_to_the_next_gpu_when_one_is_out_of_stock(tmp_path):
+    import io
+    import urllib.error
+
+    api = FakeAPI()
+    tried = []
+    orig = api.create_pod
+
+    def flaky(body):
+        tried.append(body["gpu"]["id"])
+        if len(tried) == 1:
+            raise urllib.error.HTTPError("u", 400, "no stock", {}, io.BytesIO(b"no instances"))
+        return orig(body)
+
+    api.create_pod = flaky
+    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), api=api, poll_s=0.01,
+                           max_minutes=0.01, into=str(tmp_path), log=lambda m: None,
+                           agent_url=lambda pid: "http://127.0.0.1:9")
+    assert len(tried) == 2 and r.evidence["gpu"] == tried[1]
+    assert r.evidence["create_attempts"][0]["http"] == 400 and api.deleted == ["p1"]
