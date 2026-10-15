@@ -143,6 +143,10 @@ oneapi-agent setup --dry-run             # show what would change
 oneapi-agent setup                       # every detected agent: claude, codex, cursor, gemini
 oneapi-agent setup --agent claude        # or pick
 
+# Verify on this machine's GPU (NVIDIA, AMD or Intel), or bundle the test for another machine
+oneapi-agent gpu-test examples/saxpy/task.json
+oneapi-agent bundle examples/saxpy/task.json   # -> gputest-saxpy.sh; `bash` it on any GPU box, then `oneapi-agent ingest`
+
 # Standalone agent loop
 oneapi-agent loop --dry-run --mock-tools                 # no toolchain, no API key
 oneapi-agent loop --dry-run --config examples/saxpy/task.json   # scripted model, real tools
@@ -199,6 +203,7 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | Tests | ✅ 100 passed | with the toolchain present; toolchain tests auto-skip without it |
 | CI: real toolchain | ✅ | `toolchain` job installs icpx 2026.1.1 + SYCLomatic 20260701 + CUDA 12.3 headers + oneMath (cached) and runs doctor, pytest (toolchain tests must not skip) and the example pipeline on every push |
 | CI: claims gate | ✅ | [`scripts/check_claims.py`](scripts/check_claims.py) fails the build unless every idiomatic port compiles, verifies and has 0 dpct helpers, and c2s still emits `sycl::native::exp` without a DPCT warning |
+| `gpu-test`, `bundle`, `ingest` | 🟡 new | verify a port on any NVIDIA/AMD/Intel GPU, or ship a one-file test to a machine you can't reach; tested on CPU fallback here, not yet on AMD/Intel hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
 | Run-replay viewer | ✅ | [`scripts/render_trace.py`](scripts/render_trace.py) turns a trace into a self-contained, step-through HTML page; pages in [`docs/replay/`](docs/replay/) |
 | PyPI package | 🟡 ready | wheel ships the skill; `publish.yml` uploads on a GitHub release once the PyPI trusted publisher is configured |
 

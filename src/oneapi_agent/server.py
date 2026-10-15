@@ -11,6 +11,7 @@ from typing import Any
 from .toolchain import toolchain_report
 from .tools import benchmark as _benchmark
 from .tools import compile_sycl as _compile
+from .tools import gpu_test as _gpu_test
 from .tools import migrate as _migrate
 from .tools import scan_helpers as _scan_helpers
 from .tools import verify as _verify
@@ -27,6 +28,9 @@ and `limitations`. Base claims on evidence only. Never claim a port works unless
 `verify` returned status "ok" on the current code. Typical order:
 migrate -> compile -> (fix) -> scan_helpers -> refactor to idiomatic SYCL -> compile
 -> verify -> benchmark.
+GPU rental keys (runpod, vast, vultr, digitalocean) are the user's: `providers_status` says
+which are set up. Never ask for, store or pass a key; when one is missing, give the user the
+console_url and ask them to run the login_command in their own terminal.
 """
 
 STATUS_NOTE = (
@@ -116,6 +120,25 @@ def benchmark(cmd: str, runs: int = 10, devices: list[str] | None = None, warmup
 
 
 @mcp.tool(
+    name="gpu_test",
+    description=(
+        "Verify a task's SYCL port on this machine's GPU (NVIDIA via CUDA, AMD via HIP, or Intel "
+        "via Level Zero), found with sycl-ls. Builds the task's C++ reference and, where "
+        "possible, the ORIGINAL CUDA (nvcc, or hipify+hipcc on AMD); compiles the port ahead of "
+        "time for the GPU; verifies it against both; benchmarks it. task_file uses the "
+        "examples/*/task.json format. Writes results/, SUMMARY.md and summary.json under "
+        "out_dir. For a GPU this machine does not have, use the CLI: `oneapi-agent bundle "
+        "task.json` makes a one-file test to run there, `oneapi-agent ingest` imports the "
+        "results." + STATUS_NOTE
+    ),
+)
+def gpu_test(task_file: str, out_dir: str, vendor: str | None = None,
+             device: str | None = None, allow_cpu: bool = False) -> dict[str, Any]:
+    return _gpu_test(task_file, out_dir, vendor=vendor, device=device,
+                     allow_cpu=allow_cpu).to_dict()
+
+
+@mcp.tool(
     name="doctor",
     description="Report which oneAPI binaries (icpx, c2s, sycl-ls) and include dirs were found.",
 )
@@ -129,6 +152,24 @@ def doctor() -> dict[str, Any]:
         "evidence": report,
         "limitations": [],
     }
+
+
+@mcp.tool(
+    name="providers_status",
+    description=(
+        "Read-only: for each GPU rental provider (runpod, vast, vultr, digitalocean), whether an "
+        "API key is configured on this machine and where it comes from (environment variable or "
+        "the OS password store; never the key itself), checked with one read-only API call, "
+        "plus account facts such as balance. A provider without a key lists console_url (where "
+        "the user creates one) and login_command (`oneapi-agent login <provider>`, which the "
+        "USER runs in their own terminal). No tool takes a key: never ask for one, store it or "
+        "pass it on. Nothing is created or deleted." + STATUS_NOTE
+    ),
+)
+def providers_status() -> dict[str, Any]:
+    from .keys import providers
+
+    return providers().to_dict()
 
 
 def main() -> None:

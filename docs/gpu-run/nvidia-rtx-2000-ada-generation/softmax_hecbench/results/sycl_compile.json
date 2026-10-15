@@ -1,0 +1,25 @@
+{
+  "tool": "compile",
+  "status": "ok",
+  "summary": "compiled 1 source(s) -> /tmp/tmp.avma5wL9W1/out/work/build/sycl (0 warning(s))",
+  "evidence": {
+    "run": {
+      "command": "/opt/sycl/bin/clang++ -fsycl -O2 -fsycl-targets=nvptx64-nvidia-cuda -I/tmp/tmp.avma5wL9W1/task /tmp/tmp.avma5wL9W1/task/sycl/softmax.cpp -o /tmp/tmp.avma5wL9W1/out/work/build/sycl",
+      "returncode": 0,
+      "duration_s": 6.342124,
+      "stdout": "",
+      "stderr": ""
+    },
+    "output": "/tmp/tmp.avma5wL9W1/out/work/build/sycl",
+    "dpct_include_added": null,
+    "diagnostics": [],
+    "counts": {
+      "error": 0,
+      "warning": 0,
+      "note": 0
+    }
+  },
+  "limitations": [
+    "A successful compile says nothing about numerical correctness; run verify."
+  ]
+}

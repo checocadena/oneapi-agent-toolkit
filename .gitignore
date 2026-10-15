@@ -222,3 +222,4 @@ runs/
 examples/data/*.wav
 examples/results/work/
 .claude/worktrees/
+.gpu-venv/

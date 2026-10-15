@@ -1,0 +1,19 @@
+{
+  "tool": "gpu_test",
+  "status": "toolchain_missing",
+  "summary": "no matching SYCL GPU device found by sycl-ls (vendor=amd)",
+  "evidence": {
+    "devices": [],
+    "sycl_ls": {
+      "command": "/opt/sycl/bin/sycl-ls",
+      "returncode": 0,
+      "duration_s": 0.001832,
+      "stdout": "No platforms found - run with '--verbose' to get more details.\n",
+      "stderr": ""
+    },
+    "task": "softmax_hecbench"
+  },
+  "limitations": [
+    "Run `sycl-ls`: a GPU must be listed (cuda:gpu, hip:gpu or level_zero:gpu). On a shared system you may be on a login node."
+  ]
+}

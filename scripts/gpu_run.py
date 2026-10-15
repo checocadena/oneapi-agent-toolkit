@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
-"""GPU phase of scripts/gpu-run.sh: CUDA vs C++ reference, then SYCL-on-NVIDIA vs both.
+"""GPU phase of scripts/{gpu,amd-gpu,intel-gpu}-run.sh: native GPU build vs C++ reference, then
+SYCL-on-GPU vs both.
 
-Usage: gpu_run.py <results_dir>   (env: NVCC, SYCL_CXX; either may be empty)
+Usage: gpu_run.py <results_dir>
+Env (all optional):
+  GPU_VENDOR          nvidia (default) | amd | intel
+  NVCC                nvcc for the native CUDA build (nvidia)
+  HIPCC, HIPIFY       hipcc + hipify-perl: the CUDA source is hipified and built (amd)
+  AMD_ARCH            offload arch for hipcc, e.g. gfx942
+  SYCL_CXX            SYCL compiler (icpx or intel/llvm clang++)
+  SYCL_TARGET_FLAGS   default per vendor (-fsycl-targets=nvptx64-nvidia-cuda, amd_gpu_<arch>, spir64)
+  SYCL_DEVICE_SELECTOR default per vendor (cuda:*, hip:*, level_zero:gpu)
+  EXAMPLES            space-separated example names (default: every examples/*/task.json except
+                      gemm_cublas, whose oneMath port is built for the MKL CPU backend)
 Writes one JSON file per tool call to <results_dir> and SUMMARY.md next to it.
 """
 
@@ -19,6 +30,16 @@ from oneapi_agent.tools import benchmark, compile_sycl, verify
 REPO = Path(__file__).resolve().parents[1]
 EX = REPO / "examples"
 KERNEL_RE = r"kernel_ms=([0-9.eE+-]+)"
+VENDOR = os.environ.get("GPU_VENDOR", "nvidia")
+AMD_ARCH = os.environ.get("AMD_ARCH", "gfx942")
+SYCL_TARGET_FLAGS = os.environ.get("SYCL_TARGET_FLAGS") or {
+    "nvidia": "-fsycl-targets=nvptx64-nvidia-cuda",
+    "amd": f"-fsycl-targets=amd_gpu_{AMD_ARCH}",
+    "intel": "-fsycl-targets=spir64",
+}[VENDOR]
+SELECTOR = os.environ.get("SYCL_DEVICE_SELECTOR") or {
+    "nvidia": "cuda:*", "amd": "hip:*", "intel": "level_zero:gpu"}[VENDOR]
+NATIVE = {"nvidia": "cuda", "amd": "hip", "intel": ""}[VENDOR]  # step-name prefix
 
 
 def save(results: Path, name: str, r: ToolResult | dict) -> None:
@@ -26,6 +47,24 @@ def save(results: Path, name: str, r: ToolResult | dict) -> None:
     (results / f"{name}.json").write_text(json.dumps(data, indent=2, default=str))
     line = f"{data.get('status', data.get('returncode'))}: {data.get('summary', data.get('command'))}"
     print(f"[{name}] {line}", flush=True)
+
+
+def native_build(task: dict, tdir: Path, work: Path, incs: list[str], nvcc: str):
+    """Build the original CUDA source for this vendor's GPU: nvcc, or hipify + hipcc on AMD."""
+    src = tdir / task["cuda_path"]
+    if VENDOR == "nvidia" and nvcc:
+        return run_command([nvcc, "-O2", "-std=c++17", "-arch=native", *incs, str(src),
+                            "-o", "build/native"], cwd=str(work))
+    hipcc, hipify = os.environ.get("HIPCC", ""), os.environ.get("HIPIFY", "")
+    if VENDOR == "amd" and hipcc and hipify:
+        hip_src = work / (src.stem + ".hip.cpp")
+        conv = run_command([hipify, str(src)], cwd=str(work))
+        if conv.returncode != 0:
+            return conv
+        hip_src.write_text(conv.stdout)
+        return run_command([hipcc, "-O2", "-std=c++17", f"--offload-arch={AMD_ARCH}", *incs,
+                            str(hip_src), "-o", "build/native"], cwd=str(work))
+    return None
 
 
 def run_example(task_file: Path, results: Path, nvcc: str, sycl_cxx: str) -> list[tuple[str, str, str]]:
@@ -64,32 +103,33 @@ def run_example(task_file: Path, results: Path, nvcc: str, sycl_cxx: str) -> lis
         return c.replace("{input}", first).replace("{output}", bench_out)
 
     cuda_ok = False
-    if nvcc:
-        cu = run_command([nvcc, "-O2", "-std=c++17", "-arch=native", *incs,
-                          str(tdir / task["cuda_path"]), "-o", "build/cuda"], cwd=str(work))
-        record("cuda_build", cu.evidence())
-        cuda_ok = cu.returncode == 0
+    nb = native_build(task, tdir, work, incs, nvcc) if NATIVE else None
+    if nb is not None:
+        record(f"{NATIVE}_build", nb.evidence())
+        cuda_ok = nb.returncode == 0
     if cuda_ok:
-        record("cuda_verify_vs_cpp", verify(task["reference_cmd"], cmd("build/cuda"), inputs,
-                                            work_dir=str(work / "v_cuda"), **vkw))
-        record("cuda_benchmark", benchmark(concrete(cmd("build/cuda")), runs=10, devices=["none"],
-                                           cwd=str(work), report_regex=KERNEL_RE))
+        record(f"{NATIVE}_verify_vs_cpp", verify(task["reference_cmd"], cmd("build/native"),
+                                                 inputs, work_dir=str(work / "v_native"), **vkw))
+        record(f"{NATIVE}_benchmark", benchmark(concrete(cmd("build/native")), runs=10,
+                                                devices=["none"], cwd=str(work),
+                                                report_regex=KERNEL_RE))
 
     if sycl_cxx:
         src = tdir / "sycl" / (Path(task["cuda_path"]).stem + ".cpp")
         c = record("sycl_gpu_compile", compile_sycl(
-            [str(src)], ["-O2", "-fsycl-targets=nvptx64-nvidia-cuda", *incs],
+            [str(src)], ["-O2", *SYCL_TARGET_FLAGS.split(), *incs],
             output=str(work / "build" / "sycl_gpu"), add_dpct_include=False, icpx_path=sycl_cxx))
         if isinstance(c, ToolResult) and c.ok:
-            gpu_env = {"ONEAPI_DEVICE_SELECTOR": "cuda:*"}
+            gpu_env = {"ONEAPI_DEVICE_SELECTOR": SELECTOR}
             record("sycl_verify_vs_cpp", verify(task["reference_cmd"], cmd("build/sycl_gpu"), inputs,
                                                 env=gpu_env, work_dir=str(work / "v_sycl"), **vkw))
             if cuda_ok:
-                record("sycl_verify_vs_cuda", verify(cmd("build/cuda"), cmd("build/sycl_gpu"), inputs,
-                                                     env=gpu_env, work_dir=str(work / "v_sycl_cuda"),
-                                                     **vkw))
+                record(f"sycl_verify_vs_{NATIVE}", verify(cmd("build/native"), cmd("build/sycl_gpu"),
+                                                          inputs, env=gpu_env,
+                                                          work_dir=str(work / "v_sycl_native"),
+                                                          **vkw))
             record("sycl_benchmark", benchmark(concrete(cmd("build/sycl_gpu")), runs=10,
-                                               devices=["cuda:0"], cwd=str(work),
+                                               devices=[SELECTOR.replace("*", "0")], cwd=str(work),
                                                report_regex=KERNEL_RE))
     record("cpp_benchmark", benchmark(concrete(task["reference_cmd"]), runs=10, devices=["none"],
                                       cwd=str(work)))
@@ -101,8 +141,13 @@ def main() -> int:
     results.mkdir(parents=True, exist_ok=True)
     nvcc, sycl_cxx = os.environ.get("NVCC", ""), os.environ.get("SYCL_CXX", "")
     md = ["# GPU run summary (real tool output)", "",
-          f"- nvcc: `{nvcc or 'not found'}`", f"- SYCL compiler: `{sycl_cxx or 'not found'}`", ""]
-    for task_file in sorted(EX.glob("*/task.json")):
+          f"- vendor: `{VENDOR}`; SYCL flags: `{SYCL_TARGET_FLAGS}`; selector: `{SELECTOR}`",
+          f"- nvcc: `{nvcc or 'not found'}`; hipcc: `{os.environ.get('HIPCC') or 'not used'}`",
+          f"- SYCL compiler: `{sycl_cxx or 'not found'}`", ""]
+    wanted = os.environ.get("EXAMPLES", "").split()
+    tasks = [t for t in sorted(EX.glob("*/task.json"))
+             if (t.parent.name in wanted if wanted else t.parent.name != "gemm_cublas")]
+    for task_file in tasks:
         name = task_file.parent.name
         print(f"\n##### {name}", flush=True)
         try:

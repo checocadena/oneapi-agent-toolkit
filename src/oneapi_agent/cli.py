@@ -6,6 +6,7 @@ Prints the ToolResult JSON to stdout. Exit code: 0 = ok, 1 = fail, 2 = anything 
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import shlex
 import sys
@@ -13,7 +14,7 @@ from collections.abc import Sequence
 
 from .result import ToolResult
 from .toolchain import toolchain_report
-from .tools import benchmark, compile_sycl, migrate, scan_helpers, verify
+from .tools import benchmark, compile_sycl, gpu_test, migrate, scan_helpers, verify
 
 EXIT = {"ok": 0, "fail": 1}
 
@@ -68,6 +69,73 @@ def build_parser() -> argparse.ArgumentParser:
                    help="ONEAPI_DEVICE_SELECTOR value (repeatable); 'none' = no selector")
     b.add_argument("--report-regex")
 
+    g = sub.add_parser("gpu-test", help="verify a task's SYCL port on this machine's GPU "
+                       "(NVIDIA, AMD or Intel), against the C++ reference and the original CUDA")
+    g.add_argument("task", help="task.json (examples/*/task.json format)")
+    g.add_argument("--out", default="gputest-out", help="output dir (results/, SUMMARY.md)")
+    g.add_argument("--vendor", choices=["nvidia", "amd", "intel"], help="only use this vendor's GPU")
+    g.add_argument("--device", help="exact ONEAPI_DEVICE_SELECTOR value, e.g. level_zero:0")
+    g.add_argument("--allow-cpu", action="store_true", help="fall back to a CPU device (testing)")
+    g.add_argument("--no-native", action="store_true", help="skip building the original CUDA")
+    g.add_argument("--runs", type=int, default=10)
+
+    bu = sub.add_parser("bundle", help="pack a task + this toolkit into one .sh to run gpu-test "
+                        "on a machine this tool cannot reach (SSH box, Jupyter, CI)")
+    bu.add_argument("task")
+    bu.add_argument("-o", "--output", help="bundle path (default gputest-<name>.sh)")
+
+    ig = sub.add_parser("ingest", help="import a gpu-test results archive from a bundle run")
+    ig.add_argument("archive")
+    ig.add_argument("--into", default="docs/gpu-run")
+
+    rt = sub.add_parser("remote-test", help="rent a Runpod GPU (NVIDIA or AMD), run gpu-test "
+                        "there, import the results, delete the pod (needs RUNPOD_API_KEY)")
+    rt.add_argument("task")
+    rt.add_argument("--provider", choices=["runpod", "vast", "vultr", "digitalocean"],
+                    default="runpod",
+                    help="GPU rental service; its API key comes from RUNPOD_API_KEY, "
+                         "VAST_API_KEY, VULTR_API_KEY or OCEAN_API_KEY (or DIGITALOCEAN_TOKEN), "
+                         "else from `oneapi-agent login`")
+    rt.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
+    rt.add_argument("--gpu", dest="gpu_type", help="Runpod GPU type id (default per vendor)")
+    rt.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE")
+    rt.add_argument("--image", help="container image (default per vendor)")
+    rt.add_argument("--sycl-url", help="SYCL compiler tarball to unpack to /opt/sycl on the "
+                    "machine (default for AMD: the HIP-enabled intel/llvm build published by "
+                    "this repo's sycl-hip-toolchain workflow)")
+    rt.add_argument("--sycl-sha256", help="expected sha256 of --sycl-url")
+    rt.add_argument("--max-minutes", type=float, default=45)
+    rt.add_argument("--max-usd", type=float, default=2.0)
+    rt.add_argument("--into", default="docs/gpu-run")
+    rt.add_argument("--keep-pod", action="store_true", help="do not delete the pod (debugging)")
+    rt.add_argument("--boot-minutes", type=float, default=15,
+                    help="replace a machine whose agent has not answered after this long")
+
+    providers = ["runpod", "vast", "vultr", "digitalocean"]
+    li = sub.add_parser("login", help="save a GPU provider's API key in the OS password store "
+                        "(hidden prompt, or read from stdin when piped; needs the keyring extra)")
+    li.add_argument("provider", choices=providers)
+    lo = sub.add_parser("logout", help="remove a saved GPU provider API key")
+    lo.add_argument("provider", choices=providers)
+    sub.add_parser("providers", help="show which GPU provider keys are found, where from, and "
+                   "whether each provider accepts its key (one read-only API call each)")
+
+    ci = sub.add_parser("ci", help="GitHub Actions integration")
+    ci_sub = ci.add_subparsers(dest="ci_cmd", required=True)
+    cs = ci_sub.add_parser("setup", help="write .github/workflows/gpu-test.yml (remote-test on PRs "
+                           "labelled gpu-test) and offer to store local provider keys as secrets")
+    cs.add_argument("--task", default="task.json", help="task.json the workflow tests")
+    cs.add_argument("--provider", choices=providers, default="runpod")
+    cs.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
+    cs.add_argument("--max-usd", type=float, default=2.0)
+    cs.add_argument("--max-minutes", type=float, default=45)
+    cs.add_argument("--repo", default=".", help="repository root (default: current directory)")
+    cs.add_argument("--install", help="pip requirement the workflow installs "
+                    "(default: this toolkit from GitHub main)")
+    cs.add_argument("--force", action="store_true", help="overwrite an existing workflow")
+    cs.add_argument("--yes", action="store_true", help="store every key found without asking")
+    cs.add_argument("--no-secrets", action="store_true", help="do not offer `gh secret set`")
+
     sub.add_parser("serve", help="run the MCP server on stdio")
 
     st = sub.add_parser("setup", help="register the MCP server (and skill) with coding agents")
@@ -98,6 +166,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    try:
+        return _main(argv)
+    except KeyboardInterrupt:  # remote-test has already deleted its machine in a finally block
+        print("[oneapi-agent] interrupted", file=sys.stderr)
+        return 130
+
+
+def _main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.cmd == "doctor":
         rep = toolchain_report()
@@ -122,6 +198,47 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.cmd == "benchmark":
         return _emit(benchmark(args.command, args.runs, args.devices, warmup=args.warmup,
                                report_regex=args.report_regex), args.summary)
+    if args.cmd == "gpu-test":
+        return _emit(gpu_test(args.task, args.out, vendor=args.vendor, device=args.device,
+                              allow_cpu=args.allow_cpu, native=not args.no_native,
+                              runs=args.runs), args.summary)
+    if args.cmd in ("bundle", "ingest"):
+        from .bundle import ingest_results, make_bundle
+
+        return _emit(make_bundle(args.task, args.output) if args.cmd == "bundle"
+                     else ingest_results(args.archive, args.into), args.summary)
+    if args.cmd == "remote-test":
+        from .remote import remote_test
+
+        return _emit(remote_test(args.task, vendor=args.vendor, gpu_type=args.gpu_type,
+                                 provider=args.provider,
+                                 cloud=args.cloud, image=args.image, sycl_url=args.sycl_url,
+                                 sycl_sha256=args.sycl_sha256, max_minutes=args.max_minutes,
+                                 max_usd=args.max_usd, into=args.into, keep_pod=args.keep_pod,
+                                 boot_minutes=args.boot_minutes,
+                                 log=lambda m: print(m, file=sys.stderr)), args.summary)
+    if args.cmd in ("login", "logout", "providers"):
+        from . import keys
+
+        if args.cmd == "providers":
+            return _emit(keys.providers(), args.summary)
+        if args.cmd == "logout":
+            return _emit(keys.logout(args.provider), args.summary)
+        if keys._keyring() is None:  # say so before the user types a key
+            return _emit(keys.login(args.provider, ""), args.summary)
+        if sys.stdin.isatty():
+            key = getpass.getpass(f"{args.provider} API key (input hidden): ")
+        else:
+            key = sys.stdin.readline()
+        return _emit(keys.login(args.provider, key), args.summary)
+    if args.cmd == "ci":
+        from .ci import DEFAULT_INSTALL, ci_setup
+
+        return _emit(ci_setup(args.repo, task=args.task, provider=args.provider,
+                              vendor=args.vendor, max_usd=args.max_usd,
+                              max_minutes=args.max_minutes, install=args.install or DEFAULT_INSTALL,
+                              force=args.force, secrets=not args.no_secrets, yes=args.yes),
+                     args.summary)
     if args.cmd == "setup":
         from .setup import setup
 

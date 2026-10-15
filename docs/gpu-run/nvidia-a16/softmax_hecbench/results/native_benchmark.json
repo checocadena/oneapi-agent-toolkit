@@ -1,0 +1,62 @@
+{
+  "tool": "benchmark",
+  "status": "ok",
+  "summary": "10 run(s) each; none: median 167.37 ms, p95 169.29 ms",
+  "evidence": {
+    "command": "build/native /tmp/tmp.dmg4H65GoV/out/work/bench_out.bin 2048 256",
+    "runs": 10,
+    "warmup": 1,
+    "results": [
+      {
+        "selector": "none",
+        "status": "ok",
+        "wall_time_s": {
+          "n": 10,
+          "min": 0.1657672800000043,
+          "median": 0.16736753650000225,
+          "p95": 0.16929370170000232,
+          "max": 0.16997867999999983,
+          "mean": 0.1674965904000018,
+          "stdev": 0.0011911234618425261
+        },
+        "samples_s": [
+          0.167806,
+          0.167848,
+          0.167315,
+          0.169979,
+          0.167216,
+          0.16742,
+          0.168457,
+          0.165767,
+          0.165998,
+          0.16716
+        ],
+        "reported": {
+          "n": 10,
+          "min": 0.27305,
+          "median": 0.2877995,
+          "p95": 0.29905205,
+          "max": 0.302261,
+          "mean": 0.2873418,
+          "stdev": 0.009157845098299297
+        },
+        "reported_samples": [
+          0.302261,
+          0.278126,
+          0.29024,
+          0.29503,
+          0.27305,
+          0.288092,
+          0.28733,
+          0.276652,
+          0.287507,
+          0.29513
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+    "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+  ]
+}
