@@ -29,12 +29,13 @@ jobs:
     env:
       TOOLCHAIN_ROOT: /home/runner/oneapi-toolchain
       OUT: ci-out
+      WITH_ONEMATH: "1"  # examples/gemm_cublas needs oneMKL SYCL + oneMath (built from source)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[all]"
+      - run: pip install -e ".[all]" cmake ninja
 
       - name: Cache toolchain
         id: cache
@@ -49,12 +50,15 @@ jobs:
         run: |
           export DPCPP_PREFIX="$TOOLCHAIN_ROOT/dpcpp" SYCLOMATIC_PREFIX="$TOOLCHAIN_ROOT/syclomatic"
           export CUDA_HEADERS_PREFIX="$TOOLCHAIN_ROOT/cuda-headers"
+          export ONEMKL_PREFIX="$TOOLCHAIN_ROOT/onemkl" ONEMATH_PREFIX="$TOOLCHAIN_ROOT/onemath"
           source scripts/oneapi-env.sh
           {
             echo "PATH=$PATH"
             echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
             echo "ONEAPI_AGENT_CUDA_INCLUDE=$ONEAPI_AGENT_CUDA_INCLUDE"
             echo "ONEAPI_AGENT_DPCT_INCLUDE=$ONEAPI_AGENT_DPCT_INCLUDE"
+            echo "ONEMKL_PREFIX=$ONEMKL_PREFIX"
+            echo "ONEMATH_PREFIX=$ONEMATH_PREFIX"
             echo "CLAIMS_START=$(date -u +%Y-%m-%dT%H:%M:%S)"
           } >> "$GITHUB_ENV"
           mkdir -p "$OUT"

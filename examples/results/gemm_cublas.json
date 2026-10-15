@@ -26,12 +26,12 @@
   "name": "gemm_cublas",
   "steps": {
     "reference_build": {
-      "command": "g++ -O2 -std=c++17 /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm_ref.cpp -o build/reference",
+      "command": "g++ -O2 -std=c++17 <repo>/examples/gemm_cublas/gemm_ref.cpp -o build/reference",
       "returncode": 0,
       "duration_s": 0.339769,
       "stdout": "",
       "stderr": "",
-      "cwd": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas"
+      "cwd": "<repo>/examples/results/work/gemm_cublas"
     },
     "migrate": {
       "tool": "migrate",
@@ -39,17 +39,17 @@
       "summary": "migrated 1 CUDA file(s) -> 1 file(s); 3 DPCT warning(s) (DPCT1009x1, DPCT1024x2)",
       "evidence": {
         "run": {
-          "command": "/opt/syclomatic/bin/c2s --in-root=/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas --out-root=/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu",
+          "command": "/opt/syclomatic/bin/c2s --in-root=<repo>/examples/gemm_cublas --out-root=<repo>/examples/results/work/gemm_cublas/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include <repo>/examples/gemm_cublas/gemm.cu",
           "returncode": 0,
           "duration_s": 5.499332,
-          "stdout": "NOTE: Could not auto-detect compilation database for file 'gemm.cu' in '/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas' or any parent directory.\nParsing: /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu\nAnalyzing: /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu\nMigrating: /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu\nProcessed 1 file(s) in -in-root folder \"/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
-          "stderr": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu:12:9: warning: DPCT1009:0: SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.\n   12 | #define CUDA_CHECK(call)                                                        \\\n      |         ^\n/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu:72:14: warning: DPCT1024:1: The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.\n   72 |   CUDA_CHECK(cudaEventRecord(start));\n      |              ^\n/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu:75:14: warning: DPCT1024:2: The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.\n   75 |   CUDA_CHECK(cudaEventRecord(stop));\n      |              ^\n\n"
+          "stdout": "NOTE: Could not auto-detect compilation database for file 'gemm.cu' in '<repo>/examples/gemm_cublas' or any parent directory.\nParsing: <repo>/examples/gemm_cublas/gemm.cu\nAnalyzing: <repo>/examples/gemm_cublas/gemm.cu\nMigrating: <repo>/examples/gemm_cublas/gemm.cu\nProcessed 1 file(s) in -in-root folder \"<repo>/examples/gemm_cublas\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
+          "stderr": "<repo>/examples/gemm_cublas/gemm.cu:12:9: warning: DPCT1009:0: SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.\n   12 | #define CUDA_CHECK(call)                                                        \\\n      |         ^\n<repo>/examples/gemm_cublas/gemm.cu:72:14: warning: DPCT1024:1: The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.\n   72 |   CUDA_CHECK(cudaEventRecord(start));\n      |              ^\n<repo>/examples/gemm_cublas/gemm.cu:75:14: warning: DPCT1024:2: The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.\n   75 |   CUDA_CHECK(cudaEventRecord(stop));\n      |              ^\n\n"
         },
         "input_files": [
-          "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu"
+          "<repo>/examples/gemm_cublas/gemm.cu"
         ],
-        "in_root": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas",
-        "out_dir": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated",
+        "in_root": "<repo>/examples/gemm_cublas",
+        "out_dir": "<repo>/examples/results/work/gemm_cublas/migrated",
         "migrated_files": [
           "gemm.dp.cpp"
         ],
@@ -58,7 +58,7 @@
             "code": "DPCT1009",
             "id": 0,
             "message": "SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.",
-            "file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu",
+            "file": "<repo>/examples/gemm_cublas/gemm.cu",
             "line": 12,
             "column": 9,
             "migrated_file": "gemm.dp.cpp",
@@ -68,7 +68,7 @@
             "code": "DPCT1024",
             "id": 1,
             "message": "The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.",
-            "file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu",
+            "file": "<repo>/examples/gemm_cublas/gemm.cu",
             "line": 72,
             "column": 14,
             "migrated_file": "gemm.dp.cpp",
@@ -78,7 +78,7 @@
             "code": "DPCT1024",
             "id": 2,
             "message": "The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.",
-            "file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/gemm.cu",
+            "file": "<repo>/examples/gemm_cublas/gemm.cu",
             "line": 75,
             "column": 14,
             "migrated_file": "gemm.dp.cpp",
@@ -99,16 +99,16 @@
     "compile_migrated": {
       "tool": "compile",
       "status": "ok",
-      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/build/migrated (418 warning(s))",
+      "summary": "compiled 1 source(s) -> <repo>/examples/results/work/gemm_cublas/build/migrated (418 warning(s))",
       "evidence": {
         "run": {
-          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -DMKL_ILP64 -I/opt/onemkl/include -Wl,--no-as-needed -L/opt/onemkl/lib -Wl,-rpath,/opt/onemkl/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -I/opt/syclomatic/include /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp -o /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/build/migrated",
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -DMKL_ILP64 -I/opt/onemkl/include -Wl,--no-as-needed -L/opt/onemkl/lib -Wl,-rpath,/opt/onemkl/lib -lmkl_sycl_blas -lmkl_intel_ilp64 -lmkl_sequential -lmkl_core -I/opt/syclomatic/include <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp -o <repo>/examples/results/work/gemm_cublas/build/migrated",
           "returncode": 0,
           "duration_s": 16.643423,
           "stdout": "",
-          "stderr": "In file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\nIn file included from /opt/onemkl/include/sycl/accessor.hpp:11:\n/opt/onemkl/include/sycl/access/access.hpp:79:63: warning: 'constant_buffer' is deprecated: use 'target::device' instead [-Wdeprecated-declarations]\n   79 | inline constexpr mode_target_tag_t<access_mode::read, target::constant_buffer>\n      |                                                               ^\n/opt/onemkl/include/sycl/access/access.hpp:24:19: note: 'constant_buffer' has been explicitly marked deprecated here\n   24 |   constant_buffer __SYCL2020_DEPRECATED(\"use 'target::device' instead\") = 2015,\n      |                   ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\nIn file included from /opt/onemkl/include/sycl/accessor.hpp:11:\n/opt/onemkl/include/sycl/access/access.hpp:91:31: warning: 'host_buffer' is deprecated: use 'host_accessor' instead [-Wdeprecated-declarations]\n   91 |   return T == access::target::host_buffer || T == access::target::host_image;\n      |                               ^\n/opt/onemkl/include/sycl/access/access.hpp:27:15: note: 'host_buffer' has been explicitly marked deprecated here\n   27 |   host_buffer __SYCL2020_DEPRECATED(\"use 'host_accessor' instead\") = 2018,\n      |               ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\nIn file included from /opt/onemkl/include/sycl/accessor.hpp:11:\n/opt/onemkl/include/\n...[613402 chars truncated]...\nude/sycl/info/aspects_deprecated.def:3:1: note: 'int64_extended_atomics' has been explicitly marked deprecated here\n    3 | __SYCL_ASPECT_DEPRECATED(int64_extended_atomics, 8, \"use atomic64 instead\")\n      | ^\n/opt/onemkl/include/sycl/aspects.hpp:31:10: note: expanded from macro '__SYCL_ASPECT_DEPRECATED'\n   31 |   ASPECT __SYCL2020_DEPRECATED(MESSAGE) = ID,\n      |          ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:6:\nIn file included from /opt/syclomatic/include/dpct/dpct.hpp:52:\nIn file included from /opt/syclomatic/include/dpct/device.hpp:450:\n/opt/onemkl/include/sycl/info/aspects_deprecated.def:4:26: warning: 'usm_restricted_shared_allocations' is deprecated: deprecated in SYCL 2020 [-Wdeprecated-declarations]\n    4 | __SYCL_ASPECT_DEPRECATED(usm_restricted_shared_allocations, 16, \"deprecated in SYCL 2020\")\n      |                          ^\n/opt/onemkl/include/sycl/info/aspects_deprecated.def:4:1: note: 'usm_restricted_shared_allocations' has been explicitly marked deprecated here\n    4 | __SYCL_ASPECT_DEPRECATED(usm_restricted_shared_allocations, 16, \"deprecated in SYCL 2020\")\n      | ^\n/opt/onemkl/include/sycl/aspects.hpp:31:10: note: expanded from macro '__SYCL_ASPECT_DEPRECATED'\n   31 |   ASPECT __SYCL2020_DEPRECATED(MESSAGE) = ID,\n      |          ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\n/opt/onemkl/include/sycl/accessor.hpp:1725:12: warning: 'atomic<unsigned int, sycl::access::address_space::global_space>' is deprecated: sycl::atomic is deprecated since SYCL 2020 [-Wdeprecated-declarations]\n 1725 |     return atomic<DataT, AS>(multi_ptr<DataT, AS, access::decorated::yes>(\n      |            ^\n/opt/onemkl/include/sycl/stream.hpp:539:21: note: in instantiation of function template specialization 'sycl::accessor<unsigned int, 1, sycl::access::mode::atomic, sycl::access::target::device>::operator[]<1>' requested here\n  539 |   Cur = GlobalOffset[0].load();\n      |                     ^\n/opt/onemkl/include/sycl/atomic.hpp:161:7: note: 'atomic<unsigned int, sycl::access::address_space::global_space>' has been explicitly marked deprecated here\n  161 | class __SYCL2020_DEPRECATED(\n      |       ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:23:\n/opt/onemkl/include/sycl/queue.hpp:2819:12: warning: 'single_task' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2819 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/syclomatic/include/dpct/blas_utils.hpp:258:16: note: in instantiation of function template specialization 'sycl::queue::single_task<sycl::detail::auto_name, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:258:36)>' requested here\n  258 |   return queue.single_task(events, [] {});\n      |                ^\n/opt/onemkl/include/sycl/queue.hpp:2778:14: note: 'single_task' has been explicitly marked deprecated here\n 2778 |       event> single_task(const std::vector<event> &DepEvents,\n      |              ^\n/opt/onemkl/include/sycl/queue.hpp:2819:12: warning: 'single_task<sycl::detail::auto_name, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:258:36), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2819 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/onemkl/include/sycl/queue.hpp:2772:3: note: 'single_task<sycl::detail::auto_name, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:258:36), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' has been explicitly marked deprecated here\n 2772 |   __SYCL_DEPRECATED(\"To specify properties, use a launch configuration object \"\n      |   ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:23:\n/opt/onemkl/include/sycl/queue.hpp:2699:12: warning: 'single_task' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2699 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/syclomatic/include/dpct/blas_utils.hpp:85:19: note: in instantiation of function template specialization 'sycl::queue::single_task<dpct_kernel_name<dpct::blas::parameter_wrapper_copyback, long, int>, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:87:11)>' requested here\n   85 |       _q.template single_task<::dpct::cs::kernel_name<\n      |                   ^\n/opt/syclomatic/include/dpct/blas_utils.hpp:2166:40: note: in instantiation of member function 'dpct::blas::parameter_wrapper_t<long, int, dpct::blas::parameter_inout_prop::out>::~parameter_wrapper_t' requested here\n 2166 |   dpct::blas::wrapper_int_to_int64_out wrapper(desc_ptr->get_queue(), result);\n      |                                        ^\n/opt/onemkl/include/sycl/queue.hpp:2662:14: note: 'single_task' has been explicitly marked deprecated here\n 2662 |       event> single_task(PropertiesT Properties, const KernelType &KernelFunc,\n      |              ^\n/opt/onemkl/include/sycl/queue.hpp:2699:12: warning: 'single_task<dpct_kernel_name<dpct::blas::parameter_wrapper_copyback, long, int>, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:87:11), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2699 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/onemkl/include/sycl/queue.hpp:2656:3: note: 'single_task<dpct_kernel_name<dpct::blas::parameter_wrapper_copyback, long, int>, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:87:11), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' has been explicitly marked deprecated here\n 2656 |   __SYCL_DEPRECATED(\"To specify properties, use a launch configuration object \"\n      |   ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\n200 warnings generated.\n"
+          "stderr": "In file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\nIn file included from /opt/onemkl/include/sycl/accessor.hpp:11:\n/opt/onemkl/include/sycl/access/access.hpp:79:63: warning: 'constant_buffer' is deprecated: use 'target::device' instead [-Wdeprecated-declarations]\n   79 | inline constexpr mode_target_tag_t<access_mode::read, target::constant_buffer>\n      |                                                               ^\n/opt/onemkl/include/sycl/access/access.hpp:24:19: note: 'constant_buffer' has been explicitly marked deprecated here\n   24 |   constant_buffer __SYCL2020_DEPRECATED(\"use 'target::device' instead\") = 2015,\n      |                   ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\nIn file included from /opt/onemkl/include/sycl/accessor.hpp:11:\n/opt/onemkl/include/sycl/access/access.hpp:91:31: warning: 'host_buffer' is deprecated: use 'host_accessor' instead [-Wdeprecated-declarations]\n   91 |   return T == access::target::host_buffer || T == access::target::host_image;\n      |                               ^\n/opt/onemkl/include/sycl/access/access.hpp:27:15: note: 'host_buffer' has been explicitly marked deprecated here\n   27 |   host_buffer __SYCL2020_DEPRECATED(\"use 'host_accessor' instead\") = 2018,\n      |               ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\nIn file included from /opt/onemkl/include/sycl/accessor.hpp:11:\n/opt/onemkl/include/\n...[613402 chars truncated]...\nude/sycl/info/aspects_deprecated.def:3:1: note: 'int64_extended_atomics' has been explicitly marked deprecated here\n    3 | __SYCL_ASPECT_DEPRECATED(int64_extended_atomics, 8, \"use atomic64 instead\")\n      | ^\n/opt/onemkl/include/sycl/aspects.hpp:31:10: note: expanded from macro '__SYCL_ASPECT_DEPRECATED'\n   31 |   ASPECT __SYCL2020_DEPRECATED(MESSAGE) = ID,\n      |          ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:6:\nIn file included from /opt/syclomatic/include/dpct/dpct.hpp:52:\nIn file included from /opt/syclomatic/include/dpct/device.hpp:450:\n/opt/onemkl/include/sycl/info/aspects_deprecated.def:4:26: warning: 'usm_restricted_shared_allocations' is deprecated: deprecated in SYCL 2020 [-Wdeprecated-declarations]\n    4 | __SYCL_ASPECT_DEPRECATED(usm_restricted_shared_allocations, 16, \"deprecated in SYCL 2020\")\n      |                          ^\n/opt/onemkl/include/sycl/info/aspects_deprecated.def:4:1: note: 'usm_restricted_shared_allocations' has been explicitly marked deprecated here\n    4 | __SYCL_ASPECT_DEPRECATED(usm_restricted_shared_allocations, 16, \"deprecated in SYCL 2020\")\n      | ^\n/opt/onemkl/include/sycl/aspects.hpp:31:10: note: expanded from macro '__SYCL_ASPECT_DEPRECATED'\n   31 |   ASPECT __SYCL2020_DEPRECATED(MESSAGE) = ID,\n      |          ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:21:\n/opt/onemkl/include/sycl/accessor.hpp:1725:12: warning: 'atomic<unsigned int, sycl::access::address_space::global_space>' is deprecated: sycl::atomic is deprecated since SYCL 2020 [-Wdeprecated-declarations]\n 1725 |     return atomic<DataT, AS>(multi_ptr<DataT, AS, access::decorated::yes>(\n      |            ^\n/opt/onemkl/include/sycl/stream.hpp:539:21: note: in instantiation of function template specialization 'sycl::accessor<unsigned int, 1, sycl::access::mode::atomic, sycl::access::target::device>::operator[]<1>' requested here\n  539 |   Cur = GlobalOffset[0].load();\n      |                     ^\n/opt/onemkl/include/sycl/atomic.hpp:161:7: note: 'atomic<unsigned int, sycl::access::address_space::global_space>' has been explicitly marked deprecated here\n  161 | class __SYCL2020_DEPRECATED(\n      |       ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:75:40: note: expanded from macro '__SYCL2020_DEPRECATED'\n   75 | #define __SYCL2020_DEPRECATED(message) __SYCL_DEPRECATED(message)\n      |                                        ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:23:\n/opt/onemkl/include/sycl/queue.hpp:2819:12: warning: 'single_task' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2819 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/syclomatic/include/dpct/blas_utils.hpp:258:16: note: in instantiation of function template specialization 'sycl::queue::single_task<sycl::detail::auto_name, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:258:36)>' requested here\n  258 |   return queue.single_task(events, [] {});\n      |                ^\n/opt/onemkl/include/sycl/queue.hpp:2778:14: note: 'single_task' has been explicitly marked deprecated here\n 2778 |       event> single_task(const std::vector<event> &DepEvents,\n      |              ^\n/opt/onemkl/include/sycl/queue.hpp:2819:12: warning: 'single_task<sycl::detail::auto_name, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:258:36), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2819 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/onemkl/include/sycl/queue.hpp:2772:3: note: 'single_task<sycl::detail::auto_name, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:258:36), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' has been explicitly marked deprecated here\n 2772 |   __SYCL_DEPRECATED(\"To specify properties, use a launch configuration object \"\n      |   ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\nIn file included from <repo>/examples/results/work/gemm_cublas/migrated/gemm.dp.cpp:5:\nIn file included from /opt/onemkl/include/sycl/sycl.hpp:51:\nIn file included from /opt/onemkl/include/sycl/detail/core.hpp:23:\n/opt/onemkl/include/sycl/queue.hpp:2699:12: warning: 'single_task' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2699 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/syclomatic/include/dpct/blas_utils.hpp:85:19: note: in instantiation of function template specialization 'sycl::queue::single_task<dpct_kernel_name<dpct::blas::parameter_wrapper_copyback, long, int>, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:87:11)>' requested here\n   85 |       _q.template single_task<::dpct::cs::kernel_name<\n      |                   ^\n/opt/syclomatic/include/dpct/blas_utils.hpp:2166:40: note: in instantiation of member function 'dpct::blas::parameter_wrapper_t<long, int, dpct::blas::parameter_inout_prop::out>::~parameter_wrapper_t' requested here\n 2166 |   dpct::blas::wrapper_int_to_int64_out wrapper(desc_ptr->get_queue(), result);\n      |                                        ^\n/opt/onemkl/include/sycl/queue.hpp:2662:14: note: 'single_task' has been explicitly marked deprecated here\n 2662 |       event> single_task(PropertiesT Properties, const KernelType &KernelFunc,\n      |              ^\n/opt/onemkl/include/sycl/queue.hpp:2699:12: warning: 'single_task<dpct_kernel_name<dpct::blas::parameter_wrapper_copyback, long, int>, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:87:11), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' is deprecated: To specify properties, use a launch configuration object of type launch_config or a kernel functor with a get(sycl::ext::oneapi::experimental::properties_tag) member function instead. [-Wdeprecated-declarations]\n 2699 |     return single_task<KernelName, KernelType>(\n      |            ^\n/opt/onemkl/include/sycl/queue.hpp:2656:3: note: 'single_task<dpct_kernel_name<dpct::blas::parameter_wrapper_copyback, long, int>, (lambda at /opt/syclomatic/include/dpct/blas_utils.hpp:87:11), sycl::ext::oneapi::experimental::properties<detail::properties_type_list<>>>' has been explicitly marked deprecated here\n 2656 |   __SYCL_DEPRECATED(\"To specify properties, use a launch configuration object \"\n      |   ^\n/opt/onemkl/include/sycl/detail/defines_elementary.hpp:66:38: note: expanded from macro '__SYCL_DEPRECATED'\n   66 | #define __SYCL_DEPRECATED(message) [[deprecated(message)]]\n      |                                      ^\n200 warnings generated.\n"
         },
-        "output": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/build/migrated",
+        "output": "<repo>/examples/results/work/gemm_cublas/build/migrated",
         "dpct_include_added": "/opt/syclomatic/include",
         "diagnostics": [
           {
@@ -17970,22 +17970,22 @@
           {
             "input": null,
             "reference": {
-              "command": "build/reference /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_migrated/case0_reference.out",
+              "command": "build/reference <repo>/examples/results/work/gemm_cublas/v_migrated/case0_reference.out",
               "returncode": 0,
               "duration_s": 0.062923,
               "stdout": "",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas",
-              "output_file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_migrated/case0_reference.out"
+              "cwd": "<repo>/examples/results/work/gemm_cublas",
+              "output_file": "<repo>/examples/results/work/gemm_cublas/v_migrated/case0_reference.out"
             },
             "candidate": {
-              "command": "build/migrated /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_migrated/case0_candidate.out",
+              "command": "build/migrated <repo>/examples/results/work/gemm_cublas/v_migrated/case0_candidate.out",
               "returncode": 0,
               "duration_s": 0.140092,
               "stdout": "kernel_ms=5.396631\n",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas",
-              "output_file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_migrated/case0_candidate.out"
+              "cwd": "<repo>/examples/results/work/gemm_cublas",
+              "output_file": "<repo>/examples/results/work/gemm_cublas/v_migrated/case0_candidate.out"
             },
             "reference_format": "f32",
             "candidate_format": "f32",
@@ -18015,7 +18015,7 @@
             "passed": true
           }
         ],
-        "work_dir": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_migrated",
+        "work_dir": "<repo>/examples/results/work/gemm_cublas/v_migrated",
         "passed_cases": 1,
         "total_cases": 1,
         "worst_max_abs_err": 5.7220458984375e-06
@@ -18029,7 +18029,7 @@
       "status": "fail",
       "summary": "37 dpct helper use(s) remain in 1 file(s) (macro=22, events_timing=5, memory_management=3, include=2)",
       "evidence": {
-        "path": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/migrated",
+        "path": "<repo>/examples/results/work/gemm_cublas/migrated",
         "files_scanned": 1,
         "total": 37,
         "by_category": {
@@ -18391,16 +18391,16 @@
     "compile_idiomatic": {
       "tool": "compile",
       "status": "ok",
-      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/build/idiomatic (0 warning(s))",
+      "summary": "compiled 1 source(s) -> <repo>/examples/results/work/gemm_cublas/build/idiomatic (0 warning(s))",
       "evidence": {
         "run": {
-          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/opt/onemath/include -Wl,--no-as-needed -L/opt/onemath/lib -Wl,-rpath,/opt/onemath/lib -lonemath /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/sycl/gemm.cpp -o /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/build/idiomatic",
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/opt/onemath/include -Wl,--no-as-needed -L/opt/onemath/lib -Wl,-rpath,/opt/onemath/lib -lonemath <repo>/examples/gemm_cublas/sycl/gemm.cpp -o <repo>/examples/results/work/gemm_cublas/build/idiomatic",
           "returncode": 0,
           "duration_s": 13.830012,
           "stdout": "",
           "stderr": ""
         },
-        "output": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/build/idiomatic",
+        "output": "<repo>/examples/results/work/gemm_cublas/build/idiomatic",
         "dpct_include_added": null,
         "diagnostics": [],
         "counts": {
@@ -18423,22 +18423,22 @@
           {
             "input": null,
             "reference": {
-              "command": "build/reference /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_idiomatic/case0_reference.out",
+              "command": "build/reference <repo>/examples/results/work/gemm_cublas/v_idiomatic/case0_reference.out",
               "returncode": 0,
               "duration_s": 0.065463,
               "stdout": "",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas",
-              "output_file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_idiomatic/case0_reference.out"
+              "cwd": "<repo>/examples/results/work/gemm_cublas",
+              "output_file": "<repo>/examples/results/work/gemm_cublas/v_idiomatic/case0_reference.out"
             },
             "candidate": {
-              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_idiomatic/case0_candidate.out",
+              "command": "build/idiomatic <repo>/examples/results/work/gemm_cublas/v_idiomatic/case0_candidate.out",
               "returncode": 0,
               "duration_s": 0.146469,
               "stdout": "kernel_ms=51.900893\n",
               "stderr": "",
-              "cwd": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas",
-              "output_file": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_idiomatic/case0_candidate.out"
+              "cwd": "<repo>/examples/results/work/gemm_cublas",
+              "output_file": "<repo>/examples/results/work/gemm_cublas/v_idiomatic/case0_candidate.out"
             },
             "reference_format": "f32",
             "candidate_format": "f32",
@@ -18468,7 +18468,7 @@
             "passed": true
           }
         ],
-        "work_dir": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/v_idiomatic",
+        "work_dir": "<repo>/examples/results/work/gemm_cublas/v_idiomatic",
         "passed_cases": 1,
         "total_cases": 1,
         "worst_max_abs_err": 5.7220458984375e-06
@@ -18482,7 +18482,7 @@
       "status": "ok",
       "summary": "5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 144.29 ms, p95 154.78 ms",
       "evidence": {
-        "command": "build/idiomatic /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/bench_out.bin",
+        "command": "build/idiomatic <repo>/examples/results/work/gemm_cublas/bench_out.bin",
         "runs": 5,
         "warmup": 1,
         "device_discovery": {
@@ -18552,7 +18552,7 @@
       "status": "ok",
       "summary": "5 run(s) each; none: median 46.89 ms, p95 59.99 ms",
       "evidence": {
-        "command": "build/reference /home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/results/work/gemm_cublas/bench_out.bin",
+        "command": "build/reference <repo>/examples/results/work/gemm_cublas/bench_out.bin",
         "runs": 5,
         "warmup": 1,
         "results": [
@@ -18588,7 +18588,7 @@
       "status": "ok",
       "summary": "no dpct helpers in 1 file(s)",
       "evidence": {
-        "path": "/home/user/oneapi-agent-toolkit/.claude/worktrees/agent-a71d1d49c393e0ce9/examples/gemm_cublas/sycl/gemm.cpp",
+        "path": "<repo>/examples/gemm_cublas/sycl/gemm.cpp",
         "files_scanned": 1,
         "total": 0,
         "by_category": {},

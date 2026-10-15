@@ -27,10 +27,15 @@ Full output is in [`examples/RESULTS.md`](examples/RESULTS.md). Toolchain: icpx 
 | fuzz (audio) | 4 | ✅ | ✅ -138.5 dBFS residual | 22 | ✅ verify, 0 helpers |
 | FIR 64-tap (audio) | 4 | ✅ | ✅ -135.0 dBFS residual | 14 | ✅ verify, 0 helpers |
 | saxpy | 1 | ✅ | ✅ max err 4.8e-7 | 11 | ✅ verify, 0 helpers |
-| HeCBench softmax | **0** | ✅ | ❌ **22,156 / 524,288 elements wrong** | 9 | ✅ verify, 0 helpers |
+| HeCBench softmax | **0** | ✅ | ❌ **22,156 / 524,288 elements wrong** (AVX-512 CPU; see below) | 9 | ✅ verify, 0 helpers |
+| cuBLAS SGEMM → oneMath | 3 | ✅ (links oneMKL) | ✅ max err 5.7e-6 | 37 | ✅ verify, 0 helpers, oneMath API |
+
+For cuBLAS, c2s 21.0.0 emits the oneMKL product API (`oneapi::mkl::blas`), not the UXL Foundation's open oneMath; `scan_helpers` flags that as an `onemkl_product_api` advisory, and the idiomatic port uses `oneapi::math::blas`.
 
 For softmax, c2s produced code that compiles cleanly with **zero migration warnings**, but it translated `expf` to the reduced-precision `sycl::native::exp`, giving up to 3,473 ULP of error.
 Only behavioural verification caught it. Swapping in `sycl::exp` brings it back to 9.3e-8.
+Whether the wrong results exceed the tolerance depends on the CPU's instruction set: they fail on our AVX-512 Xeon (22,156 wrong, up to 4.1e-6) but stay just inside 1e-6 (6.9e-7) on AVX2 machines such as GitHub's CI runners.
+The silent `expf` → `native::exp` substitution happens everywhere, and CI asserts it on every push.
 `scan_helpers` now flags `sycl::native::` math as an advisory. That is the evidence-first loop in practice.
 
 ## A real model closing the gap
@@ -174,17 +179,21 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | `verify` array / audio | ✅ working | real subprocesses; 32-bit float WAV recommended for the -96 dBFS test |
 | `benchmark` | ✅ working | OpenCL CPU device and NVIDIA `cuda:0` (RTX 2000 Ada); no Intel GPU tested yet |
 | MCP server | ✅ working | in-process `list_tools` / `call_tool` tested (mcp 2.3.0; mcp 1.x import path supported) |
-| `oneapi-agent setup` | ✅ working | Claude Code verified end to end (`claude mcp list` → Connected, idempotent re-run); Codex / Cursor / Gemini config writes unit-tested, not yet exercised in those clients |
+| `oneapi-agent setup` | ✅ working | verified against the real clients: Claude Code and Gemini CLI `Connected`, Cursor `ready` (6 tools listed), Codex reads the entry (`codex mcp get`); idempotent re-runs. See [docs/agent-registration.md](docs/agent-registration.md) |
 | Skill `oneapi-port` | ✅ written | the procedure, loop rules and report template |
 | Standalone loop, dry run (scripted model) | ✅ working | mocked and real-tool runs; success, stuck, max-iterations and budget paths are tested |
 | Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success`, see [docs/real-runs](docs/real-runs/) |
 | CUDA examples executed on NVIDIA hardware | ✅ done | RTX 2000 Ada; CUDA and SYCL-on-GPU both verify, see [docs/gpu-run](docs/gpu-run/rtx2000ada/SUMMARY.md) |
-| Tests | ✅ 84 passed, 3 skipped | pass with and without the toolchain (toolchain tests auto-skip) |
+| Tests | ✅ 100 passed | with the toolchain present; toolchain tests auto-skip without it |
+| CI: real toolchain | ✅ | `toolchain` job installs icpx 2026.1.1 + SYCLomatic 20260701 + CUDA 12.3 headers + oneMath (cached) and runs doctor, pytest (toolchain tests must not skip) and the example pipeline on every push |
+| CI: claims gate | ✅ | [`scripts/check_claims.py`](scripts/check_claims.py) fails the build unless every idiomatic port compiles, verifies and has 0 dpct helpers, and c2s still emits `sycl::native::exp` without a DPCT warning |
+| Run-replay viewer | ✅ | [`scripts/render_trace.py`](scripts/render_trace.py) turns a trace into a self-contained, step-through HTML page; pages in [`docs/replay/`](docs/replay/) |
+| PyPI package | 🟡 ready | wheel ships the skill; `publish.yml` uploads on a GitHub release once the PyPI trusted publisher is configured |
 
 ## Roadmap
 
 - More runs and models for the ablation, and a baseline agent that has a shell.
-- A oneMath example (cuBLAS/cuFFT → oneMath) and a multi-file HeCBench app.
+- cuFFT → oneMath, and a multi-file HeCBench app.
 - Intel GPU validation (Arc/Max through Level Zero).
 - AOT builds (`-fsycl-targets=`) and in-process kernel timing by default, so benchmarks exclude JIT.
 - `verify` input generators (random arrays, edge cases such as denormals, NaN and huge values) and multi-output programs.

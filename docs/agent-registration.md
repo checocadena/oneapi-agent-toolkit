@@ -45,14 +45,14 @@ codex mcp get oneapi-agent
 
 ```
 Name          Command                                           Args                    Env         Cwd  Status   Auth
-oneapi-agent  /home/user/oneapi-agent-toolkit/.venv/bin/python  -m oneapi_agent.server  PATH=*****  -    enabled  Unsupported
+oneapi-agent  <repo>/.venv/bin/python  -m oneapi_agent.server  PATH=*****  -    enabled  Unsupported
 ```
 
 ```
 oneapi-agent
   enabled: true
   transport: stdio
-  command: /home/user/oneapi-agent-toolkit/.venv/bin/python
+  command: <repo>/.venv/bin/python
   args: -m oneapi_agent.server
 ```
 
@@ -70,14 +70,14 @@ When run from a folder that is not trusted, Gemini reads the entry but does not 
 
 ```
 Warning: MCP servers are configured but disabled because this folder is untrusted.
-○ oneapi-agent: /home/user/oneapi-agent-toolkit/.venv/bin/python -m oneapi_agent.server (stdio) - Disabled
+○ oneapi-agent: <repo>/.venv/bin/python -m oneapi_agent.server (stdio) - Disabled
 ```
 
 After the working folder was trusted (`~/.gemini/trustedFolders.json` containing
 `{"<folder>": "TRUST_FOLDER"}`, or by answering Gemini's trust prompt), the server connected:
 
 ```
-✓ oneapi-agent: /home/user/oneapi-agent-toolkit/.venv/bin/python -m oneapi_agent.server (stdio) - Connected
+✓ oneapi-agent: <repo>/.venv/bin/python -m oneapi_agent.server (stdio) - Connected
 ```
 
 Folder trust is the user's own security decision, so `setup` does not change it.
