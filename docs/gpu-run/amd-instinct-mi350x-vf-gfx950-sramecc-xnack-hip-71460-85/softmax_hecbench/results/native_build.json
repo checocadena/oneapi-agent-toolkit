@@ -1,0 +1,8 @@
+{
+  "command": "/opt/rocm/bin/hipcc -O2 -std=c++17 --offload-arch=gfx950 -I/tmp/tmp.EITWR4ay4W/task /tmp/tmp.EITWR4ay4W/out/work/softmax.hip.cpp -o build/native",
+  "returncode": 1,
+  "duration_s": 0.215634,
+  "stdout": "",
+  "stderr": "/tmp/tmp.EITWR4ay4W/out/work/softmax.hip.cpp:1:10: fatal error: 'hip/hip_runtime.h' file not found\n    1 | #include \"hip/hip_runtime.h\"\n      |          ^~~~~~~~~~~~~~~~~~~\n1 error generated when compiling for gfx950.\nfailed to execute:/opt/rocm/core-7.14/lib/llvm/bin/clang++  --offload-arch=gfx950 --driver-mode=g++ --hip-link  -O2 -std=c++17 -I/tmp/tmp.EITWR4ay4W/task -x hip /tmp/tmp.EITWR4ay4W/out/work/softmax.hip.cpp -o \"build/native\"\n",
+  "cwd": "/tmp/tmp.EITWR4ay4W/out/work"
+}

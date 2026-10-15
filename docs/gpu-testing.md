@@ -90,7 +90,7 @@ oneapi-agent ci setup --task examples/softmax_hecbench/task.json --provider runp
 | Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
 | Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | **Verified**: softmax on an RTX A4000 ($0.12/h), PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. Hosts that cannot pull the image are replaced automatically. No AMD offers listed. |
 | Vultr | NVIDIA A16 / A40 Cloud GPU | **Verified**: softmax on an A16, PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. AMD Instinct plans are listed but not deployable on demand. The API key's access control must allow the caller's IP. |
-| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h; spot MI350X $3.50/h), ROCm image `gpu-amd-base` | **Rent, agent, upload and delete verified live** (2026-10-15, MI350X spot, deletion confirmed). The port has not run there yet: intel/llvm's prebuilts have no HIP support (see the problems table), so `--vendor amd` now installs this repo's own HIP build of intel/llvm instead (see "The AMD SYCL toolchain" below); the first run with it still needs to be done. GPU images require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
+| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h; spot MI350X $3.50/h), ROCm image `gpu-amd-base` | **Verified**: softmax on an MI350X (gfx950, spot $3.50/h), PASS against the C++ reference (9.69e-8), with this repo's HIP build of intel/llvm (see "The AMD SYCL toolchain" below). About 2 min, about $0.12, deletion confirmed ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)). The original CUDA could not be built there: the image's ROCm (7.14, `/opt/rocm/core-7.14`) has no HIP headers for `hipcc`. GPU images require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
 | Intel | none to rent | No public API: use a bundle (below). |
 
 **Intel, as of 2026-10-15.**
@@ -121,7 +121,7 @@ intel/llvm publishes no build with the HIP backend: its nightly workflow configu
 To rebuild it locally: `docker run --rm -v "$PWD:/src:ro" -v /big/disk:/work ubuntu:22.04 bash /src/scripts/build-sycl-hip.sh /work`.
 
 Requirements and limits:
-- The GPU host needs **ROCm 7.x**, because the HIP adapter links `libamdhip64.so.7`. DigitalOcean's `gpu-amd-base` (2026-08) serves MI350X, which needs ROCm 7; the Runpod AMD default image is now `rocm/dev-ubuntu-22.04:7.0.2-complete`.
+- The GPU host needs **ROCm 7.x**, because the HIP adapter links `libamdhip64.so.7`. DigitalOcean's `gpu-amd-base` has ROCm 7.14 (HIP 7.14.60), and the adapter loaded there; the Runpod AMD default image is now `rocm/dev-ubuntu-22.04:7.0.2-complete`.
 - AMD code is compiled with `-fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfxXXX`. intel/llvm's `amd_gpu_*` shorthand stops at gfx942, but the AMDGPU backend accepts gfx950.
 - Two intel/llvm naming bugs are worked around in the script: `configure.py --hip` names the AMD libclc runtime `amdgcn-amd-amdhsa-llvm` while CMake requires `amdgcn-amd-amdhsa`, and the driver looks for libspirv under `amdgpu-amd-amdhsa/` while it is installed under `amdgcn-amd-amdhsa/` (the tarball ships a link).
 - The first published tarball (sha256 `e9bf82ee…c8fc3`, 280 MB) was built on an 8-core DigitalOcean droplet (about 1 h, about $0.25) with the same script; the 4-core CI runner takes about 2 h.
@@ -131,7 +131,7 @@ Alternatives considered (2026-10-15):
 - AdaptiveCpp publishes no binaries, so it would also be a source build, plus a second compile and device-discovery path in `gpu_test`.
 - Codeplay's oneAPI for AMD GPUs plugin: its download page loads, but every API behind it returns 404.
 
-## Same port, three GPUs, three rental services
+## Same port, four GPUs, two vendors, four rental services
 
 Every run is fully automated with `remote-test`, the machine deletion is confirmed, and every result is graded the same way:
 
@@ -140,6 +140,7 @@ Every run is fully automated with `remote-test`, the machine deletion is confirm
 | RTX 2000 Ada | Runpod | 9.69e-8 | 7.45e-9 |
 | A16 | Vultr | 9.69e-8 | 7.45e-9 |
 | RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
+| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | not built: no HIP headers in the image |
 
 The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
 
@@ -155,6 +156,7 @@ The values are max abs error on HeCBench softmax, atol 1e-6. An earlier manual r
 | `does not use root passwords, please use an SSH key` (DigitalOcean) | GPU images need an SSH key | the account's keys, or a throwaway key made and removed for the run |
 | `sycl-ls`: "No platforms found" on an AMD MI350X (DigitalOcean) | intel/llvm prebuilts (v7.1.0 and the nightlies to 2026-10-14) are configured with `--cuda` only: no `libur_adapter_hip`, no amdgcn `libspirv`; Codeplay's AMD plugin download API is gone | `--vendor amd` installs intel/llvm built with `--hip` by this repo's CI (below); without any HIP toolchain it stops with `toolchain_missing` before renting; the setup log is kept in the result |
 | `deleted ... NOT CONFIRMED` although the droplet was gone (DigitalOcean) | droplet deletion is asynchronous; one immediate check still saw it | deletion is polled for up to 2 minutes before it is reported unconfirmed |
+| native build on DigitalOcean AMD: `'hip/hip_runtime.h' file not found` | `gpu-amd-base` ships the ROCm 7.14 runtime and `hipcc`, but not the HIP development headers | reported as a limitation; the SYCL port is still verified against the C++ reference |
 | the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
 | a Vast instance stuck in `loading`: `TLS handshake timeout` from Docker Hub | that host's network | the machine is deleted, its host is skipped, and another is tried; any machine silent past `--boot-minutes` is replaced the same way |
 
