@@ -5,8 +5,10 @@ Flow (no SSH; everything goes through Runpod's HTTPS proxy):
 1. ``make_bundle`` packs the task and this package into one ``.sh``.
 2. A pod is created through the Runpod REST API (``https://api.runpod.io/v2``), with a small
    stdlib HTTP agent (``POD_AGENT`` below) as its start command. The agent installs a SYCL
-   compiler if the image has none (an intel/llvm release, which carries the CUDA and HIP
-   adapters) and listens on port 8000, guarded by a random per-run token.
+   compiler and listens on port 8000, guarded by a random per-run token. The compiler is the
+   tarball at ``sycl_url`` when one is given (for AMD, the HIP-enabled intel/llvm build that
+   ``scripts/build-sycl-hip.sh`` publishes, ``DEFAULT_SYCL``), else the latest intel/llvm
+   release if the image has no compiler (those carry the CUDA adapter, not HIP).
 3. The bundle is uploaded to ``https://<pod>-8000.proxy.runpod.net/bundle``; the agent runs it
    and serves ``/status`` and ``/results``.
 4. The results archive is downloaded and imported with ``ingest_results``.
@@ -50,7 +52,19 @@ DEFAULT_GPUS = {
 }
 DEFAULT_IMAGE = {
     "nvidia": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",  # devel: has nvcc
-    "amd": "runpod/pytorch:2.4.0-py3.10-rocm6.1.0-ubuntu22.04",  # has hipcc, hipify-perl
+    # ROCm 7: the HIP SYCL toolchain below links libamdhip64.so.7. Has hipcc, hipify-perl.
+    "amd": "rocm/dev-ubuntu-22.04:7.0.2-complete",
+}
+# SYCL compilers to install on the machine, per vendor: (tarball URL, sha256). intel/llvm's own
+# prebuilts are built with --cuda only (no libur_adapter_hip, no amdgcn libspirv), so AMD gets
+# intel/llvm built with --hip against ROCm 7.0 by .github/workflows/sycl-hip-toolchain.yml
+# (scripts/build-sycl-hip.sh). It needs ROCm 7.x on the GPU host. NVIDIA keeps the latest
+# intel/llvm release (looked up on the machine).
+SYCL_HIP_RELEASE = ("https://github.com/checocadena/oneapi-agent-toolkit/releases/download/"
+                    "sycl-hip-nightly-2026-10-14-rocm7.0/sycl-hip-linux-x86_64.tar.gz")
+DEFAULT_SYCL: dict[str, tuple[str, str]] = {
+    "amd": (SYCL_HIP_RELEASE,
+            "e9bf82ee3d7bd18d8d86ad5e0ea918aab3d4a30578934af510ddbc50c43c8fc3"),
 }
 
 # Runs inside the pod. Standard library only; started as `python3 /gt_agent.py`.
@@ -65,7 +79,15 @@ export DEBIAN_FRONTEND=noninteractive
 command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }
 python3 -c 'import numpy' 2>/dev/null || { apt-get update -qq && apt-get install -y -qq python3-numpy; } \
   || python3 -m pip install -q --break-system-packages numpy || python3 -m pip install -q numpy
-if ! command -v icpx >/dev/null && [ ! -x /opt/sycl/bin/clang++ ]; then
+if [ -n "${GT_SYCL_URL:-}" ]; then
+  echo "SYCL toolchain: $GT_SYCL_URL"
+  curl -fsSL --retry 3 -o /tmp/sycl.tar.gz "$GT_SYCL_URL" || { echo "download failed"; exit 1; }
+  if [ -n "${GT_SYCL_SHA256:-}" ]; then
+    echo "$GT_SYCL_SHA256  /tmp/sycl.tar.gz" | sha256sum -c - || { echo "sha256 mismatch"; exit 1; }
+  fi
+  rm -rf /opt/sycl && mkdir -p /opt/sycl && tar xzf /tmp/sycl.tar.gz -C /opt/sycl && rm -f /tmp/sycl.tar.gz
+  cat /opt/sycl/BUILD-INFO.txt 2>/dev/null || true
+elif ! command -v icpx >/dev/null && [ ! -x /opt/sycl/bin/clang++ ]; then
   URL="$(curl -fsSL 'https://api.github.com/repos/intel/llvm/releases?per_page=30' | python3 -c '
 import json,sys
 for r in json.load(sys.stdin):
@@ -79,6 +101,8 @@ fi
 export PATH="/opt/sycl/bin:/usr/local/cuda/bin:/opt/rocm/bin:$PATH"
 export LD_LIBRARY_PATH="/opt/sycl/lib:/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
 nvidia-smi || rocm-smi || true
+cat /opt/rocm/.info/version 2>/dev/null || true
+[ -e /opt/sycl/lib/libur_adapter_hip.so ] && ldd /opt/sycl/lib/libur_adapter_hip.so | grep -i amdhip
 sycl-ls
 """
 ENV = dict(os.environ)
@@ -691,24 +715,31 @@ def _confirm_gone(prov: Provider, machine_id: str, poll_s: float, wait_s: float 
 
 def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None = None,
                 provider: str | Provider = "runpod", cloud: str = "SECURE",
-                image: str | None = None, max_minutes: float = 45, max_usd: float = 2.0,
+                image: str | None = None, sycl_url: str | None = None,
+                sycl_sha256: str | None = None, max_minutes: float = 45, max_usd: float = 2.0,
                 into: str = "docs/gpu-run", keep_pod: bool = False, api_key: str | None = None,
                 api: RunpodAPI | None = None, log: Callable[[str], None] = print,
                 poll_s: float = 10, agent_url: Callable[[str], str] | None = None,
                 boot_minutes: float = 15, max_stuck: int = 3) -> ToolResult:
-    """Rent a GPU, run ``gpu_test`` there through a bundle, import the results, delete it."""
-    if vendor == "amd" and not image:
-        # The machine setup installs the intel/llvm prebuilt, which (checked on v7.1.0 and the
-        # nightlies to 2026-10-14) ships only CUDA/Level Zero/OpenCL adapters: no
-        # libur_adapter_hip and no amdgcn libspirv, so sycl-ls finds no platform on an AMD GPU.
-        # Fail here, before paying for a GPU that cannot run the port.
+    """Rent a GPU, run ``gpu_test`` there through a bundle, import the results, delete it.
+
+    ``sycl_url`` (with optional ``sycl_sha256``) is a SYCL compiler tarball unpacked to
+    /opt/sycl on the machine; AMD defaults to ``DEFAULT_SYCL["amd"]`` unless ``image`` is given
+    (an image is then trusted to bring its own compiler).
+    """
+    if sycl_url is None and not image and vendor in DEFAULT_SYCL:
+        sycl_url, sycl_sha256 = DEFAULT_SYCL[vendor]
+    if vendor == "amd" and not (image or sycl_url):
+        # The intel/llvm release the setup would otherwise install (checked on v7.1.0 and the
+        # nightlies to 2026-10-14) has no libur_adapter_hip and no amdgcn libspirv, so sycl-ls
+        # finds no platform on an AMD GPU. Fail here, before paying for a GPU.
         return ToolResult("remote_test", "toolchain_missing",
-                          "the default SYCL toolchain (intel/llvm prebuilt) has no AMD HIP "
-                          "support, so an AMD GPU cannot run the port",
+                          "no HIP-enabled SYCL toolchain for AMD (the intel/llvm prebuilts are "
+                          "CUDA-only)",
                           {"vendor": vendor, "provider": getattr(provider, "name", provider)},
-                          ["Pass --image with an image that already has a HIP-enabled SYCL "
-                           "compiler (icpx with the AMD plugin, or intel/llvm built with "
-                           "--hip at /opt/sycl); setup then skips the intel/llvm download."])
+                          ["Pass --sycl-url with a tarball of intel/llvm built with --hip "
+                           "(scripts/build-sycl-hip.sh), or --image with an image that has one "
+                           "at /opt/sycl or as icpx."])
     if isinstance(provider, Provider):
         prov = provider
     elif api is not None:  # tests / callers that bring their own Runpod client
@@ -741,6 +772,10 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
         return b
     token = secrets.token_urlsafe(24)
     env = {"GT_TOKEN": token, "GT_AGENT": base64.b64encode(POD_AGENT.encode()).decode()}
+    if sycl_url:
+        env["GT_SYCL_URL"] = sycl_url
+        if sycl_sha256:
+            env["GT_SYCL_SHA256"] = sycl_sha256
     ctx: ssl.SSLContext | None = None
     tls_note: list[str] = []
     if prov.tls:
@@ -755,7 +790,8 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                               "machine (it is reached on a bare IP)", {"provider": prov.name})
     t0 = time.time()
     mid: str | None = None
-    ev: dict[str, Any] = {"provider": prov.name, "create_attempts": []}
+    ev: dict[str, Any] = {"provider": prov.name, "create_attempts": [],
+                          "sycl_url": sycl_url, "sycl_sha256": sycl_sha256}
     status: dict[str, Any] = {}
     result: ToolResult
     gpu, price = affordable[0][0], affordable[0][1]

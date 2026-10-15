@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
+import shutil
+import subprocess
+import tarfile
 from pathlib import Path
+
+import pytest
 
 from oneapi_agent import remote
 
@@ -100,7 +107,7 @@ class StuckThenSlowProvider(remote.Provider):
     name = "fake"
 
     def __init__(self):
-        self.created, self.deleted, self.bad = [], [], []
+        self.created, self.deleted, self.bad, self.envs = [], [], [], []
 
     def candidates(self, vendor, gpu_type):
         return ["G"]
@@ -109,6 +116,7 @@ class StuckThenSlowProvider(remote.Provider):
         return None
 
     def create(self, gpu, *, vendor, image, env):
+        self.envs.append(env)
         mid = f"m{len(self.created) + 1}"
         self.created.append(mid)
         return mid
@@ -139,13 +147,70 @@ def test_stuck_machines_are_replaced_then_given_up(tmp_path):
     assert r.status == "error" and "2 stuck machine(s) replaced" in r.summary
 
 
-def test_amd_without_a_hip_toolchain_image_refuses_before_renting(tmp_path):
+def _amd_run(tmp_path, **kw):
     prov = StuckThenSlowProvider()
-    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider=prov, vendor="amd",
+    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider=prov,
                            poll_s=0.01, boot_minutes=0.002, max_stuck=1, max_minutes=5,
-                           into=str(tmp_path), log=lambda m: None)
+                           into=str(tmp_path), log=lambda m: None, **kw)
+    return prov, r
+
+
+def test_amd_without_any_hip_toolchain_refuses_before_renting(tmp_path, monkeypatch):
+    monkeypatch.setattr(remote, "DEFAULT_SYCL", {})
+    prov, r = _amd_run(tmp_path, vendor="amd")
     assert r.status == "toolchain_missing" and "HIP" in r.summary
-    assert prov.created == [] and "--image" in r.limitations[0]
+    assert prov.created == [] and "--sycl-url" in r.limitations[0]
+
+
+def test_amd_installs_the_published_hip_toolchain_by_default(tmp_path):
+    prov, r = _amd_run(tmp_path, vendor="amd")
+    url, sha = remote.DEFAULT_SYCL["amd"]
+    assert prov.created and all(e["GT_SYCL_URL"] == url for e in prov.envs)
+    assert url.startswith("https://github.com/checocadena/oneapi-agent-toolkit/releases/download/")
+    assert all(e["GT_SYCL_SHA256"] == sha for e in prov.envs) and len(sha) == 64
+    assert r.evidence["sycl_url"] == url
+
+
+def test_an_image_brings_its_own_compiler_and_sycl_url_overrides(tmp_path):
+    prov, _ = _amd_run(tmp_path, vendor="amd", image="my/hip-sycl:1")
+    assert prov.created and all("GT_SYCL_URL" not in e for e in prov.envs)
+    prov, _ = _amd_run(tmp_path, vendor="nvidia", sycl_url="https://x/t.tar.gz",
+                       sycl_sha256="ab" * 32)
+    assert prov.envs[0]["GT_SYCL_URL"] == "https://x/t.tar.gz"
+    assert prov.envs[0]["GT_SYCL_SHA256"] == "ab" * 32
+
+
+def _setup_url_block(prefix):
+    """The agent's GT_SYCL_URL install step, pointed at a scratch prefix instead of /opt/sycl."""
+    setup = remote.POD_AGENT.split('SETUP = r"""', 1)[1].split('"""', 1)[0]
+    block = setup[setup.index('if [ -n "${GT_SYCL_URL:-}" ]'):setup.index("elif ")]
+    return block.replace("/opt/sycl", str(prefix / "sycl")).replace(
+        "/tmp/sycl.tar.gz", str(prefix / "dl.tar.gz")) + "fi\n"
+
+
+@pytest.mark.skipif(not (shutil.which("sha256sum") and shutil.which("curl")),
+                    reason="needs sha256sum and curl")
+def test_setup_installs_the_sycl_tarball_and_checks_its_sha256(tmp_path):
+    src = tmp_path / "src"
+    (src / "bin").mkdir(parents=True)
+    (src / "bin" / "clang++").write_text("#!/bin/sh\n")
+    (src / "BUILD-INFO.txt").write_text("intel/llvm commit: test\n")
+    tar = tmp_path / "t.tar.gz"
+    with tarfile.open(tar, "w:gz") as tf:
+        for f in src.rglob("*"):
+            tf.add(f, arcname=str(f.relative_to(src)))
+    good = hashlib.sha256(tar.read_bytes()).hexdigest()
+    script = _setup_url_block(tmp_path)
+
+    def run(sha):
+        env = {**os.environ, "GT_SYCL_URL": tar.as_uri(), "GT_SYCL_SHA256": sha}
+        return subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+
+    bad = run("0" * 64)
+    assert bad.returncode != 0 and not (tmp_path / "sycl" / "bin" / "clang++").exists()
+    ok = run(good)
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+    assert (tmp_path / "sycl" / "bin" / "clang++").exists() and "intel/llvm commit" in ok.stdout
 
 
 class SlowDeleteProvider(StuckThenSlowProvider):

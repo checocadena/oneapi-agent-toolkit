@@ -60,6 +60,10 @@ def target_flags(device: dict[str, Any], amd_arch: str | None = None,
     that GPU (``nvidia_gpu_sm_XY``). Plain ``nvptx64-nvidia-cuda`` ships PTX that the driver
     must JIT, which fails with CUDA_ERROR_UNSUPPORTED_PTX_VERSION when the SYCL compiler is
     newer than the driver (seen on a Vultr A16).
+
+    On AMD, use the generic triple plus ``--offload-arch``: the ``amd_gpu_gfxXXX`` shorthand
+    stops at gfx942 in intel/llvm, while ``--offload-arch`` takes any arch LLVM knows,
+    including gfx950 (MI350X/MI355X).
     """
     if device["device_type"] != "gpu":
         return []
@@ -68,7 +72,8 @@ def target_flags(device: dict[str, Any], amd_arch: str | None = None,
         return [f"-fsycl-targets=nvidia_gpu_sm_{cuda_arch}" if cuda_arch
                 else "-fsycl-targets=nvptx64-nvidia-cuda"]
     if backend == "hip":
-        return [f"-fsycl-targets=amd_gpu_{amd_arch}"] if amd_arch else []
+        return (["-fsycl-targets=amdgcn-amd-amdhsa", "-Xsycl-target-backend=amdgcn-amd-amdhsa",
+                 f"--offload-arch={amd_arch}"] if amd_arch else [])
     return ["-fsycl-targets=spir64"]
 
 

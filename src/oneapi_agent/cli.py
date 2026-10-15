@@ -98,6 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
     rt.add_argument("--gpu", dest="gpu_type", help="Runpod GPU type id (default per vendor)")
     rt.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE")
     rt.add_argument("--image", help="container image (default per vendor)")
+    rt.add_argument("--sycl-url", help="SYCL compiler tarball to unpack to /opt/sycl on the "
+                    "machine (default for AMD: the HIP-enabled intel/llvm build published by "
+                    "this repo's sycl-hip-toolchain workflow)")
+    rt.add_argument("--sycl-sha256", help="expected sha256 of --sycl-url")
     rt.add_argument("--max-minutes", type=float, default=45)
     rt.add_argument("--max-usd", type=float, default=2.0)
     rt.add_argument("--into", default="docs/gpu-run")
@@ -181,7 +185,8 @@ def _main(argv: Sequence[str] | None = None) -> int:
 
         return _emit(remote_test(args.task, vendor=args.vendor, gpu_type=args.gpu_type,
                                  provider=args.provider,
-                                 cloud=args.cloud, image=args.image, max_minutes=args.max_minutes,
+                                 cloud=args.cloud, image=args.image, sycl_url=args.sycl_url,
+                                 sycl_sha256=args.sycl_sha256, max_minutes=args.max_minutes,
                                  max_usd=args.max_usd, into=args.into, keep_pod=args.keep_pod,
                                  boot_minutes=args.boot_minutes,
                                  log=lambda m: print(m, file=sys.stderr)), args.summary)

@@ -39,7 +39,11 @@ def test_target_flags_per_vendor():
     assert target_flags(dev("cuda", "gpu")) == ["-fsycl-targets=nvptx64-nvidia-cuda"]
     # exact SM -> machine code, immune to "unsupported PTX version" on older drivers
     assert target_flags(dev("cuda", "gpu"), cuda_arch="86") == ["-fsycl-targets=nvidia_gpu_sm_86"]
-    assert target_flags(dev("hip", "gpu"), "gfx942") == ["-fsycl-targets=amd_gpu_gfx942"]
+    # generic triple + --offload-arch: intel/llvm has no amd_gpu_gfx950 shorthand
+    for arch in ("gfx942", "gfx950"):
+        assert target_flags(dev("hip", "gpu"), arch) == [
+            "-fsycl-targets=amdgcn-amd-amdhsa", "-Xsycl-target-backend=amdgcn-amd-amdhsa",
+            f"--offload-arch={arch}"]
     assert target_flags(dev("level_zero", "gpu")) == ["-fsycl-targets=spir64"]
     assert target_flags(dev("opencl", "cpu")) == []
 
