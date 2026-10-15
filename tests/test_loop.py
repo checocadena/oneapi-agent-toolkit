@@ -196,3 +196,23 @@ def test_repo_example_task_files_load():
         c = LoopConfig.from_task_file(t)
         assert Path(c.cuda_path).is_file()
         assert (t.parent / "sycl" / (Path(c.cuda_path).stem + ".cpp")).is_file()
+
+
+def test_client_prefers_oneapi_agent_key(monkeypatch):
+    from oneapi_agent.loop import make_anthropic_client
+
+    calls = []
+
+    class FakeSDK:
+        @staticmethod
+        def Anthropic(**kw):  # noqa: N802 - mirrors the SDK class name
+            calls.append(kw)
+            return kw
+
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "http://host-internal.invalid")
+    monkeypatch.setenv("ONEAPI_AGENT_API_KEY", "k-test")
+    monkeypatch.delenv("ONEAPI_AGENT_BASE_URL", raising=False)
+    assert make_anthropic_client(FakeSDK) == {"api_key": "k-test",
+                                              "base_url": "https://api.anthropic.com"}
+    monkeypatch.delenv("ONEAPI_AGENT_API_KEY")
+    assert make_anthropic_client(FakeSDK) == {}  # falls back to the SDK's own lookup

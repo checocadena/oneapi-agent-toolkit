@@ -156,13 +156,32 @@ class ModelClient(Protocol):
                tools: list[dict[str, Any]]) -> ModelResponse: ...
 
 
+DEFAULT_API_BASE_URL = "https://api.anthropic.com"
+
+
+def make_anthropic_client(anthropic_module: Any) -> Any:
+    """Build the SDK client for the loop.
+
+    ``ONEAPI_AGENT_API_KEY`` takes precedence over the SDK's own credential lookup. Hosts
+    that reserve ``ANTHROPIC_API_KEY`` for their own auth (Claude Code sessions blank it)
+    can use this name instead. With it, the base URL is pinned to ``ONEAPI_AGENT_BASE_URL``
+    (default: the public API) so an inherited ``ANTHROPIC_BASE_URL`` meant for the host
+    never receives the loop's key.
+    """
+    key = os.environ.get("ONEAPI_AGENT_API_KEY")
+    if key:
+        base = os.environ.get("ONEAPI_AGENT_BASE_URL", DEFAULT_API_BASE_URL)
+        return anthropic_module.Anthropic(api_key=key, base_url=base)
+    return anthropic_module.Anthropic()  # ANTHROPIC_API_KEY or other SDK credential sources
+
+
 class AnthropicModel:
     """Claude via the Anthropic Python SDK (manual tool-use loop)."""
 
     def __init__(self, model: str, max_tokens: int = 16000) -> None:
         import anthropic  # optional dependency: pip install .[agent]
 
-        self.client = anthropic.Anthropic()  # ANTHROPIC_API_KEY (or other SDK credential sources)
+        self.client = make_anthropic_client(anthropic)
         self.name = model
         self.max_tokens = max_tokens
         self.effort = os.environ.get("ONEAPI_AGENT_EFFORT")  # low|medium|high|xhigh|max
