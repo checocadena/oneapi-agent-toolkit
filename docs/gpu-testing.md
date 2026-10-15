@@ -73,8 +73,8 @@ Spending is capped by `--max-minutes` (45 by default) and `--max-usd` ($2 by def
 |---|---|---|
 | Runpod | NVIDIA (RTX A4500 / 2000 Ada / A4000 / …), AMD MI300X | **Verified**: softmax on an RTX 2000 Ada, PASS against the C++ reference and the original CUDA, about 1 min, about $0.005 ([results](gpu-run/nvidia-rtx-2000-ada-generation/)). AMD stock: none. |
 | Vast.ai | NVIDIA (RTX A4000 / 3090 / A5000 / 4090) | Create and delete verified live (RTX 3090); a full run not yet completed. No AMD offers listed. |
-| Vultr | NVIDIA A16 / A40 Cloud GPU | Create and delete verified live (A16); a full run not yet completed. AMD Instinct plans are listed but not deployable on demand. Note: the API key's access control must allow the caller's IP. |
-| DigitalOcean | **AMD Instinct MI300X** (single GPU, `gpu-mi300x1-192gb`, ~$2.59/h, ROCm image `gpu-amd-base`) | Implemented from the API docs; unit-tested, not yet run live. New accounts may need a support request to enable AMD GPUs. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
+| Vultr | NVIDIA A16 / A40 Cloud GPU | **Verified**: softmax on an A16, PASS against the C++ reference (9.69e-8) and the original CUDA (7.45e-9), machine deletion confirmed, run from a laptop. AMD Instinct plans are listed but not deployable on demand. The API key's access control must allow the caller's IP. |
+| DigitalOcean | **AMD Instinct** single GPUs: MI300X/MI325X/MI350X/MI355X (from $2.59/h), ROCm image `gpu-amd-base` | Create path verified live up to the account's GPU limit: new accounts start at 0 GPUs ("will exceed your GPU limit") and need a support request. GPU images also require an SSH key; the tool attaches one. Key: `OCEAN_API_KEY` or `DIGITALOCEAN_TOKEN`. |
 | Intel | none to rent | No public API: use a bundle (below). |
 
 **Intel, as of 2026-10-15.**
@@ -93,3 +93,17 @@ cloud.intel.com now runs "Intel Cloud Services":
 A self-hosted Intel Arc or Flex machine registered as a GitHub Actions runner is the only fully automatic option we know of.
 
 The original Intel DevCloud for oneAPI was retired on 2024-10-31.
+
+## Problems found on real clouds, and what the tool does about them
+
+| Symptom | Cause | Handling |
+|---|---|---|
+| `CUDA_ERROR_UNSUPPORTED_PTX_VERSION` at launch (Vultr A16) | the SYCL compiler emits newer PTX than the host driver can JIT | compile for the GPU's exact compute capability (`nvidia_gpu_sm_XY`, read from `nvidia-smi`) |
+| no results from the run, `HOME: unbound variable` (Vultr) | cloud-init starts the agent without `HOME` | `HOME` defaults to `/root` |
+| no results from the run, numpy missing (Ubuntu 24.04) | no pip, and PEP 668 blocks pip installs | `apt-get install python3-numpy`, then pip `--break-system-packages` |
+| HTTP 403, `error code: 1010` (Runpod proxy) | Cloudflare blocks Python's default user agent | every request sends its own User-Agent |
+| `will exceed your GPU limit` (DigitalOcean) | new accounts start with 0 GPUs | reported as-is; ask DigitalOcean support for a limit |
+| `does not use root passwords, please use an SSH key` (DigitalOcean) | GPU images need an SSH key | the account's keys, or a throwaway key made and removed for the run |
+| the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
+
+A run that crashes still returns an archive with the error and the run log.
