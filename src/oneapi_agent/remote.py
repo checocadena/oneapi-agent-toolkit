@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from .bundle import ingest_results, make_bundle
-from .keys import PROVIDER_KEY_ALIASES, PROVIDER_KEY_ENV, find_key  # noqa: F401 (re-exported)
+from .keys import PROVIDER_KEY_ALIASES, PROVIDER_KEY_ENV, find_key, missing_key_result  # noqa: F401 (re-exported)
 from .result import ToolResult
 from .toolchain import run_command
 
@@ -717,10 +717,7 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             return ToolResult("remote_test", "error", f"unknown provider {provider!r}; "
                               f"choose from {sorted(PROVIDER_KEY_ENV)}")
         if not find_key(provider, api_key):
-            return ToolResult("remote_test", "toolchain_missing",
-                              f"no {provider} API key: {env_name} is not set and none is saved",
-                              {}, [f"Create an API key in the {provider} console, then run "
-                                   f"`oneapi-agent login {provider}` (or export {env_name})."])
+            return missing_key_result("remote_test", provider)
         prov = make_provider(provider, cloud=cloud, api_key=api_key)
     candidates = prov.candidates(vendor, gpu_type)
     affordable: list[tuple[str, float | None, float]] = []

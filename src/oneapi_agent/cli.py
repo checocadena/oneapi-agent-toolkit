@@ -116,6 +116,22 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("providers", help="show which GPU provider keys are found, where from, and "
                    "whether each provider accepts its key (one read-only API call each)")
 
+    ci = sub.add_parser("ci", help="GitHub Actions integration")
+    ci_sub = ci.add_subparsers(dest="ci_cmd", required=True)
+    cs = ci_sub.add_parser("setup", help="write .github/workflows/gpu-test.yml (remote-test on PRs "
+                           "labelled gpu-test) and offer to store local provider keys as secrets")
+    cs.add_argument("--task", default="task.json", help="task.json the workflow tests")
+    cs.add_argument("--provider", choices=providers, default="runpod")
+    cs.add_argument("--vendor", choices=["nvidia", "amd"], default="nvidia")
+    cs.add_argument("--max-usd", type=float, default=2.0)
+    cs.add_argument("--max-minutes", type=float, default=45)
+    cs.add_argument("--repo", default=".", help="repository root (default: current directory)")
+    cs.add_argument("--install", help="pip requirement the workflow installs "
+                    "(default: this toolkit from GitHub main)")
+    cs.add_argument("--force", action="store_true", help="overwrite an existing workflow")
+    cs.add_argument("--yes", action="store_true", help="store every key found without asking")
+    cs.add_argument("--no-secrets", action="store_true", help="do not offer `gh secret set`")
+
     sub.add_parser("serve", help="run the MCP server on stdio")
 
     st = sub.add_parser("setup", help="register the MCP server (and skill) with coding agents")
@@ -210,6 +226,14 @@ def _main(argv: Sequence[str] | None = None) -> int:
         else:
             key = sys.stdin.readline()
         return _emit(keys.login(args.provider, key), args.summary)
+    if args.cmd == "ci":
+        from .ci import DEFAULT_INSTALL, ci_setup
+
+        return _emit(ci_setup(args.repo, task=args.task, provider=args.provider,
+                              vendor=args.vendor, max_usd=args.max_usd,
+                              max_minutes=args.max_minutes, install=args.install or DEFAULT_INSTALL,
+                              force=args.force, secrets=not args.no_secrets, yes=args.yes),
+                     args.summary)
     if args.cmd == "setup":
         from .setup import setup
 

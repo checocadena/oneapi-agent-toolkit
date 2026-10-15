@@ -198,7 +198,7 @@ def test_providers_valid_keys_show_source_and_account_facts(kr, monkeypatch, cap
     assert rows["digitalocean"]["source"] == "keyring"
     assert rows["digitalocean"]["account"] == {"status": "active", "droplet_limit": 25,
                                                "gpu_droplet_limit": 1}
-    assert rows["vast"]["key"] == "missing" and "oneapi-agent login vast" in rows["vast"]["how"]
+    assert rows["vast"]["key"] == "missing" and rows["vast"]["login_command"] == "oneapi-agent login vast"
     assert len(req.calls) == 2
     assert SECRET not in res.to_json() and SECRET not in res.summary
 
@@ -245,3 +245,38 @@ def test_providers_cli_json_never_contains_key(kr, capsys, monkeypatch):
     assert code == 0
     assert '"balance_usd": -10.0' in out and "x@y" not in out
     assert SECRET not in out
+
+
+# ---------------------------------------------------------------- agent guidance (MCP)
+
+def test_remote_test_missing_key_is_structured_for_agents(no_keyring, tmp_path):
+    res = remote.remote_test(str(tmp_path / "task.json"), provider="digitalocean")
+    ev = res.evidence
+    assert res.status == "toolchain_missing"
+    assert ev["provider"] == "digitalocean"
+    assert ev["console_url"].startswith("https://cloud.digitalocean.com/")
+    assert ev["login_command"] == "oneapi-agent login digitalocean"
+    assert ev["env"] == ["OCEAN_API_KEY", "DIGITALOCEAN_TOKEN"]
+    assert "Do not ask for the key" in ev["agent_note"]
+
+
+def test_providers_missing_rows_say_where_to_create_a_key(no_keyring):
+    rows = keys.providers(fake_req(set())).evidence["providers"]
+    assert rows["vast"]["console_url"] == "https://cloud.vast.ai/manage-keys/"
+    assert rows["vast"]["login_command"] == "oneapi-agent login vast"
+
+
+def test_mcp_providers_status_takes_no_arguments(no_keyring, monkeypatch):
+    pytest.importorskip("mcp")
+    import asyncio
+
+    from oneapi_agent import server
+
+    monkeypatch.setattr(keys.providers, "__defaults__", (fake_req(set()),))
+    tools = {t.name: t for t in asyncio.run(server.mcp.list_tools())}
+    assert "providers_status" in tools
+    for t in tools.values():  # no tool accepts a key
+        schema = getattr(t, "inputSchema", None) or getattr(t, "input_schema", None) or {}
+        props = schema.get("properties", {})
+        assert not any("key" in p.lower() or "token" in p.lower() for p in props), t.name
+    assert server.providers_status()["status"] == "toolchain_missing"

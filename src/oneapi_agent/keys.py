@@ -26,6 +26,13 @@ PROVIDER_KEY_ENV = {"runpod": "RUNPOD_API_KEY", "vast": "VAST_API_KEY", "vultr":
                     "digitalocean": "OCEAN_API_KEY"}
 # Also accepted: the name doctl uses.
 PROVIDER_KEY_ALIASES = {"digitalocean": ("DIGITALOCEAN_TOKEN",)}
+# Where each provider's API key is created.
+CONSOLE_URL = {"runpod": "https://console.runpod.io/user/credentials",
+               "vast": "https://cloud.vast.ai/manage-keys/",
+               "vultr": "https://my.vultr.com/settings/#settingsapi",
+               "digitalocean": "https://cloud.digitalocean.com/account/api/tokens"}
+AGENT_NOTE = ("Ask the user to create the key and run the login command in their own terminal. "
+              "Do not ask for the key, and do not handle, store or pass it: no tool accepts one.")
 INSTALL_HINT = "pip install 'oneapi-agent-toolkit[keyring]'"
 USER_AGENT = "oneapi-agent-toolkit (+https://github.com/checocadena/oneapi-agent-toolkit)"
 
@@ -60,6 +67,25 @@ def find_key(provider: str, api_key: str | None = None) -> tuple[str, str] | Non
             return os.environ[env], env
     key = stored_key(provider)
     return (key, "keyring") if key else None
+
+
+def missing_key(provider: str) -> dict[str, Any]:
+    """What a user (or an agent relaying to one) needs to bring a key; contains no key."""
+    envs = [PROVIDER_KEY_ENV[provider], *PROVIDER_KEY_ALIASES.get(provider, ())]
+    return {"provider": provider, "console_url": CONSOLE_URL[provider],
+            "login_command": f"oneapi-agent login {provider}", "env": envs,
+            "agent_note": AGENT_NOTE}
+
+
+def missing_key_result(tool: str, provider: str) -> ToolResult:
+    """The ``toolchain_missing`` result for a provider with no key anywhere."""
+    env = PROVIDER_KEY_ENV[provider]
+    return ToolResult(tool, "toolchain_missing",
+                      f"no {provider} API key: {env} is not set and none is saved",
+                      missing_key(provider),
+                      [f"Create an API key at {CONSOLE_URL[provider]}, then run "
+                       f"`oneapi-agent login {provider}` in a terminal (or export {env}).",
+                       AGENT_NOTE])
 
 
 def _no_keyring(tool: str) -> ToolResult:
@@ -168,8 +194,8 @@ def providers(req: Request = _http) -> ToolResult:
     for name in PROVIDERS:
         found = find_key(name)
         if found is None:
-            rows[name] = {"key": "missing",
-                          "how": f"oneapi-agent login {name}  (or export {PROVIDER_KEY_ENV[name]})"}
+            rows[name] = {"key": "missing", **{k: v for k, v in missing_key(name).items()
+                                               if k not in ("provider", "agent_note")}}
             continue
         key, source = found
         row: dict[str, Any] = {"key": "found", "source": source}
@@ -205,6 +231,7 @@ def providers(req: Request = _http) -> ToolResult:
         status = "error"
     else:
         status = "ok"
+    lim = [AGENT_NOTE] if len(have) < len(PROVIDERS) else []
     return ToolResult("providers", status, summary, {"providers": rows},
-                      ["Each check is one read-only API call; nothing is created or deleted.",
+                      lim + ["Each check is one read-only API call; nothing is created or deleted.",
                        "A valid key does not mean the provider has GPUs in stock."])
