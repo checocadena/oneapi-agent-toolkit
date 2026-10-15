@@ -233,3 +233,27 @@ def test_native_hip_build_without_headers_is_a_stated_limitation(tmp_path, monke
     monkeypatch.setattr(gt, "find_hip_include", lambda hipcc: tmp_path / "core-7.14" / "include")
     gt._native_build(task, "amd", tmp_path, ["-Ia"], "gfx950", runner)
     assert not any(a.startswith(f"-I{tmp_path / 'core-7.14'}") for a in calls[-1])
+
+
+def test_cg_reduce_header_is_mapped_to_hip_or_reported(tmp_path):
+    from oneapi_agent.tools.gpu_test import map_cg_headers
+
+    src = ('#include "hip/hip_runtime.h"\n#include <hip/hip_cooperative_groups.h>\n'
+           "#include <cooperative_groups/reduce.h>\nint x;\n")
+    inc = tmp_path / "include"
+    # No equivalent in this ROCm: a stated reason, not a compile error.
+    _, why = map_cg_headers(src, inc)
+    assert why and "cooperative_groups/reduce.h" in why
+    # The internal ROCm 7 header is used when the public one is absent.
+    (inc / "hip" / "amd_detail").mkdir(parents=True)
+    (inc / "hip/amd_detail/amd_hip_cooperative_groups_reduce.h").write_text("")
+    out, why = map_cg_headers(src, inc)
+    assert why is None and "#include <hip/amd_detail/amd_hip_cooperative_groups_reduce.h>" in out
+    # The public path wins when both exist; other lines are untouched.
+    (inc / "hip" / "cooperative_groups").mkdir()
+    (inc / "hip/cooperative_groups/hip_reduce.h").write_text("")
+    out, why = map_cg_headers(src, inc)
+    assert why is None and "<hip/cooperative_groups/hip_reduce.h>" in out
+    assert "cooperative_groups/reduce.h" not in out and out.endswith("int x;\n")
+    # Sources without the header pass through unchanged.
+    assert map_cg_headers("int y;\n", inc) == ("int y;\n", None)

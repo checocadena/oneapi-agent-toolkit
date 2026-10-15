@@ -134,6 +134,32 @@ def find_hip_include(hipcc: str, roots: tuple[str, ...] = ("/opt/rocm",)) -> Pat
     return None
 
 
+# CUDA cooperative-groups sub-headers that hipify-perl leaves untouched, and where HIP keeps
+# them (public path first). HIP gained cg::reduce in ROCm 7 (ROCm/clr, 2026-03).
+CG_HEADERS = {
+    "cooperative_groups/reduce.h": ("hip/cooperative_groups/hip_reduce.h",
+                                    "hip/amd_detail/amd_hip_cooperative_groups_reduce.h"),
+}
+
+
+def map_cg_headers(src: str, hip_inc: Path) -> tuple[str, str | None]:
+    """Point CUDA cooperative-groups sub-headers at their HIP equivalents under ``hip_inc``.
+
+    Returns (source, None), or (source, reason) when this ROCm has no equivalent, so the
+    native build is reported as unavailable instead of failing with "file not found".
+    """
+    for cuda_h, hip_hs in CG_HEADERS.items():
+        pat = re.compile(r"#include\s*[<\"]" + re.escape(cuda_h) + r"[>\"]")
+        if not pat.search(src):
+            continue
+        found = next((h for h in hip_hs if (hip_inc / h).is_file()), None)
+        if found is None:
+            return src, (f"the CUDA source includes <{cuda_h}> and this ROCm's HIP headers "
+                          f"({hip_inc}) have no equivalent ({' or '.join(hip_hs)})")
+        src = pat.sub(f"#include <{found}>", src)
+    return src, None
+
+
 def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str],
                   amd_arch: str | None, runner: Runner | None):
     """Build the original CUDA for this GPU, or return (None, reason)."""
@@ -162,8 +188,11 @@ def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str]
         conv = run([hipify, str(src)], cwd=str(work), timeout=300)
         if conv.returncode != 0:
             return conv, None
+        hip_text, missing = map_cg_headers(conv.stdout, hip_inc)
+        if missing:
+            return None, missing
         hip_src = work / f"{src.stem}.hip.cpp"
-        hip_src.write_text(conv.stdout)
+        hip_src.write_text(hip_text)
         return run([hipcc, "-O2", "-std=c++17", f"--offload-arch={amd_arch}", *incs,
                     str(hip_src), "-o", "build/native"], cwd=str(work), timeout=900), None
     return None, "no CUDA path on this vendor; the C++ reference is the ground truth"
