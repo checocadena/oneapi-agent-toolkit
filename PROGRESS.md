@@ -9,7 +9,7 @@ Status legend: ✅ done · 🟡 in progress · ⛔ blocked · ⬜ not started
 | 2 | MCP server + CLI | ✅ | 5 tools + `doctor` over stdio; `oneapi-agent` CLI; registration docs for Claude Code, Codex, Cursor |
 | 3 | Agent skill | ✅ | `skills/oneapi-port/SKILL.md` |
 | 4 | Standalone agent loop | ✅ | `src/oneapi_agent/loop.py`; dry-run scenarios success/stuck/max_iterations verified. **No real-LLM run: no `ANTHROPIC_API_KEY` in this sandbox** |
-| 5 | Examples | ⬜ | |
+| 5 | Examples | ✅ | fuzz, fir, saxpy, HeCBench softmax; real pipeline results in `examples/RESULTS.md` |
 | 6 | Tests | ⬜ | |
 | 7 | Docs | ⬜ | |
 
@@ -83,3 +83,17 @@ The same rules are enforced in code by the standalone loop (M4).
 
 Verified: the mocked scenarios end with `success` (7 iterations), `stuck` (3) and `max_iterations` (6).
 **Not verified: a run with a real model.** No API key is available in this sandbox.
+
+## Milestone 5: examples
+
+Four examples, each with a C++ reference, a CUDA version, a hand-written idiomatic SYCL port and a `task.json`: `fuzz` (tanh soft clip), `fir` (64 taps), `saxpy`, and `softmax_hecbench` (BSD-3, HeCBench commit f0c817aa, license copied).
+WAV inputs are generated procedurally by `examples/gen_inputs.py`.
+
+`examples/run_pipeline.py` ran everything **for real** (icpx 2026.1.1, c2s 21.0.0, OpenCL CPU device):
+- All 4 CUDA files migrate; all 4 raw migrations compile.
+- Raw migrations verify for fuzz, fir and saxpy. **softmax fails verify**: c2s emitted `sycl::native::exp` with no warning. The cause was confirmed by a one-line fix check, and `scan_helpers` gained a `native_math` advisory as a result.
+- All 4 hand-written ports compile **without** dpct headers, have 0 helpers, pass verify and were benchmarked.
+
+The scripted dry run with real tools on saxpy ended in `success` in 7 iterations, including a deliberately broken edit and its fix. Its trace and report are committed in `docs/example-run/`.
+
+Caveat: benchmarks are CPU-only and wall time includes JIT (see `examples/README.md`). The CUDA versions were never executed, since no NVIDIA GPU was available.

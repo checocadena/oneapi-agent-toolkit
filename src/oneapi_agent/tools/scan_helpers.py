@@ -25,6 +25,13 @@ ADVISORIES: list[tuple[str, re.Pattern[str], str]] = [
         "An idiomatic port uses sycl::range<1>/nd_range<1>.",
     ),
     (
+        "native_math",
+        re.compile(r"sycl::native::\w+"),
+        "Reduced-precision sycl::native:: math (c2s emits it for some CUDA calls, e.g. expf, "
+        "without a DPCT warning). Accuracy is implementation-defined; use the sycl:: full-"
+        "precision builtin unless verify shows native precision is acceptable.",
+    ),
+    (
         "free_function_item_query",
         re.compile(r"this_work_item::get_nd_item"),
         "Kernel fetches its nd_item via this_work_item::get_nd_item (extension). Passing the "

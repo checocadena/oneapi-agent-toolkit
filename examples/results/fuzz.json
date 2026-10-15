@@ -1,0 +1,800 @@
+{
+  "env": {
+    "date_utc": "2026-10-15T07:34:29+00:00",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "toolchain": {
+      "icpx": "/opt/dpcpp/bin/icpx",
+      "c2s": "/opt/syclomatic/bin/c2s",
+      "sycl-ls": "/opt/dpcpp/bin/sycl-ls",
+      "dpct_include": "/opt/syclomatic/include",
+      "cuda_include": "/opt/cuda-headers/targets/x86_64-linux/include"
+    },
+    "devices": [
+      {
+        "backend": "opencl",
+        "device_type": "cpu",
+        "index": 0,
+        "platform": "Intel(R) OpenCL",
+        "name": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+        "description": "Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]",
+        "selector": "opencl:0"
+      }
+    ],
+    "icpx_version": "Intel(R) oneAPI DPC++/C++ Compiler 2026.1.1 (2026.1.1.20260724)",
+    "c2s_version": "dpct version 21.0.0. Codebase:(74ff57bb10d655c9fab872bdcfb02ba96eeaa477). clang version 21.0.0"
+  },
+  "name": "fuzz",
+  "steps": {
+    "reference_build": {
+      "command": "g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/fuzz/../common /home/user/oneapi-agent-toolkit/examples/fuzz/fuzz_ref.cpp -o build/reference",
+      "returncode": 0,
+      "duration_s": 0.835673,
+      "stdout": "",
+      "stderr": "",
+      "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz"
+    },
+    "migrate": {
+      "tool": "migrate",
+      "status": "ok",
+      "summary": "migrated 1 CUDA file(s) -> 1 file(s); 4 DPCT warning(s) (DPCT1009x1, DPCT1010x1, DPCT1024x2)",
+      "evidence": {
+        "run": {
+          "command": "/opt/syclomatic/bin/c2s --in-root=/home/user/oneapi-agent-toolkit/examples/fuzz --out-root=/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include --extra-arg=-I/home/user/oneapi-agent-toolkit/examples/common /home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu",
+          "returncode": 0,
+          "duration_s": 2.448006,
+          "stdout": "NOTE: Could not auto-detect compilation database for file 'fuzz.cu' in '/home/user/oneapi-agent-toolkit/examples/fuzz' or any parent directory.\nParsing: /home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu\nAnalyzing: /home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu\nMigrating: /home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu\nProcessed 1 file(s) in -in-root folder \"/home/user/oneapi-agent-toolkit/examples/fuzz\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
+          "stderr": "/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu:10:9: warning: DPCT1009:0: SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.\n   10 | #define CUDA_CHECK(call)                                                        \\\n      |         ^\n/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu:51:14: warning: DPCT1024:1: The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.\n   51 |   CUDA_CHECK(cudaEventRecord(start));\n      |              ^\n/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu:53:14: warning: DPCT1010:2: SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.\n   53 |   CUDA_CHECK(cudaGetLastError());\n      |              ^\n/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu:54:14: warning: DPCT1024:3: The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.\n   54 |   CUDA_CHECK(cudaEventRecord(stop));\n      |              ^\n\n"
+        },
+        "input_files": [
+          "/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu"
+        ],
+        "in_root": "/home/user/oneapi-agent-toolkit/examples/fuzz",
+        "out_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/migrated",
+        "migrated_files": [
+          "fuzz.dp.cpp"
+        ],
+        "warnings": [
+          {
+            "code": "DPCT1009",
+            "id": 0,
+            "message": "SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu",
+            "line": 10,
+            "column": 9,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 13
+          },
+          {
+            "code": "DPCT1024",
+            "id": 1,
+            "message": "The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu",
+            "line": 51,
+            "column": 14,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 60
+          },
+          {
+            "code": "DPCT1010",
+            "id": 2,
+            "message": "SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu",
+            "line": 53,
+            "column": 14,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 72
+          },
+          {
+            "code": "DPCT1024",
+            "id": 3,
+            "message": "The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fuzz/fuzz.cu",
+            "line": 54,
+            "column": 14,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 78
+          }
+        ],
+        "warning_counts": {
+          "DPCT1009": 1,
+          "DPCT1024": 2,
+          "DPCT1010": 1
+        },
+        "errors": []
+      },
+      "limitations": [
+        "c2s output compiles only with the dpct helper headers on the include path (<c2s install>/include).",
+        "Migration warnings say what c2s could not translate; they do not prove the rest is correct. Run compile + verify."
+      ]
+    },
+    "compile_migrated": {
+      "tool": "compile",
+      "status": "ok",
+      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/migrated (0 warning(s))",
+      "evidence": {
+        "run": {
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/common -I/opt/syclomatic/include /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/migrated/fuzz.dp.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/migrated",
+          "returncode": 0,
+          "duration_s": 8.194048,
+          "stdout": "",
+          "stderr": ""
+        },
+        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/migrated",
+        "dpct_include_added": "/opt/syclomatic/include",
+        "diagnostics": [],
+        "counts": {
+          "error": 0,
+          "warning": 0,
+          "note": 0
+        }
+      },
+      "limitations": [
+        "A successful compile says nothing about numerical correctness; run verify."
+      ]
+    },
+    "verify_migrated": {
+      "tool": "verify",
+      "status": "ok",
+      "summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
+      "evidence": {
+        "mode": "audio",
+        "cases": [
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case0_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.005429,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case0_reference.wav"
+            },
+            "candidate": {
+              "command": "build/migrated /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case0_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.307069,
+              "stdout": "kernel_ms=248.860397\n",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case0_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 96000,
+              "candidate_frames": 96000,
+              "reference_channels": 1,
+              "candidate_channels": 1,
+              "reference_sample_rate": 48000,
+              "candidate_sample_rate": 48000,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.1920928955078125e-07,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -150.7682322443899,
+              "reference_rms_dbfs": -2.7177661711857914,
+              "null_depth_db": 148.05046607320412,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -150.7682322443899,
+                  "peak_frame": 49
+                }
+              ]
+            },
+            "passed": true
+          },
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case1_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.007321,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case1_reference.wav"
+            },
+            "candidate": {
+              "command": "build/migrated /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case1_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.331155,
+              "stdout": "kernel_ms=273.085358\n",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated/case1_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 44100,
+              "candidate_frames": 44100,
+              "reference_channels": 2,
+              "candidate_channels": 2,
+              "reference_sample_rate": 44100,
+              "candidate_sample_rate": 44100,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.1920928955078125e-07,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -150.81490995920677,
+              "reference_rms_dbfs": -2.720601028447553,
+              "null_depth_db": 148.0943089307592,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -150.81984862486655,
+                  "peak_frame": 1957
+                },
+                {
+                  "channel": 1,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -150.80997690326978,
+                  "peak_frame": 391
+                }
+              ]
+            },
+            "passed": true
+          }
+        ],
+        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_migrated",
+        "passed_cases": 2,
+        "total_cases": 2,
+        "worst_residual_peak_dbfs": -138.47379800543135
+      },
+      "limitations": [
+        "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+      ]
+    },
+    "scan_migrated": {
+      "tool": "scan_helpers",
+      "status": "fail",
+      "summary": "22 dpct helper use(s) remain in 1 file(s) (macro=13, events_timing=3, device_queue_management=2, memory_management=2)",
+      "evidence": {
+        "path": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/migrated",
+        "files_scanned": 1,
+        "total": 22,
+        "by_category": {
+          "macro": 13,
+          "events_timing": 3,
+          "device_queue_management": 2,
+          "memory_management": 2,
+          "include": 1,
+          "error_handling": 1
+        },
+        "by_symbol": {
+          "DPCT_CHECK_ERROR": 12,
+          "dpct::sync_barrier": 2,
+          "dpct::dpct_free": 2,
+          "#include <dpct/dpct.hpp>": 1,
+          "DPCT_PROFILING_ENABLED": 1,
+          "dpct::err0": 1,
+          "dpct::device_ext": 1,
+          "dpct::get_current_device": 1,
+          "dpct::event_ptr": 1
+        },
+        "by_file": {
+          "fuzz.dp.cpp": 22
+        },
+        "occurrences": [
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 5,
+            "symbol": "#include <dpct/dpct.hpp>",
+            "category": "include",
+            "text": "#include <dpct/dpct.hpp>"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 3,
+            "symbol": "DPCT_PROFILING_ENABLED",
+            "category": "macro",
+            "text": "#define DPCT_PROFILING_ENABLED"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 19,
+            "symbol": "dpct::err0",
+            "category": "error_handling",
+            "text": "dpct::err0 err_ = (call);                                                  \\"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 32,
+            "symbol": "dpct::device_ext",
+            "category": "device_queue_management",
+            "text": "dpct::device_ext &dev_ct1 = dpct::get_current_device();"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 32,
+            "symbol": "dpct::get_current_device",
+            "category": "device_queue_management",
+            "text": "dpct::device_ext &dev_ct1 = dpct::get_current_device();"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 49,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(d_in = sycl::malloc_device<float>(n, q_ct1)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 50,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(d_out = sycl::malloc_device<float>(n, q_ct1)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 51,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR("
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 54,
+            "symbol": "dpct::event_ptr",
+            "category": "events_timing",
+            "text": "dpct::event_ptr start, stop;"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 55,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(start = new sycl::event()));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 56,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(stop = new sycl::event()));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 64,
+            "symbol": "dpct::sync_barrier",
+            "category": "events_timing",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::sync_barrier(start)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 64,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::sync_barrier(start)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 82,
+            "symbol": "dpct::sync_barrier",
+            "category": "events_timing",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::sync_barrier(stop)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 82,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::sync_barrier(stop)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 83,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(stop->wait_and_throw()));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 85,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR("
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 94,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR("
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 96,
+            "symbol": "dpct::dpct_free",
+            "category": "memory_management",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_in, q_ct1)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 96,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_in, q_ct1)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 97,
+            "symbol": "dpct::dpct_free",
+            "category": "memory_management",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_out, q_ct1)));"
+          },
+          {
+            "file": "fuzz.dp.cpp",
+            "line": 97,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_out, q_ct1)));"
+          }
+        ],
+        "occurrences_truncated": 0,
+        "suggestions": {
+          "include": "Remove #include <dpct/...> once no dpct:: symbols remain.",
+          "macro": "Remove DPCT_* macros (e.g. DPCT_CHECK_ERROR, DPCT_PROFILING_ENABLED) and use plain SYCL.",
+          "error_handling": "SYCL reports errors with exceptions: delete dpct::err0/DPCT_CHECK_ERROR plumbing and wrap the work in try { ... } catch (const sycl::exception&) plus an async_handler on the queue.",
+          "device_queue_management": "Own an explicit sycl::queue (e.g. created once in main and passed down) instead of dpct::get_current_device()/in_order_queue(); query device info with q.get_device().get_info<sycl::info::device::...>().",
+          "events_timing": "Use sycl::event returned by submit/parallel_for; for timing create the queue with sycl::property::queue::enable_profiling and read event.get_profiling_info<...>().",
+          "memory_management": "Use sycl::malloc_device/malloc_shared + q.memcpy/q.memset + sycl::free(ptr, q). Replace dpct::constant_memory/global_memory with a plain USM allocation or a kernel argument."
+        },
+        "unresolved_dpct_comments": [
+          {
+            "code": "DPCT1009",
+            "id": 0,
+            "message": "SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 13
+          },
+          {
+            "code": "DPCT1024",
+            "id": 1,
+            "message": "The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 60
+          },
+          {
+            "code": "DPCT1010",
+            "id": 2,
+            "message": "SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 72
+          },
+          {
+            "code": "DPCT1024",
+            "id": 3,
+            "message": "The original code returned the error code that was further consumed by the program logic. This original code was replaced with 0. You may need to rewrite the program logic consuming the error code.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fuzz.dp.cpp",
+            "migrated_line": 78
+          }
+        ],
+        "advisories": [
+          {
+            "kind": "nd_item3_for_1d",
+            "file": "fuzz.dp.cpp",
+            "line": 65,
+            "advice": "1-D launch expressed as a 3-D nd_range with leading 1s (dpct idiom). An idiomatic port uses sycl::range<1>/nd_range<1>."
+          },
+          {
+            "kind": "nd_item3_for_1d",
+            "file": "fuzz.dp.cpp",
+            "line": 66,
+            "advice": "1-D launch expressed as a 3-D nd_range with leading 1s (dpct idiom). An idiomatic port uses sycl::range<1>/nd_range<1>."
+          },
+          {
+            "kind": "nd_item3_for_1d",
+            "file": "fuzz.dp.cpp",
+            "line": 67,
+            "advice": "1-D launch expressed as a 3-D nd_range with leading 1s (dpct idiom). An idiomatic port uses sycl::range<1>/nd_range<1>."
+          },
+          {
+            "kind": "free_function_item_query",
+            "file": "fuzz.dp.cpp",
+            "line": 25,
+            "advice": "Kernel fetches its nd_item via this_work_item::get_nd_item (extension). Passing the item as a lambda parameter is more portable."
+          }
+        ]
+      },
+      "limitations": [
+        "Static text scan: macros that expand to dpct:: calls, or helpers reached through user-defined wrappers, are not detected.",
+        "Zero helpers means the code no longer depends on dpct headers; it does not prove the code is correct or fast. Run compile + verify + benchmark."
+      ]
+    },
+    "compile_idiomatic": {
+      "tool": "compile",
+      "status": "ok",
+      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/idiomatic (0 warning(s))",
+      "evidence": {
+        "run": {
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/common /home/user/oneapi-agent-toolkit/examples/fuzz/sycl/fuzz.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/idiomatic",
+          "returncode": 0,
+          "duration_s": 5.926563,
+          "stdout": "",
+          "stderr": ""
+        },
+        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/build/idiomatic",
+        "dpct_include_added": null,
+        "diagnostics": [],
+        "counts": {
+          "error": 0,
+          "warning": 0,
+          "note": 0
+        }
+      },
+      "limitations": [
+        "A successful compile says nothing about numerical correctness; run verify."
+      ]
+    },
+    "verify_idiomatic": {
+      "tool": "verify",
+      "status": "ok",
+      "summary": "PASS: 2/2 case(s) match (worst residual peak -138.5 dBFS, threshold -96.0 dBFS)",
+      "evidence": {
+        "mode": "audio",
+        "cases": [
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case0_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.01007,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case0_reference.wav"
+            },
+            "candidate": {
+              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case0_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.214692,
+              "stdout": "kernel_ms=0.160427\n",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case0_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 96000,
+              "candidate_frames": 96000,
+              "reference_channels": 1,
+              "candidate_channels": 1,
+              "reference_sample_rate": 48000,
+              "candidate_sample_rate": 48000,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.1920928955078125e-07,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -150.7682322443899,
+              "reference_rms_dbfs": -2.7177661711857914,
+              "null_depth_db": 148.05046607320412,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -150.7682322443899,
+                  "peak_frame": 49
+                }
+              ]
+            },
+            "passed": true
+          },
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case1_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.006683,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case1_reference.wav"
+            },
+            "candidate": {
+              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case1_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.257141,
+              "stdout": "kernel_ms=0.255935\n",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic/case1_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 44100,
+              "candidate_frames": 44100,
+              "reference_channels": 2,
+              "candidate_channels": 2,
+              "reference_sample_rate": 44100,
+              "candidate_sample_rate": 44100,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.1920928955078125e-07,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -150.81490995920677,
+              "reference_rms_dbfs": -2.720601028447553,
+              "null_depth_db": 148.0943089307592,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -150.81984862486655,
+                  "peak_frame": 1957
+                },
+                {
+                  "channel": 1,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -150.80997690326978,
+                  "peak_frame": 391
+                }
+              ]
+            },
+            "passed": true
+          }
+        ],
+        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/fuzz/v_idiomatic",
+        "passed_cases": 2,
+        "total_cases": 2,
+        "worst_residual_peak_dbfs": -138.47379800543135
+      },
+      "limitations": [
+        "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+      ]
+    },
+    "benchmark_idiomatic": {
+      "tool": "benchmark",
+      "status": "ok",
+      "summary": "5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 205.72 ms, p95 216.31 ms",
+      "evidence": {
+        "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/bench_out.wav",
+        "runs": 5,
+        "warmup": 1,
+        "device_discovery": {
+          "sycl_ls": {
+            "command": "/opt/dpcpp/bin/sycl-ls",
+            "returncode": 0,
+            "duration_s": 0.03375,
+            "stdout": "[opencl:cpu][opencl:0] Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]\n",
+            "stderr": ""
+          }
+        },
+        "results": [
+          {
+            "selector": "opencl:0",
+            "device": {
+              "backend": "opencl",
+              "device_type": "cpu",
+              "index": 0,
+              "platform": "Intel(R) OpenCL",
+              "name": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+              "description": "Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]",
+              "selector": "opencl:0"
+            },
+            "status": "ok",
+            "wall_time_s": {
+              "n": 5,
+              "min": 0.19225787199980005,
+              "median": 0.2057172279999122,
+              "p95": 0.21630794020002214,
+              "max": 0.21880209500000092,
+              "mean": 0.20325752819999252,
+              "stdev": 0.010951010568263378
+            },
+            "samples_s": [
+              0.218802,
+              0.205717,
+              0.192258,
+              0.206331,
+              0.193179
+            ],
+            "reported": {
+              "n": 5,
+              "min": 0.192259,
+              "median": 0.214398,
+              "p95": 0.26028660000000003,
+              "max": 0.26862,
+              "mean": 0.22294320000000006,
+              "stdev": 0.028400449639046216
+            },
+            "reported_samples": [
+              0.212486,
+              0.226953,
+              0.192259,
+              0.26862,
+              0.214398
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+        "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+      ]
+    },
+    "benchmark_reference": {
+      "tool": "benchmark",
+      "status": "ok",
+      "summary": "5 run(s) each; none: median 6.41 ms, p95 8.37 ms",
+      "evidence": {
+        "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fuzz/bench_out.wav",
+        "runs": 5,
+        "warmup": 1,
+        "results": [
+          {
+            "selector": "none",
+            "status": "ok",
+            "wall_time_s": {
+              "n": 5,
+              "min": 0.006151795000050697,
+              "median": 0.0064069310001286794,
+              "p95": 0.008365252800012967,
+              "max": 0.008763668000028701,
+              "mean": 0.006868072600036612,
+              "stdev": 0.0010856796282911142
+            },
+            "samples_s": [
+              0.006246,
+              0.006152,
+              0.008764,
+              0.006407,
+              0.006772
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+        "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+      ]
+    },
+    "scan_idiomatic": {
+      "tool": "scan_helpers",
+      "status": "ok",
+      "summary": "no dpct helpers in 1 file(s)",
+      "evidence": {
+        "path": "/home/user/oneapi-agent-toolkit/examples/fuzz/sycl/fuzz.cpp",
+        "files_scanned": 1,
+        "total": 0,
+        "by_category": {},
+        "by_symbol": {},
+        "by_file": {},
+        "occurrences": [],
+        "occurrences_truncated": 0,
+        "suggestions": {},
+        "unresolved_dpct_comments": [],
+        "advisories": []
+      },
+      "limitations": [
+        "Static text scan: macros that expand to dpct:: calls, or helpers reached through user-defined wrappers, are not detected.",
+        "Zero helpers means the code no longer depends on dpct headers; it does not prove the code is correct or fast. Run compile + verify + benchmark."
+      ]
+    }
+  }
+}

@@ -695,8 +695,21 @@ class AgentLoop:
                 break
         return self.finish()
 
+    def _final_benchmark(self) -> None:
+        """On success, benchmark the verified binary (harness-side) if not done on this hash."""
+        cur = source_hash(self.work)
+        last = _last(self.state.history, "benchmark")
+        if last is not None and last.source_hash == cur:
+            return
+        self._trace("tool_call", iteration=self.state.iteration, name="benchmark",
+                    input={"runs": self.cfg.benchmark_runs}, by="harness")
+        result = self.toolbox("benchmark", {"runs": self.cfg.benchmark_runs})
+        self._record("benchmark", {"runs": self.cfg.benchmark_runs, "by": "harness"}, result)
+
     def finish(self) -> dict[str, Any]:
         s = self.state
+        if s.stop_reason == "success":
+            self._final_benchmark()
         outcome = {
             "stop_reason": s.stop_reason,
             "stop_detail": s.stop_detail,
@@ -798,18 +811,22 @@ def dry_run_script(scenario: str, cfg: LoopConfig, idiomatic_source: str | None 
     """
     if scenario == "success":
         sol = idiomatic_source or "// placeholder idiomatic source\nint main() { return 0; }\n"
+        # A deliberately broken first refactor (missing <sycl/sycl.hpp>) exercises the
+        # compile-fail -> fix path before the correct version is written.
+        broken = "\n".join(line for line in sol.splitlines()
+                           if "#include <sycl/sycl.hpp>" not in line) + "\n"
+        target = "migrated/" + Path(cfg.cuda_path).stem + ".dp.cpp"
         return [
             [("migrate", {})],
             [("list_files", {"path": "migrated"})],
-            [("compile", {"sources": ["migrated/" + Path(cfg.cuda_path).stem + ".dp.cpp"]})],
+            [("compile", {"sources": [target]})],
             [("scan_helpers", {"path": "migrated"})],
-            [("write_file", {"path": "migrated/" + Path(cfg.cuda_path).stem + ".dp.cpp",
-                             "content": sol})],
-            [("compile", {"sources": ["migrated/" + Path(cfg.cuda_path).stem + ".dp.cpp"],
-                          "add_dpct_include": False}),
+            [("write_file", {"path": target, "content": broken}),
+             ("compile", {"sources": [target], "add_dpct_include": False})],
+            [("write_file", {"path": target, "content": sol}),
+             ("compile", {"sources": [target], "add_dpct_include": False}),
              ("scan_helpers", {})],
             [("verify", {})],
-            [("benchmark", {"runs": 3})],
             [("finish", {"summary": "scripted dry run complete"})],
         ]
     if scenario == "stuck":
@@ -832,7 +849,13 @@ def mock_queues(scenario: str) -> dict[str, list[ToolResult]]:
         return {
             "migrate": [ToolResult("migrate", "ok", "migrated 1 file (mock); 1 DPCT warning",
                                    {"warnings": [{"code": "DPCT1010", "id": 0}]})],
-            "compile": [ok_compile],
+            "compile": [ok_compile,
+                        ToolResult("compile", "fail", "compile failed with 1 error(s) (mock)",
+                                   {"diagnostics": [{"file": "x.dp.cpp", "line": 1,
+                                                     "severity": "error",
+                                                     "message": "use of undeclared identifier "
+                                                                "'sycl'"}]}),
+                        ok_compile],
             "scan_helpers": [
                 ToolResult("scan_helpers", "fail", "9 dpct helper use(s) remain (mock)",
                            {"total": 9}),

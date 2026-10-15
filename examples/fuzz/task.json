@@ -1,0 +1,12 @@
+{
+  "name": "fuzz",
+  "goal": "Port fuzz.cu (tanh soft-clip waveshaper) to idiomatic SYCL 2020 with zero dpct helpers; output must null against the C++ reference below -96 dBFS.",
+  "cuda_path": "fuzz.cu",
+  "include_dirs": ["../common"],
+  "reference_build": ["g++", "-O2", "-std=c++17", "-I{task_dir}/../common", "{task_dir}/fuzz_ref.cpp", "-o", "build/reference"],
+  "reference_cmd": "build/reference {input} {output}",
+  "candidate_cmd": "build/candidate {input} {output}",
+  "inputs": ["../data/sweep_noise_48k.wav", "../data/sweep_noise_stereo_44k.wav"],
+  "mode": "audio",
+  "threshold_dbfs": -96.0
+}

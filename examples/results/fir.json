@@ -1,0 +1,729 @@
+{
+  "env": {
+    "date_utc": "2026-10-15T07:34:29+00:00",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "toolchain": {
+      "icpx": "/opt/dpcpp/bin/icpx",
+      "c2s": "/opt/syclomatic/bin/c2s",
+      "sycl-ls": "/opt/dpcpp/bin/sycl-ls",
+      "dpct_include": "/opt/syclomatic/include",
+      "cuda_include": "/opt/cuda-headers/targets/x86_64-linux/include"
+    },
+    "devices": [
+      {
+        "backend": "opencl",
+        "device_type": "cpu",
+        "index": 0,
+        "platform": "Intel(R) OpenCL",
+        "name": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+        "description": "Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]",
+        "selector": "opencl:0"
+      }
+    ],
+    "icpx_version": "Intel(R) oneAPI DPC++/C++ Compiler 2026.1.1 (2026.1.1.20260724)",
+    "c2s_version": "dpct version 21.0.0. Codebase:(74ff57bb10d655c9fab872bdcfb02ba96eeaa477). clang version 21.0.0"
+  },
+  "name": "fir",
+  "steps": {
+    "reference_build": {
+      "command": "g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/fir/../common -I/home/user/oneapi-agent-toolkit/examples/fir /home/user/oneapi-agent-toolkit/examples/fir/fir_ref.cpp -o build/reference",
+      "returncode": 0,
+      "duration_s": 0.589682,
+      "stdout": "",
+      "stderr": "",
+      "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir"
+    },
+    "migrate": {
+      "tool": "migrate",
+      "status": "ok",
+      "summary": "migrated 1 CUDA file(s) -> 2 file(s); 4 DPCT warning(s) (DPCT1009x1, DPCT1010x1, DPCT1101x1, DPCT1113x1)",
+      "evidence": {
+        "run": {
+          "command": "/opt/syclomatic/bin/c2s --in-root=/home/user/oneapi-agent-toolkit/examples/fir --out-root=/home/user/oneapi-agent-toolkit/examples/results/work/fir/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include --extra-arg=-I/home/user/oneapi-agent-toolkit/examples/common --extra-arg=-I/home/user/oneapi-agent-toolkit/examples/fir /home/user/oneapi-agent-toolkit/examples/fir/fir.cu",
+          "returncode": 0,
+          "duration_s": 2.196443,
+          "stdout": "NOTE: Could not auto-detect compilation database for file 'fir.cu' in '/home/user/oneapi-agent-toolkit/examples/fir' or any parent directory.\nParsing: /home/user/oneapi-agent-toolkit/examples/fir/fir.cu\nAnalyzing: /home/user/oneapi-agent-toolkit/examples/fir/fir.cu\nMigrating: /home/user/oneapi-agent-toolkit/examples/fir/fir.cu\nProcessed 1 file(s) in -in-root folder \"/home/user/oneapi-agent-toolkit/examples/fir\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
+          "stderr": "/home/user/oneapi-agent-toolkit/examples/fir/fir.cu:36:3: warning: DPCT1113:0: Consider replacing sycl::nd_item::barrier(sycl::access::fence_space::local_space) with sycl::nd_item::barrier() if function \"fir_kernel\" is called in a multidimensional kernel.\n   36 |   __syncthreads();\n      |   ^\n/home/user/oneapi-agent-toolkit/examples/fir/fir.cu:14:9: warning: DPCT1009:1: SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.\n   14 | #define CUDA_CHECK(call)                                                        \\\n      |         ^\n/home/user/oneapi-agent-toolkit/examples/fir/fir.cu:70:16: warning: DPCT1010:2: SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.\n   70 |     CUDA_CHECK(cudaGetLastError());\n      |                ^\n/home/user/oneapi-agent-toolkit/examples/fir/fir.cu:28:20: warning: DPCT1101:3: 'BLOCK + kTaps - 1' expression was replaced with a value. Modify the code to use the original expression, provided in comments, if it is correct.\n   28 |   __shared__ float tile[BLOCK + kTaps - 1];\n      |                    ^\n\n"
+        },
+        "input_files": [
+          "/home/user/oneapi-agent-toolkit/examples/fir/fir.cu"
+        ],
+        "in_root": "/home/user/oneapi-agent-toolkit/examples/fir",
+        "out_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/migrated",
+        "migrated_files": [
+          "fir.dp.cpp",
+          "fir_coeffs.hpp"
+        ],
+        "warnings": [
+          {
+            "code": "DPCT1113",
+            "id": 0,
+            "message": "Consider replacing sycl::nd_item::barrier(sycl::access::fence_space::local_space) with sycl::nd_item::barrier() if function \"fir_kernel\" is called in a multidimensional kernel.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fir/fir.cu",
+            "line": 36,
+            "column": 3,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 41
+          },
+          {
+            "code": "DPCT1009",
+            "id": 1,
+            "message": "SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fir/fir.cu",
+            "line": 14,
+            "column": 9,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 16
+          },
+          {
+            "code": "DPCT1010",
+            "id": 2,
+            "message": "SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fir/fir.cu",
+            "line": 70,
+            "column": 16,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 110
+          },
+          {
+            "code": "DPCT1101",
+            "id": 3,
+            "message": "'BLOCK + kTaps - 1' expression was replaced with a value. Modify the code to use the original expression, provided in comments, if it is correct.",
+            "file": "/home/user/oneapi-agent-toolkit/examples/fir/fir.cu",
+            "line": 28,
+            "column": 20,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 90
+          }
+        ],
+        "warning_counts": {
+          "DPCT1113": 1,
+          "DPCT1009": 1,
+          "DPCT1010": 1,
+          "DPCT1101": 1
+        },
+        "errors": []
+      },
+      "limitations": [
+        "c2s output compiles only with the dpct helper headers on the include path (<c2s install>/include).",
+        "Migration warnings say what c2s could not translate; they do not prove the rest is correct. Run compile + verify."
+      ]
+    },
+    "compile_migrated": {
+      "tool": "compile",
+      "status": "ok",
+      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fir/build/migrated (0 warning(s))",
+      "evidence": {
+        "run": {
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/common -I/home/user/oneapi-agent-toolkit/examples/fir -I/opt/syclomatic/include /home/user/oneapi-agent-toolkit/examples/results/work/fir/migrated/fir.dp.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/fir/build/migrated",
+          "returncode": 0,
+          "duration_s": 8.552692,
+          "stdout": "",
+          "stderr": ""
+        },
+        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/build/migrated",
+        "dpct_include_added": "/opt/syclomatic/include",
+        "diagnostics": [],
+        "counts": {
+          "error": 0,
+          "warning": 0,
+          "note": 0
+        }
+      },
+      "limitations": [
+        "A successful compile says nothing about numerical correctness; run verify."
+      ]
+    },
+    "verify_migrated": {
+      "tool": "verify",
+      "status": "ok",
+      "summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
+      "evidence": {
+        "mode": "audio",
+        "cases": [
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case0_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.009102,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case0_reference.wav"
+            },
+            "candidate": {
+              "command": "build/migrated /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case0_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.306145,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case0_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 96000,
+              "candidate_frames": 96000,
+              "reference_channels": 1,
+              "candidate_channels": 1,
+              "reference_sample_rate": 48000,
+              "candidate_sample_rate": 48000,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.1920928955078125e-07,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -155.56082682898696,
+              "reference_rms_dbfs": -10.983389376767594,
+              "null_depth_db": 144.57743745221936,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -155.56082682898696,
+                  "peak_frame": 604
+                }
+              ]
+            },
+            "passed": true
+          },
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case1_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.009491,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case1_reference.wav"
+            },
+            "candidate": {
+              "command": "build/migrated /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case1_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.362876,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated/case1_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 44100,
+              "candidate_frames": 44100,
+              "reference_channels": 2,
+              "candidate_channels": 2,
+              "reference_sample_rate": 44100,
+              "candidate_sample_rate": 44100,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.7881393432617188e-07,
+              "residual_peak_dbfs": -134.95197282431772,
+              "residual_rms_dbfs": -155.6051398509516,
+              "reference_rms_dbfs": -10.941526370582011,
+              "null_depth_db": 144.66361348036958,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -134.95197282431772,
+                  "residual_rms_dbfs": -155.5692483331675,
+                  "peak_frame": 5773
+                },
+                {
+                  "channel": 1,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -155.6413304615059,
+                  "peak_frame": 22507
+                }
+              ]
+            },
+            "passed": true
+          }
+        ],
+        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_migrated",
+        "passed_cases": 2,
+        "total_cases": 2,
+        "worst_residual_peak_dbfs": -134.95197282431772
+      },
+      "limitations": [
+        "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+      ]
+    },
+    "scan_migrated": {
+      "tool": "scan_helpers",
+      "status": "fail",
+      "summary": "14 dpct helper use(s) remain in 1 file(s) (macro=7, memory_management=3, device_queue_management=2, include=1)",
+      "evidence": {
+        "path": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/migrated",
+        "files_scanned": 2,
+        "total": 14,
+        "by_category": {
+          "macro": 7,
+          "memory_management": 3,
+          "device_queue_management": 2,
+          "include": 1,
+          "error_handling": 1
+        },
+        "by_symbol": {
+          "DPCT_CHECK_ERROR": 7,
+          "dpct::dpct_free": 2,
+          "#include <dpct/dpct.hpp>": 1,
+          "dpct::err0": 1,
+          "dpct::constant_memory": 1,
+          "dpct::device_ext": 1,
+          "dpct::get_current_device": 1
+        },
+        "by_file": {
+          "fir.dp.cpp": 14
+        },
+        "occurrences": [
+          {
+            "file": "fir.dp.cpp",
+            "line": 6,
+            "symbol": "#include <dpct/dpct.hpp>",
+            "category": "include",
+            "text": "#include <dpct/dpct.hpp>"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 22,
+            "symbol": "dpct::err0",
+            "category": "error_handling",
+            "text": "dpct::err0 err_ = (call);                                                  \\"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 26,
+            "symbol": "dpct::constant_memory",
+            "category": "memory_management",
+            "text": "inline dpct::constant_memory<float, 1> c_taps(kTaps);"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 55,
+            "symbol": "dpct::device_ext",
+            "category": "device_queue_management",
+            "text": "dpct::device_ext &dev_ct1 = dpct::get_current_device();"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 55,
+            "symbol": "dpct::get_current_device",
+            "category": "device_queue_management",
+            "text": "dpct::device_ext &dev_ct1 = dpct::get_current_device();"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 70,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "DPCT_CHECK_ERROR(q_ct1.memcpy(c_taps.get_ptr(), h, sizeof(h)).wait()));"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 76,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(d_x = sycl::malloc_device<float>(n, q_ct1)));"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 77,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(d_y = sycl::malloc_device<float>(n, q_ct1)));"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 81,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR("
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 115,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR("
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 119,
+            "symbol": "dpct::dpct_free",
+            "category": "memory_management",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_x, q_ct1)));"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 119,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_x, q_ct1)));"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 120,
+            "symbol": "dpct::dpct_free",
+            "category": "memory_management",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_y, q_ct1)));"
+          },
+          {
+            "file": "fir.dp.cpp",
+            "line": 120,
+            "symbol": "DPCT_CHECK_ERROR",
+            "category": "macro",
+            "text": "CUDA_CHECK(DPCT_CHECK_ERROR(dpct::dpct_free(d_y, q_ct1)));"
+          }
+        ],
+        "occurrences_truncated": 0,
+        "suggestions": {
+          "include": "Remove #include <dpct/...> once no dpct:: symbols remain.",
+          "error_handling": "SYCL reports errors with exceptions: delete dpct::err0/DPCT_CHECK_ERROR plumbing and wrap the work in try { ... } catch (const sycl::exception&) plus an async_handler on the queue.",
+          "memory_management": "Use sycl::malloc_device/malloc_shared + q.memcpy/q.memset + sycl::free(ptr, q). Replace dpct::constant_memory/global_memory with a plain USM allocation or a kernel argument.",
+          "device_queue_management": "Own an explicit sycl::queue (e.g. created once in main and passed down) instead of dpct::get_current_device()/in_order_queue(); query device info with q.get_device().get_info<sycl::info::device::...>().",
+          "macro": "Remove DPCT_* macros (e.g. DPCT_CHECK_ERROR, DPCT_PROFILING_ENABLED) and use plain SYCL."
+        },
+        "unresolved_dpct_comments": [
+          {
+            "code": "DPCT1009",
+            "id": 1,
+            "message": "SYCL reports errors using exceptions and does not use error codes. Please replace the \"get_error_string_dummy(...)\" with a real error-handling function.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 16
+          },
+          {
+            "code": "DPCT1113",
+            "id": 0,
+            "message": "Consider replacing sycl::nd_item::barrier(sycl::access::fence_space::local_space) with sycl::nd_item::barrier() if function \"fir_kernel\" is called in a multidimensional kernel.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 41
+          },
+          {
+            "code": "DPCT1101",
+            "id": 3,
+            "message": "'BLOCK + kTaps - 1' expression was replaced with a value. Modify the code to use the original expression, provided in comments, if it is correct.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 90
+          },
+          {
+            "code": "DPCT1010",
+            "id": 2,
+            "message": "SYCL uses exceptions to report errors and does not use the error codes. The cudaGetLastError function call was replaced with 0. You need to rewrite this code.",
+            "file": null,
+            "line": null,
+            "column": null,
+            "migrated_file": "fir.dp.cpp",
+            "migrated_line": 110
+          }
+        ],
+        "advisories": [
+          {
+            "kind": "nd_item3_for_1d",
+            "file": "fir.dp.cpp",
+            "line": 98,
+            "advice": "1-D launch expressed as a 3-D nd_range with leading 1s (dpct idiom). An idiomatic port uses sycl::range<1>/nd_range<1>."
+          },
+          {
+            "kind": "nd_item3_for_1d",
+            "file": "fir.dp.cpp",
+            "line": 99,
+            "advice": "1-D launch expressed as a 3-D nd_range with leading 1s (dpct idiom). An idiomatic port uses sycl::range<1>/nd_range<1>."
+          },
+          {
+            "kind": "nd_item3_for_1d",
+            "file": "fir.dp.cpp",
+            "line": 100,
+            "advice": "1-D launch expressed as a 3-D nd_range with leading 1s (dpct idiom). An idiomatic port uses sycl::range<1>/nd_range<1>."
+          },
+          {
+            "kind": "free_function_item_query",
+            "file": "fir.dp.cpp",
+            "line": 31,
+            "advice": "Kernel fetches its nd_item via this_work_item::get_nd_item (extension). Passing the item as a lambda parameter is more portable."
+          }
+        ]
+      },
+      "limitations": [
+        "Static text scan: macros that expand to dpct:: calls, or helpers reached through user-defined wrappers, are not detected.",
+        "Zero helpers means the code no longer depends on dpct headers; it does not prove the code is correct or fast. Run compile + verify + benchmark."
+      ]
+    },
+    "compile_idiomatic": {
+      "tool": "compile",
+      "status": "ok",
+      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/fir/build/idiomatic (0 warning(s))",
+      "evidence": {
+        "run": {
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/common -I/home/user/oneapi-agent-toolkit/examples/fir /home/user/oneapi-agent-toolkit/examples/fir/sycl/fir.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/fir/build/idiomatic",
+          "returncode": 0,
+          "duration_s": 5.627576,
+          "stdout": "",
+          "stderr": ""
+        },
+        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/build/idiomatic",
+        "dpct_include_added": null,
+        "diagnostics": [],
+        "counts": {
+          "error": 0,
+          "warning": 0,
+          "note": 0
+        }
+      },
+      "limitations": [
+        "A successful compile says nothing about numerical correctness; run verify."
+      ]
+    },
+    "verify_idiomatic": {
+      "tool": "verify",
+      "status": "ok",
+      "summary": "PASS: 2/2 case(s) match (worst residual peak -135.0 dBFS, threshold -96.0 dBFS)",
+      "evidence": {
+        "mode": "audio",
+        "cases": [
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case0_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.009029,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case0_reference.wav"
+            },
+            "candidate": {
+              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case0_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.225434,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case0_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 96000,
+              "candidate_frames": 96000,
+              "reference_channels": 1,
+              "candidate_channels": 1,
+              "reference_sample_rate": 48000,
+              "candidate_sample_rate": 48000,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.1920928955078125e-07,
+              "residual_peak_dbfs": -138.47379800543135,
+              "residual_rms_dbfs": -155.56082682898696,
+              "reference_rms_dbfs": -10.983389376767594,
+              "null_depth_db": 144.57743745221936,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -155.56082682898696,
+                  "peak_frame": 604
+                }
+              ]
+            },
+            "passed": true
+          },
+          {
+            "input": "/home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav",
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case1_reference.wav",
+              "returncode": 0,
+              "duration_s": 0.009584,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case1_reference.wav"
+            },
+            "candidate": {
+              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_stereo_44k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case1_candidate.wav",
+              "returncode": 0,
+              "duration_s": 0.211824,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/fir",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic/case1_candidate.wav"
+            },
+            "reference_format": "wav",
+            "candidate_format": "wav",
+            "mode": "audio",
+            "stats": {
+              "threshold_dbfs": -96.0,
+              "reference_frames": 44100,
+              "candidate_frames": 44100,
+              "reference_channels": 2,
+              "candidate_channels": 2,
+              "reference_sample_rate": 44100,
+              "candidate_sample_rate": 44100,
+              "passed": true,
+              "bit_exact": false,
+              "residual_peak": 1.7881393432617188e-07,
+              "residual_peak_dbfs": -134.95197282431772,
+              "residual_rms_dbfs": -155.6051398509516,
+              "reference_rms_dbfs": -10.941526370582011,
+              "null_depth_db": 144.66361348036958,
+              "per_channel": [
+                {
+                  "channel": 0,
+                  "residual_peak_dbfs": -134.95197282431772,
+                  "residual_rms_dbfs": -155.5692483331675,
+                  "peak_frame": 5773
+                },
+                {
+                  "channel": 1,
+                  "residual_peak_dbfs": -138.47379800543135,
+                  "residual_rms_dbfs": -155.6413304615059,
+                  "peak_frame": 22507
+                }
+              ]
+            },
+            "passed": true
+          }
+        ],
+        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/fir/v_idiomatic",
+        "passed_cases": 2,
+        "total_cases": 2,
+        "worst_residual_peak_dbfs": -134.95197282431772
+      },
+      "limitations": [
+        "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+      ]
+    },
+    "benchmark_idiomatic": {
+      "tool": "benchmark",
+      "status": "ok",
+      "summary": "5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 226.17 ms, p95 259.53 ms",
+      "evidence": {
+        "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/bench_out.wav",
+        "runs": 5,
+        "warmup": 1,
+        "device_discovery": {
+          "sycl_ls": {
+            "command": "/opt/dpcpp/bin/sycl-ls",
+            "returncode": 0,
+            "duration_s": 0.032109,
+            "stdout": "[opencl:cpu][opencl:0] Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]\n",
+            "stderr": ""
+          }
+        },
+        "results": [
+          {
+            "selector": "opencl:0",
+            "device": {
+              "backend": "opencl",
+              "device_type": "cpu",
+              "index": 0,
+              "platform": "Intel(R) OpenCL",
+              "name": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+              "description": "Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]",
+              "selector": "opencl:0"
+            },
+            "status": "ok",
+            "wall_time_s": {
+              "n": 5,
+              "min": 0.20337943399999858,
+              "median": 0.2261741360000542,
+              "p95": 0.2595273585998257,
+              "max": 0.26679028799981097,
+              "mean": 0.23023368479994133,
+              "stdev": 0.02296031849029863
+            },
+            "samples_s": [
+              0.224349,
+              0.26679,
+              0.230476,
+              0.226174,
+              0.203379
+            ],
+            "reported": null,
+            "reported_samples": [],
+            "reported_note": "regex matched 0/5 runs"
+          }
+        ]
+      },
+      "limitations": [
+        "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+        "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+      ]
+    },
+    "benchmark_reference": {
+      "tool": "benchmark",
+      "status": "ok",
+      "summary": "5 run(s) each; none: median 13.02 ms, p95 14.67 ms",
+      "evidence": {
+        "command": "build/reference /home/user/oneapi-agent-toolkit/examples/data/sweep_noise_48k.wav /home/user/oneapi-agent-toolkit/examples/results/work/fir/bench_out.wav",
+        "runs": 5,
+        "warmup": 1,
+        "results": [
+          {
+            "selector": "none",
+            "status": "ok",
+            "wall_time_s": {
+              "n": 5,
+              "min": 0.011994958000059341,
+              "median": 0.013016877999916687,
+              "p95": 0.0146705830000883,
+              "max": 0.014675712000098429,
+              "mean": 0.013378206200013665,
+              "stdev": 0.0012273308153169984
+            },
+            "samples_s": [
+              0.013017,
+              0.01465,
+              0.011995,
+              0.014676,
+              0.012553
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+        "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+      ]
+    },
+    "scan_idiomatic": {
+      "tool": "scan_helpers",
+      "status": "ok",
+      "summary": "no dpct helpers in 1 file(s)",
+      "evidence": {
+        "path": "/home/user/oneapi-agent-toolkit/examples/fir/sycl/fir.cpp",
+        "files_scanned": 1,
+        "total": 0,
+        "by_category": {},
+        "by_symbol": {},
+        "by_file": {},
+        "occurrences": [],
+        "occurrences_truncated": 0,
+        "suggestions": {},
+        "unresolved_dpct_comments": [],
+        "advisories": []
+      },
+      "limitations": [
+        "Static text scan: macros that expand to dpct:: calls, or helpers reached through user-defined wrappers, are not detected.",
+        "Zero helpers means the code no longer depends on dpct headers; it does not prove the code is correct or fast. Run compile + verify + benchmark."
+      ]
+    }
+  }
+}

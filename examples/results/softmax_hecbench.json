@@ -1,0 +1,583 @@
+{
+  "env": {
+    "date_utc": "2026-10-15T07:34:29+00:00",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "toolchain": {
+      "icpx": "/opt/dpcpp/bin/icpx",
+      "c2s": "/opt/syclomatic/bin/c2s",
+      "sycl-ls": "/opt/dpcpp/bin/sycl-ls",
+      "dpct_include": "/opt/syclomatic/include",
+      "cuda_include": "/opt/cuda-headers/targets/x86_64-linux/include"
+    },
+    "devices": [
+      {
+        "backend": "opencl",
+        "device_type": "cpu",
+        "index": 0,
+        "platform": "Intel(R) OpenCL",
+        "name": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+        "description": "Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]",
+        "selector": "opencl:0"
+      }
+    ],
+    "icpx_version": "Intel(R) oneAPI DPC++/C++ Compiler 2026.1.1 (2026.1.1.20260724)",
+    "c2s_version": "dpct version 21.0.0. Codebase:(74ff57bb10d655c9fab872bdcfb02ba96eeaa477). clang version 21.0.0"
+  },
+  "name": "softmax_hecbench",
+  "steps": {
+    "reference_build": {
+      "command": "g++ -O2 -std=c++17 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax_ref.cpp -o build/reference",
+      "returncode": 0,
+      "duration_s": 0.347744,
+      "stdout": "",
+      "stderr": "",
+      "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench"
+    },
+    "migrate": {
+      "tool": "migrate",
+      "status": "ok",
+      "summary": "migrated 1 CUDA file(s) -> 2 file(s); 0 DPCT warning(s)",
+      "evidence": {
+        "run": {
+          "command": "/opt/syclomatic/bin/c2s --in-root=/home/user/oneapi-agent-toolkit/examples/softmax_hecbench --out-root=/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated --cuda-include-path=/opt/cuda-headers/targets/x86_64-linux/include --extra-arg=-I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu",
+          "returncode": 0,
+          "duration_s": 6.55013,
+          "stdout": "NOTE: Could not auto-detect compilation database for file 'softmax.cu' in '/home/user/oneapi-agent-toolkit/examples/softmax_hecbench' or any parent directory.\nParsing: /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu\nAnalyzing: /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu\nMigrating: /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu\nProcessed 1 file(s) in -in-root folder \"/home/user/oneapi-agent-toolkit/examples/softmax_hecbench\"\n\nSee Diagnostics Reference to resolve warnings and complete the migration:\nhttps://oneapi-src.github.io/SYCLomatic/dev_guide/reference/diagnostics-reference.html\n",
+          "stderr": "\n"
+        },
+        "input_files": [
+          "/home/user/oneapi-agent-toolkit/examples/softmax_hecbench/softmax.cu"
+        ],
+        "in_root": "/home/user/oneapi-agent-toolkit/examples/softmax_hecbench",
+        "out_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated",
+        "migrated_files": [
+          "softmax.dp.cpp",
+          "softmax_input.hpp"
+        ],
+        "warnings": [],
+        "warning_counts": {},
+        "errors": []
+      },
+      "limitations": [
+        "c2s output compiles only with the dpct helper headers on the include path (<c2s install>/include).",
+        "Migration warnings say what c2s could not translate; they do not prove the rest is correct. Run compile + verify."
+      ]
+    },
+    "compile_migrated": {
+      "tool": "compile",
+      "status": "ok",
+      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated (0 warning(s))",
+      "evidence": {
+        "run": {
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench -I/opt/syclomatic/include /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated/softmax.dp.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated",
+          "returncode": 0,
+          "duration_s": 8.790666,
+          "stdout": "",
+          "stderr": ""
+        },
+        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/migrated",
+        "dpct_include_added": "/opt/syclomatic/include",
+        "diagnostics": [],
+        "counts": {
+          "error": 0,
+          "warning": 0,
+          "note": 0
+        }
+      },
+      "limitations": [
+        "A successful compile says nothing about numerical correctness; run verify."
+      ]
+    },
+    "verify_migrated": {
+      "tool": "verify",
+      "status": "fail",
+      "summary": "FAIL: 0/1 case(s) match; first failure: 22156 of 524288 element(s) outside tolerance",
+      "evidence": {
+        "mode": "array",
+        "cases": [
+          {
+            "input": null,
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_reference.out 2048 256",
+              "returncode": 0,
+              "duration_s": 0.010488,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_reference.out"
+            },
+            "candidate": {
+              "command": "build/migrated /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_candidate.out 2048 256",
+              "returncode": 0,
+              "duration_s": 0.253562,
+              "stdout": "kernel_ms=190.648346\n",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated/case0_candidate.out"
+            },
+            "reference_format": "f32",
+            "candidate_format": "f32",
+            "mode": "array",
+            "stats": {
+              "n_reference": 524288,
+              "n_candidate": 524288,
+              "atol": 1e-06,
+              "rtol": 0.0,
+              "max_ulp_allowed": null,
+              "passed": false,
+              "max_abs_err": 4.082918167114258e-06,
+              "rms_err": 3.5340275217127436e-07,
+              "mean_abs_err": 1.7153250040499919e-07,
+              "max_rel_err": 0.00021050785612746118,
+              "max_ulp_f32": 3473,
+              "median_ulp_f32": 1463.0,
+              "exact_matches": 0,
+              "mismatches": 22156,
+              "nan_mismatches": 0,
+              "reference_range": [
+                1.2936880011693574e-07,
+                0.056325364857912064
+              ],
+              "first_mismatches": [
+                {
+                  "index": 282,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 284,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 286,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 291,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 292,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 312,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 319,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 328,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 333,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                },
+                {
+                  "index": 337,
+                  "reference": 0.028941936790943146,
+                  "candidate": 0.02894086018204689,
+                  "abs_err": 1.0766088962554932e-06
+                }
+              ],
+              "reason": "22156 of 524288 element(s) outside tolerance"
+            },
+            "passed": false,
+            "reason": "22156 of 524288 element(s) outside tolerance"
+          }
+        ],
+        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_migrated",
+        "passed_cases": 0,
+        "total_cases": 1,
+        "worst_max_abs_err": 4.082918167114258e-06
+      },
+      "limitations": [
+        "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+      ]
+    },
+    "scan_migrated": {
+      "tool": "scan_helpers",
+      "status": "fail",
+      "summary": "9 dpct helper use(s) remain in 1 file(s) (types_launch=4, device_queue_management=2, memory_management=2, include=1)",
+      "evidence": {
+        "path": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/migrated",
+        "files_scanned": 2,
+        "total": 9,
+        "by_category": {
+          "types_launch": 4,
+          "device_queue_management": 2,
+          "memory_management": 2,
+          "include": 1
+        },
+        "by_symbol": {
+          "dpct::dim3": 4,
+          "dpct::dpct_free": 2,
+          "#include <dpct/dpct.hpp>": 1,
+          "dpct::device_ext": 1,
+          "dpct::get_current_device": 1
+        },
+        "by_file": {
+          "softmax.dp.cpp": 9
+        },
+        "occurrences": [
+          {
+            "file": "softmax.dp.cpp",
+            "line": 9,
+            "symbol": "#include <dpct/dpct.hpp>",
+            "category": "include",
+            "text": "#include <dpct/dpct.hpp>"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 84,
+            "symbol": "dpct::device_ext",
+            "category": "device_queue_management",
+            "text": "dpct::device_ext &dev_ct1 = dpct::get_current_device();"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 84,
+            "symbol": "dpct::get_current_device",
+            "category": "device_queue_management",
+            "text": "dpct::device_ext &dev_ct1 = dpct::get_current_device();"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 107,
+            "symbol": "dpct::dim3",
+            "category": "types_launch",
+            "text": "dpct::dim3 grids((numSlice + BLOCK_SIZE / 32 - 1) / (BLOCK_SIZE / 32));"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 108,
+            "symbol": "dpct::dim3",
+            "category": "types_launch",
+            "text": "dpct::dim3 blocks(BLOCK_SIZE);"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 117,
+            "symbol": "dpct::dim3",
+            "category": "types_launch",
+            "text": "dpct::dim3 grids((numSlice + BLOCK_SIZE - 1) / BLOCK_SIZE);"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 118,
+            "symbol": "dpct::dim3",
+            "category": "types_launch",
+            "text": "dpct::dim3 blocks(BLOCK_SIZE);"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 135,
+            "symbol": "dpct::dpct_free",
+            "category": "memory_management",
+            "text": "dpct::dpct_free(d_input, q_ct1);"
+          },
+          {
+            "file": "softmax.dp.cpp",
+            "line": 136,
+            "symbol": "dpct::dpct_free",
+            "category": "memory_management",
+            "text": "dpct::dpct_free(d_output, q_ct1);"
+          }
+        ],
+        "occurrences_truncated": 0,
+        "suggestions": {
+          "include": "Remove #include <dpct/...> once no dpct:: symbols remain.",
+          "device_queue_management": "Own an explicit sycl::queue (e.g. created once in main and passed down) instead of dpct::get_current_device()/in_order_queue(); query device info with q.get_device().get_info<sycl::info::device::...>().",
+          "types_launch": "Use sycl::range<N>/sycl::nd_range<N> directly instead of dpct::dim3 and launch kernels with q.parallel_for.",
+          "memory_management": "Use sycl::malloc_device/malloc_shared + q.memcpy/q.memset + sycl::free(ptr, q). Replace dpct::constant_memory/global_memory with a plain USM allocation or a kernel argument."
+        },
+        "unresolved_dpct_comments": [],
+        "advisories": [
+          {
+            "kind": "hardcoded_subgroup_32",
+            "file": "softmax.dp.cpp",
+            "line": 112,
+            "advice": "Kernel requires sub-group size 32 (CUDA warp size); not every SYCL device supports it. Prefer sub-group-size-agnostic code or query info::device::sub_group_sizes."
+          },
+          {
+            "kind": "native_math",
+            "file": "softmax.dp.cpp",
+            "line": 33,
+            "advice": "Reduced-precision sycl::native:: math (c2s emits it for some CUDA calls, e.g. expf, without a DPCT warning). Accuracy is implementation-defined; use the sycl:: full-precision builtin unless verify shows native precision is acceptable."
+          },
+          {
+            "kind": "native_math",
+            "file": "softmax.dp.cpp",
+            "line": 37,
+            "advice": "Reduced-precision sycl::native:: math (c2s emits it for some CUDA calls, e.g. expf, without a DPCT warning). Accuracy is implementation-defined; use the sycl:: full-precision builtin unless verify shows native precision is acceptable."
+          },
+          {
+            "kind": "native_math",
+            "file": "softmax.dp.cpp",
+            "line": 69,
+            "advice": "Reduced-precision sycl::native:: math (c2s emits it for some CUDA calls, e.g. expf, without a DPCT warning). Accuracy is implementation-defined; use the sycl:: full-precision builtin unless verify shows native precision is acceptable."
+          },
+          {
+            "kind": "native_math",
+            "file": "softmax.dp.cpp",
+            "line": 79,
+            "advice": "Reduced-precision sycl::native:: math (c2s emits it for some CUDA calls, e.g. expf, without a DPCT warning). Accuracy is implementation-defined; use the sycl:: full-precision builtin unless verify shows native precision is acceptable."
+          },
+          {
+            "kind": "free_function_item_query",
+            "file": "softmax.dp.cpp",
+            "line": 23,
+            "advice": "Kernel fetches its nd_item via this_work_item::get_nd_item (extension). Passing the item as a lambda parameter is more portable."
+          },
+          {
+            "kind": "free_function_item_query",
+            "file": "softmax.dp.cpp",
+            "line": 49,
+            "advice": "Kernel fetches its nd_item via this_work_item::get_nd_item (extension). Passing the item as a lambda parameter is more portable."
+          }
+        ]
+      },
+      "limitations": [
+        "Static text scan: macros that expand to dpct:: calls, or helpers reached through user-defined wrappers, are not detected.",
+        "Zero helpers means the code no longer depends on dpct headers; it does not prove the code is correct or fast. Run compile + verify + benchmark."
+      ]
+    },
+    "compile_idiomatic": {
+      "tool": "compile",
+      "status": "ok",
+      "summary": "compiled 1 source(s) -> /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic (0 warning(s))",
+      "evidence": {
+        "run": {
+          "command": "/opt/dpcpp/bin/icpx -fsycl -O2 -I/home/user/oneapi-agent-toolkit/examples/softmax_hecbench /home/user/oneapi-agent-toolkit/examples/softmax_hecbench/sycl/softmax.cpp -o /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic",
+          "returncode": 0,
+          "duration_s": 5.654938,
+          "stdout": "",
+          "stderr": ""
+        },
+        "output": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/build/idiomatic",
+        "dpct_include_added": null,
+        "diagnostics": [],
+        "counts": {
+          "error": 0,
+          "warning": 0,
+          "note": 0
+        }
+      },
+      "limitations": [
+        "A successful compile says nothing about numerical correctness; run verify."
+      ]
+    },
+    "verify_idiomatic": {
+      "tool": "verify",
+      "status": "ok",
+      "summary": "PASS: 1/1 case(s) match (worst max abs err 9.69e-08, atol 1e-06)",
+      "evidence": {
+        "mode": "array",
+        "cases": [
+          {
+            "input": null,
+            "reference": {
+              "command": "build/reference /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_reference.out 2048 256",
+              "returncode": 0,
+              "duration_s": 0.014098,
+              "stdout": "",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_reference.out"
+            },
+            "candidate": {
+              "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_candidate.out 2048 256",
+              "returncode": 0,
+              "duration_s": 0.387334,
+              "stdout": "kernel_ms=305.177016\n",
+              "stderr": "",
+              "cwd": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench",
+              "output_file": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic/case0_candidate.out"
+            },
+            "reference_format": "f32",
+            "candidate_format": "f32",
+            "mode": "array",
+            "stats": {
+              "n_reference": 524288,
+              "n_candidate": 524288,
+              "atol": 1e-06,
+              "rtol": 0.0,
+              "max_ulp_allowed": null,
+              "passed": true,
+              "max_abs_err": 9.685754776000977e-08,
+              "rms_err": 1.228150359338328e-08,
+              "mean_abs_err": 4.580467886548204e-09,
+              "max_rel_err": 2.4984043279417276e-06,
+              "max_ulp_f32": 40,
+              "median_ulp_f32": 14.0,
+              "exact_matches": 3582,
+              "mismatches": 0,
+              "nan_mismatches": 0,
+              "reference_range": [
+                1.2936880011693574e-07,
+                0.056325364857912064
+              ],
+              "first_mismatches": []
+            },
+            "passed": true
+          }
+        ],
+        "work_dir": "/home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/v_idiomatic",
+        "passed_cases": 1,
+        "total_cases": 1,
+        "worst_max_abs_err": 9.685754776000977e-08
+      },
+      "limitations": [
+        "Equivalence is shown only for the inputs tested; other inputs/sizes may behave differently."
+      ]
+    },
+    "benchmark_idiomatic": {
+      "tool": "benchmark",
+      "status": "ok",
+      "summary": "5 run(s) each; Intel(R) Xeon(R) Processor @ 2.80GHz: median 273.35 ms, p95 303.86 ms",
+      "evidence": {
+        "command": "build/idiomatic /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/bench_out.bin 2048 256",
+        "runs": 5,
+        "warmup": 1,
+        "device_discovery": {
+          "sycl_ls": {
+            "command": "/opt/dpcpp/bin/sycl-ls",
+            "returncode": 0,
+            "duration_s": 0.042212,
+            "stdout": "[opencl:cpu][opencl:0] Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]\n",
+            "stderr": ""
+          }
+        },
+        "results": [
+          {
+            "selector": "opencl:0",
+            "device": {
+              "backend": "opencl",
+              "device_type": "cpu",
+              "index": 0,
+              "platform": "Intel(R) OpenCL",
+              "name": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+              "description": "Intel(R) OpenCL, Intel(R) Xeon(R) Processor @ 2.80GHz OpenCL 3.0 (Build 0) [2026.21.7.0.24_160000]",
+              "selector": "opencl:0"
+            },
+            "status": "ok",
+            "wall_time_s": {
+              "n": 5,
+              "min": 0.2481728599998405,
+              "median": 0.2733465339999839,
+              "p95": 0.30386127679998937,
+              "max": 0.31055169000001115,
+              "mean": 0.27397341079995385,
+              "stdev": 0.02339917500694085
+            },
+            "samples_s": [
+              0.273347,
+              0.260696,
+              0.310552,
+              0.248173,
+              0.2771
+            ],
+            "reported": {
+              "n": 5,
+              "min": 178.682052,
+              "median": 194.956003,
+              "p95": 227.53779219999998,
+              "max": 233.923174,
+              "mean": 200.3017652,
+              "stdev": 20.60939934984631
+            },
+            "reported_samples": [
+              191.951332,
+              194.956003,
+              233.923174,
+              178.682052,
+              201.996265
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+        "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+      ]
+    },
+    "benchmark_reference": {
+      "tool": "benchmark",
+      "status": "ok",
+      "summary": "5 run(s) each; none: median 11.17 ms, p95 11.49 ms",
+      "evidence": {
+        "command": "build/reference /home/user/oneapi-agent-toolkit/examples/results/work/softmax_hecbench/bench_out.bin 2048 256",
+        "runs": 5,
+        "warmup": 1,
+        "results": [
+          {
+            "selector": "none",
+            "status": "ok",
+            "wall_time_s": {
+              "n": 5,
+              "min": 0.010706398000138506,
+              "median": 0.01117031500007215,
+              "p95": 0.011485488399966926,
+              "max": 0.011545421999926475,
+              "mean": 0.011140088400043168,
+              "stdev": 0.000306604557544315
+            },
+            "samples_s": [
+              0.011033,
+              0.011246,
+              0.01117,
+              0.011545,
+              0.010706
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "Wall-clock time of the whole process (includes start-up, JIT compilation of SYCL kernels on first use, I/O). Use report_regex for in-program kernel timings.",
+        "Device selection uses ONEAPI_DEVICE_SELECTOR; it only takes effect if the program uses a default/selector-based sycl::queue."
+      ]
+    },
+    "scan_idiomatic": {
+      "tool": "scan_helpers",
+      "status": "ok",
+      "summary": "no dpct helpers in 1 file(s)",
+      "evidence": {
+        "path": "/home/user/oneapi-agent-toolkit/examples/softmax_hecbench/sycl/softmax.cpp",
+        "files_scanned": 1,
+        "total": 0,
+        "by_category": {},
+        "by_symbol": {},
+        "by_file": {},
+        "occurrences": [],
+        "occurrences_truncated": 0,
+        "suggestions": {},
+        "unresolved_dpct_comments": [],
+        "advisories": []
+      },
+      "limitations": [
+        "Static text scan: macros that expand to dpct:: calls, or helpers reached through user-defined wrappers, are not detected.",
+        "Zero helpers means the code no longer depends on dpct headers; it does not prove the code is correct or fast. Run compile + verify + benchmark."
+      ]
+    }
+  }
+}

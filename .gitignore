@@ -219,3 +219,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 runs/
+examples/data/*.wav
+examples/results/work/
