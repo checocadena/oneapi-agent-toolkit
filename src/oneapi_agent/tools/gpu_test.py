@@ -242,6 +242,7 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
     inputs = task["inputs_abs"]
     vkw: dict[str, Any] = dict(tolerance=task.get("tolerance", 1e-5), rtol=task.get("rtol", 0.0),
                                mode=task.get("mode", "auto"),
+                               output_format=task.get("output_format", "auto"),
                                threshold_dbfs=task.get("threshold_dbfs", -96.0),
                                cwd=str(work), runner=runner)
 
