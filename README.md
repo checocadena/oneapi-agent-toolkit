@@ -2,9 +2,10 @@
 
 **Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.**
 
-> **Does it help?** The same model ported the same four CUDA programs to SYCL 3 times each, with and without the toolkit's checks. A hidden test graded every result.
-> With the toolkit, **12/12** ports were correct and fully converted. Without its checks, **7/12** were, and in 5 runs the agent said "done" when it wasn't.
-> [Results](#does-the-toolkit-actually-help) · [every run's code and trace](docs/ablation/)
+> **Does it help?** We ran 120 ports of four CUDA programs to SYCL with two Claude models and graded every result with a hidden test the agent never saw.
+> With the toolkit, **40/40** ports were correct and fully converted.
+> Without its checks, **23/40** were. Given a shell to run its own tests but no toolkit, only **14/40** were: the code worked, but SYCLomatic's leftover dpct helpers stayed in.
+> [Results](#does-the-toolkit-actually-help) · [every run's code and trace](docs/ablation/round2/)
 
 SYCLomatic translates most of a CUDA code base to SYCL. What is left is the last mile:
 - code it could not migrate,
@@ -69,15 +70,26 @@ So the reference can be the real CUDA binary, not only a C++ stand-in. Kernel ti
 
 ## Does the toolkit actually help?
 
-The same model ran the same four tasks 3 times each with the toolkit, and 3 times without its checks (`--baseline`: no `scan_helpers`, `verify` or `benchmark`; the run ends when the agent says it is done).
-A hidden check the agent never sees graded every final port the same way. Details: [`docs/ablation/`](docs/ablation/README.md).
+Same tasks, same prompts. Five runs per example (20 per cell), on two models, in three arms:
+- **toolkit:** the normal loop.
+- **baseline:** no `scan_helpers`, `verify` or `benchmark`; the run ends when the agent says it is done.
+- **baseline + shell:** the baseline plus a bash shell, so the agent can build and run its own tests.
 
-| Arm | correct output + 0 dpct helpers | said "done" but wasn't |
-|---|---|---|
-| with the toolkit | **12/12** | 0/12 |
-| without its checks | **7/12** | 5/12 |
+A hidden check the agent never sees graded every final port the same way: compile, `verify` against the reference, count dpct helpers.
+Details and all 120 runs: [`docs/ablation/round2/`](docs/ablation/round2/README.md). The first, smaller round is in [`docs/ablation/`](docs/ablation/README.md).
 
-Without the checks, the agent declared done with dpct helpers left in 4 runs. In one softmax run it shipped a port that compiled cleanly but got 332,679 of 524,288 outputs wrong, after writing "I did not run the binary". 3 runs per cell on a CPU device: indicative, not a benchmark.
+| Model | toolkit | baseline | baseline + shell |
+|---|---|---|---|
+| claude-sonnet-5-5 | **20/20** | 10/20 | 7/20 |
+| claude-haiku-5-5 | **20/20** | 13/20 | 7/20 |
+
+*Cells: ports that are correct **and** have 0 dpct helpers.*
+
+- **Wrong output:** without any checks, agents shipped wrong output in 6 of 40 runs, including a softmax port that compiled cleanly but got 332,679 of 524,288 outputs wrong. With a shell, none did. Testing catches bugs.
+- **Unfinished conversion:** with a shell, agents still left SYCLomatic's dpct helpers in 26 of 40 runs, though the prompt asked for zero. They stopped once the code worked. The helper scan is what finishes the port.
+- **Cost:** the toolkit arm costs about the same as the baseline: $1.37 vs $1.23 for 20 Sonnet runs.
+
+5 runs per cell, two models from one vendor, CPU device only: indicative, not a benchmark.
 
 ## Architecture
 
@@ -192,7 +204,7 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 
 ## Roadmap
 
-- More runs and models for the ablation, and a baseline agent that has a shell.
+- Ablation on models from other vendors and on GPU devices; harder, multi-file tasks.
 - cuFFT → oneMath, and a multi-file HeCBench app.
 - Intel GPU validation (Arc/Max through Level Zero).
 - AOT builds (`-fsycl-targets=`) and in-process kernel timing by default, so benchmarks exclude JIT.
