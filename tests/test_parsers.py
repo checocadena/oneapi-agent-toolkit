@@ -131,6 +131,7 @@ def test_scan_ignores_comments_and_strings_keeps_lines():
 
 def test_categorize_examples():
     assert categorize("blas::gemm") == "library_wrappers"
+    assert categorize("blas::descriptor_ptr") == "library_wrappers"  # c2s's cublasHandle_t
     assert categorize("dim3") == "types_launch"
     assert categorize("select_from_sub_group") == "subgroup_warp"
     assert categorize("something_new") == "other"

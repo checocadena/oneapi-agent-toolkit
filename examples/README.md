@@ -13,6 +13,13 @@ Each example contains:
 | `fir/` | 64-tap windowed-sinc low-pass FIR; `__constant__` taps plus a `__shared__` tile | WAV | audio null test, ≤ -96 dBFS |
 | `saxpy/` | `y = a*x + y`, the HPC baseline | generated in-program | array, atol 1e-6 |
 | `softmax_hecbench/` | HeCBench `softmax-cuda`: two kernels, one with cooperative-groups warp reductions | generated in-program | array, atol 1e-6 |
+| `gemm_cublas/` | cuBLAS `cublasSgemm` (column-major, alpha/beta) → oneMath `oneapi::math::blas::column_major::gemm` | generated in-program | array, atol 2e-3 (worst-case float32 dot-product bound; see `task.json`) |
+
+`gemm_cublas` needs two libraries:
+- oneMKL SYCL, for the raw c2s output, which calls `oneapi::mkl::`.
+- oneMath, for the idiomatic port.
+
+Install both with `WITH_ONEMATH=1 scripts/install-toolchain.sh`. `scripts/oneapi-env.sh` sets `ONEMKL_PREFIX` and `ONEMATH_PREFIX`, which its `task.json` flags expand.
 
 The audio inputs are generated procedurally (`python examples/gen_inputs.py`):
 - a log sine sweep from 20 Hz to 20 kHz plus -30 dBFS white noise, mono float32 at 48 kHz;

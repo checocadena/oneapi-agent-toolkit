@@ -143,7 +143,7 @@ class LoopConfig:
                 a.replace("{task_dir}", str(base)) for a in data["reference_build"]
             ] if data.get("reference_build") else None,
             candidate_binary=data.get("candidate_binary", "build/candidate"),
-            base_flags=data.get("base_flags", ["-O2"]),
+            base_flags=[os.path.expandvars(f) for f in data.get("base_flags", ["-O2"])],
             extra_include_dirs=[absolute(d) for d in data.get("include_dirs", [])],
             tolerance=data.get("tolerance", 1e-5),
             rtol=data.get("rtol", 0.0),

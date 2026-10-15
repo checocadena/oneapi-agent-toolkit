@@ -24,17 +24,44 @@ echo "== DPC++ (icpx) + OpenCL CPU runtime -> $ROOT/dpcpp"
 
 echo "== CUDA 12.3 headers (for c2s parsing only; no NVIDIA driver/GPU needed) -> $ROOT/cuda-headers"
 "$MM" create -y -p "$ROOT/cuda-headers" -c conda-forge "cuda-version=12.3" \
-  cuda-cudart-dev cuda-crt-dev_linux-64 libcurand-dev cuda-nvcc-dev_linux-64
+  cuda-cudart-dev cuda-crt-dev_linux-64 libcurand-dev libcublas-dev cuda-nvcc-dev_linux-64
 
 echo "== SYCLomatic $SYCLOMATIC_TAG -> $ROOT/syclomatic"
 curl -fsSL -o "$DL/syclomatic.tgz" \
   "https://github.com/oneapi-src/SYCLomatic/releases/download/${SYCLOMATIC_TAG}/linux_release.tgz"
 mkdir -p "$ROOT/syclomatic" && tar xzf "$DL/syclomatic.tgz" -C "$ROOT/syclomatic"
 
+# Optional (WITH_ONEMATH=1), needed only by examples/gemm_cublas:
+#   * oneMKL SYCL libraries + headers from conda-forge (links the raw c2s output, which calls
+#     oneapi::mkl::)
+#   * oneMath (UXL Foundation) built from source against them, with the BLAS domain and the
+#     MKL CPU backend. conda-forge has no oneMath package.
+# Its TBB threading layer needs TBB's CMake config, which conda-forge's tbb package does not
+# ship, so MKL runs sequentially (ENABLE_MKLCPU_THREAD_TBB=OFF).
+if [ "${WITH_ONEMATH:-0}" = "1" ]; then
+  ONEMATH_REF="${ONEMATH_REF:-1308c5e979daf0c80e3d6ae61c1e2de5ad0f2e4a}"
+  echo "== oneMKL SYCL (mkl-devel-dpcpp 2026.1) -> $ROOT/onemkl"
+  "$MM" create -y -p "$ROOT/onemkl" -c conda-forge "mkl-devel-dpcpp=2026.1"
+
+  echo "== oneMath $ONEMATH_REF (blas, mklcpu backend) -> $ROOT/onemath"
+  git init -q "$DL/oneMath"
+  git -C "$DL/oneMath" fetch -q --depth 1 https://github.com/uxlfoundation/oneMath.git "$ONEMATH_REF"
+  git -C "$DL/oneMath" checkout -q FETCH_HEAD
+  PATH="$ROOT/dpcpp/bin:$PATH" LD_LIBRARY_PATH="$ROOT/dpcpp/lib" cmake -S "$DL/oneMath" \
+    -B "$DL/onemath-build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_COMPILER=icpx -DCMAKE_C_COMPILER=icx -DMKL_ROOT="$ROOT/onemkl" \
+    -DENABLE_MKLCPU_BACKEND=ON -DENABLE_MKLCPU_THREAD_TBB=OFF -DENABLE_MKLGPU_BACKEND=OFF \
+    -DTARGET_DOMAINS=blas -DBUILD_FUNCTIONAL_TESTS=OFF -DBUILD_EXAMPLES=OFF \
+    -DCMAKE_INSTALL_PREFIX="$ROOT/onemath" -DCMAKE_INSTALL_RPATH="$ROOT/onemath/lib;$ROOT/onemkl/lib"
+  PATH="$ROOT/dpcpp/bin:$PATH" LD_LIBRARY_PATH="$ROOT/dpcpp/lib" cmake --build "$DL/onemath-build" -j"$(nproc)"
+  cmake --install "$DL/onemath-build"
+fi
+
 cat <<EOF
 
 Done. Activate with:
   DPCPP_PREFIX=$ROOT/dpcpp SYCLOMATIC_PREFIX=$ROOT/syclomatic CUDA_HEADERS_PREFIX=$ROOT/cuda-headers \\
     source scripts/oneapi-env.sh
+  (with WITH_ONEMATH=1 also set ONEMKL_PREFIX=$ROOT/onemkl ONEMATH_PREFIX=$ROOT/onemath)
   oneapi-agent doctor
 EOF
