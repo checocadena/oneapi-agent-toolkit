@@ -57,14 +57,24 @@ BUILD="$WORK/build"
 # --hip: HIP adapter + amdgcn libspirv + AMDGPU backend. --disable-jit: the runtime kernel
 # compiler is not used by gpu_test and doubles the LLVM link work. Link jobs are capped so the
 # 16 GB CI runner does not run out of memory linking clang.
+# The two runtime overrides work around an intel/llvm bug (as of nightly-2026-10-14, which CI
+# never hits because no intel/llvm CI job builds --hip): configure.py names the AMD libclc
+# runtime "amdgcn-amd-amdhsa-llvm", but sycl/CMakeLists.txt requires "amdgcn-amd-amdhsa" in the
+# libclc targets, and the driver looks for libspirv under lib/amdgcn-amd-amdhsa/ too
+# (clang/lib/Driver/ToolChains/SYCL.cpp, findLibspirvPath). Later -D options win.
+rm -f "$BUILD/CMakeCache.txt"
 python3 "$SRC/buildbot/configure.py" -s "$SRC" -o "$BUILD" --hip --no-assertions --disable-jit \
-  --cmake-opt=-DLLVM_PARALLEL_LINK_JOBS=2 --cmake-opt=-DUR_HIP_ROCM_DIR=/opt/rocm
+  --cmake-opt=-DLLVM_PARALLEL_LINK_JOBS=2 --cmake-opt=-DUR_HIP_ROCM_DIR=/opt/rocm \
+  "--cmake-opt=-DLLVM_RUNTIME_TARGETS=default;amdgcn-amd-amdhsa;spirv64-unknown-unknown" \
+  --cmake-opt=-DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES=libclc
 
 echo "== build (jobs=$JOBS)"
 cmake --build "$BUILD" --target deploy-sycl-toolchain -- -j "$JOBS"
 INSTALL="$BUILD/install"
 ls "$INSTALL/lib"/libur_adapter_* "$INSTALL/bin/sycl-ls" "$INSTALL/bin/clang++"
 test -e "$INSTALL/lib/libur_adapter_hip.so" || { echo "FAIL: no libur_adapter_hip.so"; exit 1; }
+find "$INSTALL/lib" -path '*amdgcn*' -name 'libspirv*' | tee "$OUT/libspirv-amdgcn.txt"
+test -s "$OUT/libspirv-amdgcn.txt" || { echo "FAIL: no amdgcn libspirv"; exit 1; }
 ldd "$INSTALL/lib/libur_adapter_hip.so" | tee "$OUT/ldd-adapter-hip.txt"
 grep -q 'libamdhip64.so.7 => /' "$OUT/ldd-adapter-hip.txt" || { echo "FAIL: adapter does not resolve libamdhip64.so.7"; exit 1; }
 
