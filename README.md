@@ -5,7 +5,9 @@
 > **Does it help?** We ran 120 ports of four CUDA programs to SYCL with two Claude models and graded every result with a hidden test the agent never saw.
 > With the toolkit, **40/40** ports were correct and fully converted.
 > Without its checks, **23/40** were. Given a shell to run its own tests but no toolkit, only **14/40** were: the code worked, but SYCLomatic's leftover dpct helpers stayed in.
-> [Results](#does-the-toolkit-actually-help) · [every run's code and trace](docs/ablation/round2/)
+>
+> **End to end, no human edits:** on five HeCBench programs it had never seen, the agent produced **15/15** correct, fully converted ports with the toolkit (**6/15** without). Its unedited ports then **passed on NVIDIA GPUs and an AMD Instinct MI350X, 10/10**, each checked against the C++ reference and the original CUDA built for that GPU.
+> [Results](#does-the-toolkit-actually-help) · [GPU results](#checked-on-nvidia-and-amd-gpus) · [every run's code and trace](docs/ablation/round2/)
 
 SYCLomatic translates most of a CUDA code base to SYCL. What is left is the last mile:
 - code it could not migrate,
@@ -54,10 +56,23 @@ Traces and reports: [`docs/real-runs/`](docs/real-runs/).
 
 All four end with 0 dpct helpers and a passing `verify`. That is one run per example, so treat iteration counts as anecdotes, not a distribution.
 
-## Checked on an NVIDIA GPU
+## Checked on NVIDIA and AMD GPUs
 
-The CUDA originals and the SYCL ports were then run on an NVIDIA RTX 2000 Ada (Runpod), with SYCL built by open-source DPC++ for `nvptx64-nvidia-cuda`.
-Script: [`scripts/gpu-run.sh`](scripts/gpu-run.sh). Every result JSON and the full log: [`docs/gpu-run/rtx2000ada/`](docs/gpu-run/rtx2000ada/SUMMARY.md).
+`oneapi-agent remote-test` rents a GPU (Runpod, Vast.ai, Vultr or DigitalOcean), builds the C++ reference and the original CUDA there (`nvcc`, or `hipify-perl` + `hipcc` on AMD), verifies the SYCL port against both, benchmarks it, and **always deletes the machine and confirms it is gone**. Spending is capped per run. How it works and what broke on real clouds: [`docs/gpu-testing.md`](docs/gpu-testing.md).
+
+**The agent's own ports, unedited** ([`docs/agent-ports/`](docs/agent-ports/README.md)). Max abs error vs the C++ reference / vs the original CUDA on the same GPU:
+
+| Program | NVIDIA | AMD Instinct MI350X |
+|---|---|---|
+| stencil1d | 0 / 0 (L4) | 0 / 0 |
+| matrix_rotate | 0 / 0 (RTX A4500) | 0 / 0 |
+| atomic_reduction | 0 / 0 (RTX 2000 Ada) | 0 / 0 |
+| scan | 0 / 0 (L4) | 0 / 0 |
+| adam | 2.38e-7 / 5.96e-8 (RTX 4000 Ada) | 2.38e-7 / 5.96e-8 |
+
+**The hand-written reference ports** ([`docs/gpu-testing.md`](docs/gpu-testing.md)): softmax passes on an RTX 2000 Ada (Runpod), an A16 (Vultr), an RTX A4000 (Vast.ai) and an AMD MI350X (DigitalOcean), and all six HeCBench programs pass on the MI350X. Making the softmax port use an in-order queue, as CUDA's default stream is, cut its per-launch cost on the MI350X from 114.6 to 24.4 us (the original CUDA, hipified: 8.9 us).
+
+The first manual run, on an NVIDIA RTX 2000 Ada with [`scripts/gpu-run.sh`](scripts/gpu-run.sh) ([`docs/gpu-run/rtx2000ada/`](docs/gpu-run/rtx2000ada/SUMMARY.md)), checked the four original examples:
 
 | Example | CUDA vs C++ reference | SYCL-on-GPU vs C++ reference | SYCL-on-GPU vs CUDA binary |
 |---|---|---|---|
@@ -66,7 +81,7 @@ Script: [`scripts/gpu-run.sh`](scripts/gpu-run.sh). Every result JSON and the fu
 | saxpy | ✅ | ✅ | ✅ max abs err 0 |
 | softmax | ✅ | ✅ | ✅ max abs err 7.45e-9 |
 
-So the reference can be the real CUDA binary, not only a C++ stand-in. Kernel timings were also recorded, but they come from single small launches and are not a performance claim.
+Kernel timings come from single small launches and are not a performance claim. Intel GPUs have not been run yet: Intel's cloud has no public API, so that path is a [bundle](docs/gpu-testing.md#a-gpu-this-machine-cannot-reach-bundles) run by hand.
 
 ## Does the toolkit actually help?
 
@@ -91,9 +106,9 @@ Details and all 120 runs: [`docs/ablation/round2/`](docs/ablation/round2/README.
 
 5 runs per cell, two models from one vendor, CPU device only: indicative, not a benchmark.
 
-### End to end: the agent's ports on NVIDIA and AMD GPUs
+### Five more programs, the agent's ports run on GPUs
 
-On five HeCBench programs the agent had never seen (stencil1d, matrix_rotate, atomic_reduction, scan, adam), the loop with the toolkit produced 15/15 correct, helper-free ports; without the checks, 6/15. One agent port per program then went, unedited, through `remote-test`: **all 5 PASS on an NVIDIA GPU and all 5 PASS on an AMD Instinct MI350X**, each against the C++ reference and the original CUDA built natively on the same GPU. No human edited any of these ports. Details: [`docs/agent-ports/`](docs/agent-ports/README.md).
+The same comparison on five HeCBench programs the agent had never seen (stencil1d, matrix_rotate, atomic_reduction, scan, adam), claude-sonnet-5-5, 3 runs per arm: toolkit **15/15**, baseline 6/15, baseline + shell 6/15. No arm produced wrong output here; every miss was dpct helpers left in while the agent reported success. The toolkit's ports then passed unedited on NVIDIA and AMD GPUs ([above](#checked-on-nvidia-and-amd-gpus)). Details and all 45 runs: [`docs/agent-ports/`](docs/agent-ports/README.md).
 
 ## Architecture
 
@@ -197,23 +212,23 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | `compile` (icpx) | ✅ working | verified with icpx 2026.1.1 (conda-forge) |
 | `scan_helpers` | ✅ working | static text scan; 11 categories plus advisories |
 | `verify` array / audio | ✅ working | real subprocesses; 32-bit float WAV recommended for the -96 dBFS test |
-| `benchmark` | ✅ working | OpenCL CPU device and NVIDIA `cuda:0` (RTX 2000 Ada); no Intel GPU tested yet |
+| `benchmark` | ✅ working | OpenCL CPU device, NVIDIA `cuda:0` and AMD `hip:0` (MI350X); no Intel GPU tested yet |
 | MCP server | ✅ working | in-process `list_tools` / `call_tool` tested (mcp 2.3.0; mcp 1.x import path supported) |
 | `oneapi-agent setup` | ✅ working | verified against the real clients: Claude Code and Gemini CLI `Connected`, Cursor `ready` (6 tools listed), Codex reads the entry (`codex mcp get`); idempotent re-runs. See [docs/agent-registration.md](docs/agent-registration.md) |
 | Skill `oneapi-port` | ✅ written | the procedure, loop rules and report template |
 | Standalone loop, dry run (scripted model) | ✅ working | mocked and real-tool runs; success, stuck, max-iterations and budget paths are tested |
-| Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success`, see [docs/real-runs](docs/real-runs/) |
-| CUDA examples executed on NVIDIA hardware | ✅ done | RTX 2000 Ada; CUDA and SYCL-on-GPU both verify, see [docs/gpu-run](docs/gpu-run/rtx2000ada/SUMMARY.md) |
-| Tests | ✅ 170 passed | with the toolchain present; toolchain tests auto-skip without it |
+| Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success` ([docs/real-runs](docs/real-runs/)); 15/15 on five unseen HeCBench programs ([docs/agent-ports](docs/agent-ports/README.md)) |
+| CUDA examples executed on GPUs | ✅ done | NVIDIA (RTX 2000 Ada, A16, RTX A4000, L4, RTX A4500, RTX 4000 Ada) and AMD MI350X; the original CUDA (nvcc or hipified) and the SYCL port both verify. See [docs/gpu-testing.md](docs/gpu-testing.md) |
+| Tests | ✅ 174 passed | with the toolchain present; toolchain tests auto-skip without it |
 | CI: real toolchain | ✅ | `toolchain` job installs icpx 2026.1.1 + SYCLomatic 20260701 + CUDA 12.3 headers + oneMath (cached) and runs doctor, pytest (toolchain tests must not skip) and the example pipeline on every push |
 | CI: claims gate | ✅ | [`scripts/check_claims.py`](scripts/check_claims.py) fails the build unless every idiomatic port compiles, verifies and has 0 dpct helpers, and c2s still emits `sycl::native::exp` without a DPCT warning |
-| `gpu-test`, `bundle`, `ingest`, `remote-test` | ✅ NVIDIA, AMD · 🟡 Intel | verify a port on a local GPU, ship a one-file test to a machine you can't reach, or rent one with a single command (Runpod, Vast.ai, Vultr, DigitalOcean; the machine is always deleted). Verified on 3 NVIDIA GPUs and an AMD MI350X (six HeCBench ports PASS); Intel not yet run on hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
+| `gpu-test`, `bundle`, `ingest`, `remote-test` | ✅ NVIDIA, AMD · 🟡 Intel | verify a port on a local GPU, ship a one-file test to a machine you can't reach, or rent one with a single command (Runpod, Vast.ai, Vultr, DigitalOcean; the machine is always deleted). Verified on six NVIDIA GPU types and an AMD MI350X, with hand-written and agent-made ports; Intel not yet run on hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
 | Run-replay viewer | ✅ | [`scripts/render_trace.py`](scripts/render_trace.py) turns a trace into a self-contained, step-through HTML page; pages in [`docs/replay/`](docs/replay/) |
 | PyPI package | 🟡 ready | wheel ships the skill; `publish.yml` uploads on a GitHub release once the PyPI trusted publisher is configured |
 
 ## Roadmap
 
-- Ablation on models from other vendors and on GPU devices; harder, multi-file tasks.
+- Ablation on models from other vendors; harder, multi-file tasks.
 - cuFFT → oneMath, and a multi-file HeCBench app.
 - Intel GPU validation (Arc/Max through Level Zero).
 - AOT builds (`-fsycl-targets=`) and in-process kernel timing by default, so benchmarks exclude JIT.
