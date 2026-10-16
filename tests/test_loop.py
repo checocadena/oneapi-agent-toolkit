@@ -268,3 +268,14 @@ def test_shell_tool_only_when_enabled(cfg, tmp_path):
     r = Toolbox(cfg, work)("run", {"command": "echo hi > f.txt; cat f.txt"})
     assert r.status == "ok" and r.evidence["stdout"].strip() == "hi"
     assert (work / "f.txt").exists()
+
+
+def test_missing_task_file_is_a_clear_error_not_a_traceback(tmp_path):
+    import argparse
+
+    from oneapi_agent.loop import cli_entry
+
+    args = argparse.Namespace(config=str(tmp_path / "nope.json"), max_iterations=3, dry_run=True,
+                              mock_tools=True, scenario="success", runs_dir=str(tmp_path))
+    with pytest.raises(SystemExit, match="task file not found.*--config"):
+        cli_entry(args)

@@ -1,0 +1,8 @@
+{
+  "command": "g++ -O2 -std=c++17 -I/tmp/tmp.wzYqV44eL3/task /tmp/tmp.wzYqV44eL3/task/scan_ref.cpp -o build/reference",
+  "returncode": 0,
+  "duration_s": 0.232665,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.wzYqV44eL3/out/work"
+}

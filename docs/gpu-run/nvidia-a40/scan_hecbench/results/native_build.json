@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native -I/tmp/tmp.wzYqV44eL3/task /tmp/tmp.wzYqV44eL3/task/scan.cu -o build/native",
+  "returncode": 0,
+  "duration_s": 1.538578,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.wzYqV44eL3/out/work"
+}

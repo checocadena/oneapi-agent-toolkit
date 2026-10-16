@@ -8,19 +8,23 @@ oneapi-agent-toolkit is an open-source MCP server and agent skill that gives Cla
 
 **[We ran 120 ports](#does-the-toolkit-actually-help)** of four workloads (an audio waveshaper, a 64-tap FIR filter, SAXPY and HeCBench softmax) on two Claude models, and graded every final port with a hidden test. With the toolkit, **40 of 40** ports were correct and helper-free. Without its checks, **23 of 40** were, and one unchecked softmax port compiled cleanly yet got 332,679 of 524,288 outputs wrong. Giving the agent a shell to test its own code removed wrong output but not unfinished migration: only **14 of 40** ports were helper-free. [SYCLomatic shows the same failure mode](#the-last-mile-problem-observed): its softmax output compiled with zero warnings while `expf` had silently become a reduced-precision builtin.
 
-**[Then we closed the loop from CUDA to GPU](docs/agent-ports/README.md) with no human edits.** On five HeCBench programs the agent had never seen, it produced **15 of 15** correct, helper-free ports with the toolkit and **6 of 15** without. A [one-command GPU test](#checked-on-nvidia-and-amd-gpus), which rents a machine, runs the checks and always deletes it, then ran the agent's unedited ports on NVIDIA GPUs and an AMD Instinct MI350X: **all 10** matched both the C++ reference and the original CUDA built for that GPU.
+**[Then we closed the loop from CUDA to GPU](docs/agent-ports/README.md) with no human edits.** On five HeCBench programs the agent had never seen, Claude Sonnet produced **15 of 15** correct, helper-free ports with the toolkit and **6 of 15** without (Claude Haiku: 15 of 15 and 12 of 15). A [one-command GPU test](#checked-on-nvidia-and-amd-gpus), which rents a machine, runs the checks and always deletes it, then ran the agent's unedited ports on NVIDIA GPUs and an AMD Instinct MI350X: **all 10** matched both the C++ reference and the original CUDA built for that GPU.
 
 Each result above links to the committed output behind it: traces, final sources and tool results for every run. A tool result carries a status, the exact commands that ran, parsed diagnostics, numbers, and an explicit list of limitations.
 "It works" means `verify` returned `ok` on the current code. "It's portable" means `scan_helpers` found zero helpers. Nothing is reported that was not measured.
+
+[![Replay of a run without the toolkit: every step the agent saw says OK, then the hidden check finds 332,679 of 524,288 outputs wrong](docs/img/replay-softmax-fail.png)](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html)
+
+*Without the toolkit's checks, every step the agent saw said OK and it declared itself done; the hidden check found 332,679 of 524,288 outputs wrong. Click for the step-through replay ([all replays](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html)).*
 
 ### Check it yourself
 
 | Claim | Evidence |
 |---|---|
 | 120 ports, two models: toolkit 40/40, no checks 23/40, shell only 14/40 | [`docs/ablation/round2/`](docs/ablation/round2/README.md): the table, plus every run's trace, report and final source |
-| An unchecked softmax port compiled cleanly and got 332,679 of 524,288 outputs wrong | [that run's trace, report and final source](docs/ablation/round2/runs/claude-sonnet-5-5/baseline/softmax_hecbench/run3/); a step-through replay is in [`docs/replay/`](docs/replay/) (download and open the `.html`) |
+| An unchecked softmax port compiled cleanly and got 332,679 of 524,288 outputs wrong | [step-through replay](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html), and [that run's trace, report and final source](docs/ablation/round2/runs/claude-sonnet-5-5/baseline/softmax_hecbench/run3/) |
 | SYCLomatic silently turned `expf` into the reduced-precision `sycl::native::exp` (22,156 of 524,288 wrong on an AVX-512 CPU; within tolerance on AVX2) | [`examples/RESULTS.md`](examples/RESULTS.md) |
-| Five unseen programs end to end: toolkit 15/15, without 6/15; the agent's ports PASS 10/10 on NVIDIA and an AMD MI350X | [`docs/agent-ports/`](docs/agent-ports/README.md): 45 agent runs, the agent's exact sources, every GPU tool result |
+| Five unseen programs end to end, two models: toolkit 30/30, without 18/30; the agent's ports PASS 10/10 on NVIDIA and an AMD MI350X | [`docs/agent-ports/`](docs/agent-ports/README.md): 90 agent runs, the agent's exact sources, every GPU tool result |
 | One command rents a GPU on four clouds, verifies against the original CUDA, and deletes the machine | [`docs/gpu-testing.md`](docs/gpu-testing.md), results in [`docs/gpu-run/`](docs/gpu-run/) |
 | A real model ports the four original examples | [`docs/real-runs/`](docs/real-runs/) |
 | cuBLAS → oneMath, run and verified | [`examples/gemm_cublas/`](examples/gemm_cublas/) |
@@ -78,7 +82,7 @@ All four end with 0 dpct helpers and a passing `verify`. That is one run per exa
 | scan | 0 / 0 (L4) | 0 / 0 |
 | adam | 2.38e-7 / 5.96e-8 (RTX 4000 Ada) | 2.38e-7 / 5.96e-8 |
 
-**The hand-written reference ports** ([`docs/gpu-testing.md`](docs/gpu-testing.md)): softmax passes on an RTX 2000 Ada (Runpod), an A16 (Vultr), an RTX A4000 (Vast.ai) and an AMD MI350X (DigitalOcean), and all six HeCBench programs pass on the MI350X. Making the softmax port use an in-order queue, as CUDA's default stream is, cut its per-launch cost on the MI350X from 114.6 to 24.4 us (the original CUDA, hipified: 8.9 us).
+**The hand-written reference ports** ([`docs/gpu-testing.md`](docs/gpu-testing.md)): softmax passes on an RTX 2000 Ada (Runpod), an A16 (Vultr), an RTX A4000 (Vast.ai) and an AMD MI350X (DigitalOcean), and all six HeCBench programs pass on the MI350X and on NVIDIA GPUs. Making the softmax port use an in-order queue, as CUDA's default stream is, cut its per-launch cost on the MI350X from 114.6 to 24.4 us (the original CUDA, hipified: 8.9 us).
 
 The first manual run, on an NVIDIA RTX 2000 Ada with [`scripts/gpu-run.sh`](scripts/gpu-run.sh) ([`docs/gpu-run/rtx2000ada/`](docs/gpu-run/rtx2000ada/SUMMARY.md)), checked the four original examples:
 
@@ -116,7 +120,14 @@ Details and all 120 runs: [`docs/ablation/round2/`](docs/ablation/round2/README.
 
 ### Five more programs, the agent's ports run on GPUs
 
-The same comparison on five HeCBench programs the agent had never seen (stencil1d, matrix_rotate, atomic_reduction, scan, adam), claude-sonnet-5-5, 3 runs per arm: toolkit **15/15**, baseline 6/15, baseline + shell 6/15. No arm produced wrong output here; every miss was dpct helpers left in while the agent reported success. The toolkit's ports then passed unedited on NVIDIA and AMD GPUs ([above](#checked-on-nvidia-and-amd-gpus)). Details and all 45 runs: [`docs/agent-ports/`](docs/agent-ports/README.md).
+The same comparison on five HeCBench programs the agent had never seen (stencil1d, matrix_rotate, atomic_reduction, scan, adam), 3 runs per cell:
+
+| Model | toolkit | baseline | baseline + shell |
+|---|---|---|---|
+| claude-sonnet-5-5 | **15/15** | 6/15 | 6/15 |
+| claude-haiku-5-5 | **15/15** | 12/15 | 11/15 |
+
+Nearly every miss was dpct helpers left in while the agent reported success; one Haiku baseline port hard-coded a GPU selector and crashed on the CPU grader. The Sonnet toolkit ports then passed unedited on NVIDIA and AMD GPUs ([above](#checked-on-nvidia-and-amd-gpus)). Details and all 90 runs: [`docs/agent-ports/`](docs/agent-ports/README.md).
 
 ## Architecture
 
@@ -151,7 +162,8 @@ A missing binary is never faked: the result is `toolchain_missing`, with the exa
 ## Quickstart
 
 ```bash
-pipx install "oneapi-agent-toolkit[mcp]"  # or, from a clone: pip install -e ".[all]"  (Python 3.11+)
+git clone https://github.com/checocadena/oneapi-agent-toolkit && cd oneapi-agent-toolkit
+pip install -e ".[all]"                  # Python 3.11+; not on PyPI yet
 oneapi-agent --summary doctor            # what toolchain was found
 
 # Optional, real toolchain (see docs/install.md); this is the route verified here:
@@ -225,13 +237,13 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | `oneapi-agent setup` | ✅ working | verified against the real clients: Claude Code and Gemini CLI `Connected`, Cursor `ready` (6 tools listed), Codex reads the entry (`codex mcp get`); idempotent re-runs. See [docs/agent-registration.md](docs/agent-registration.md) |
 | Skill `oneapi-port` | ✅ written | the procedure, loop rules and report template |
 | Standalone loop, dry run (scripted model) | ✅ working | mocked and real-tool runs; success, stuck, max-iterations and budget paths are tested |
-| Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success` ([docs/real-runs](docs/real-runs/)); 15/15 on five unseen HeCBench programs ([docs/agent-ports](docs/agent-ports/README.md)) |
-| CUDA examples executed on GPUs | ✅ done | NVIDIA (RTX 2000 Ada, A16, RTX A4000, L4, RTX A4500, RTX 4000 Ada) and AMD MI350X; the original CUDA (nvcc or hipified) and the SYCL port both verify. See [docs/gpu-testing.md](docs/gpu-testing.md) |
+| Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success` ([docs/real-runs](docs/real-runs/)); `claude-sonnet-5-5` and `claude-haiku-5-5`: 15/15 each on five unseen HeCBench programs ([docs/agent-ports](docs/agent-ports/README.md)) |
+| CUDA examples executed on GPUs | ✅ done | NVIDIA (RTX 2000 Ada, A16, RTX A4000, RTX A4500, RTX A5000, RTX 4000 Ada, RTX 4090, L4, A40) and AMD MI350X; the original CUDA (nvcc or hipified) and the SYCL port both verify. See [docs/gpu-testing.md](docs/gpu-testing.md) |
 | Tests | ✅ 174 passed | with the toolchain present; toolchain tests auto-skip without it |
 | CI: real toolchain | ✅ | `toolchain` job installs icpx 2026.1.1 + SYCLomatic 20260701 + CUDA 12.3 headers + oneMath (cached) and runs doctor, pytest (toolchain tests must not skip) and the example pipeline on every push |
 | CI: claims gate | ✅ | [`scripts/check_claims.py`](scripts/check_claims.py) fails the build unless every idiomatic port compiles, verifies and has 0 dpct helpers, and c2s still emits `sycl::native::exp` without a DPCT warning |
-| `gpu-test`, `bundle`, `ingest`, `remote-test` | ✅ NVIDIA, AMD · 🟡 Intel | verify a port on a local GPU, ship a one-file test to a machine you can't reach, or rent one with a single command (Runpod, Vast.ai, Vultr, DigitalOcean; the machine is always deleted). Verified on six NVIDIA GPU types and an AMD MI350X, with hand-written and agent-made ports; Intel not yet run on hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
-| Run-replay viewer | ✅ | [`scripts/render_trace.py`](scripts/render_trace.py) turns a trace into a self-contained, step-through HTML page; pages in [`docs/replay/`](docs/replay/) |
+| `gpu-test`, `bundle`, `ingest`, `remote-test` | ✅ NVIDIA, AMD · 🟡 Intel | verify a port on a local GPU, ship a one-file test to a machine you can't reach, or rent one with a single command (Runpod, Vast.ai, Vultr, DigitalOcean; the machine is always deleted). Verified on nine NVIDIA GPU types and an AMD MI350X, with hand-written and agent-made ports; Intel not yet run on hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
+| Run-replay viewer | ✅ | [`scripts/render_trace.py`](scripts/render_trace.py) turns a trace into a self-contained, step-through HTML page; pages in [`docs/replay/`](docs/replay/), browsable at [checocadena.github.io/oneapi-agent-toolkit/docs/replay/](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html) |
 | PyPI package | 🟡 ready | wheel ships the skill; `publish.yml` uploads on a GitHub release once the PyPI trusted publisher is configured |
 
 ## Roadmap

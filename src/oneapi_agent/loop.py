@@ -1022,6 +1022,9 @@ def default_task_file() -> Path:
 
 def cli_entry(args: Any) -> dict[str, Any]:
     task = Path(args.config) if args.config else default_task_file()
+    if not task.is_file():
+        raise SystemExit(f"task file not found: {task}. Pass --config <task.json>; the bundled "
+                         "examples (examples/*/task.json) come with a clone of the repository.")
     cfg = LoopConfig.from_task_file(task, max_iterations=args.max_iterations,
                                     baseline=getattr(args, "baseline", False) or None,
                                     evaluate=getattr(args, "evaluate", False) or None,
