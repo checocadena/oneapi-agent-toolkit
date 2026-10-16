@@ -151,7 +151,8 @@ A missing binary is never faked: the result is `toolchain_missing`, with the exa
 ## Quickstart
 
 ```bash
-pipx install "oneapi-agent-toolkit[mcp]"  # or, from a clone: pip install -e ".[all]"  (Python 3.11+)
+git clone https://github.com/checocadena/oneapi-agent-toolkit && cd oneapi-agent-toolkit
+pip install -e ".[all]"                  # Python 3.11+; not on PyPI yet
 oneapi-agent --summary doctor            # what toolchain was found
 
 # Optional, real toolchain (see docs/install.md); this is the route verified here:
