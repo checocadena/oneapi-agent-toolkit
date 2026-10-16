@@ -140,9 +140,35 @@ Every run is fully automated with `remote-test`, the machine deletion is confirm
 | RTX 2000 Ada | Runpod | 9.69e-8 | 7.45e-9 |
 | A16 | Vultr | 9.69e-8 | 7.45e-9 |
 | RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
-| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | 4.66e-7 |
+| AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | 4.69e-7 |
 
-The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. Speed (median wall time, 10 runs) is reported, not graded: on the MI350X the SYCL port took 238 ms and the hipified original 156 ms. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. The NVIDIA rows were measured with the previous softmax port (a 32-wide work-group per slice and an out-of-order queue); the current port (below) has so far been run on the MI350X only. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+
+## Six HeCBench programs on an AMD MI350X
+
+Each program covers a different GPU pattern. The CUDA kernels are HeCBench's, unchanged (commit `f0c817aa`); the SYCL ports are in [`examples/`](../examples/README.md). Each row is one `remote-test` run on DigitalOcean (2026-10-15/16), with droplet deletion confirmed:
+
+| Program | Pattern | SYCL vs C++ reference | SYCL vs original CUDA (as HIP) | Tolerance |
+|---|---|---|---|---|
+| [softmax](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md) | sub-group reductions | 9.69e-8 | 4.69e-7 | atol 1e-6 |
+| [stencil1d](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/stencil1d_hecbench/SUMMARY.md) | shared-memory tile with halo, barrier | 0 | 0 | exact |
+| [matrix_rotate](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/matrix_rotate_hecbench/SUMMARY.md) | in-place 2D index math | 0 | 0 | exact |
+| [atomic_reduction](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/atomic_reduction_hecbench/SUMMARY.md) | grid-stride loads + device atomics, 4 block sizes | 0 | 0 | exact |
+| [scan](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/scan_hecbench/SUMMARY.md) | Blelloch scan in shared memory, many barriers | 0 | 0 | exact |
+| [adam](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/adam_hecbench/SUMMARY.md) | Adam optimizer, `pow`/`sqrt` | 2.38e-7 | 5.96e-8 | atol 1e-5 + rtol 1e-4 |
+
+All five new ports compiled and passed on their first run. They have not been run on NVIDIA yet.
+
+**Speed.** Speed is reported, not graded. Most programs here run one short kernel, so a run's wall time is dominated by process and runtime start-up, and `kernel_ms` with one launch includes loading the kernel. To measure the launch cost, softmax was also run with 1000 launches per run (cost per launch, MI350X):
+
+| softmax variant | per launch |
+|---|---|
+| previous SYCL port: 32-wide work-group per slice, out-of-order queue | 114.6 us |
+| one sub-group per slice | 103.4 us |
+| one sub-group per slice, in-order queue (the current port) | 24.4 us |
+| original CUDA, hipified | 8.9 us |
+
+So the large gap was the out-of-order queue's dependency tracking on every submission; CUDA's default stream is in-order, which makes an in-order queue the faithful translation. All six ports now use in-order queues. This is also a correctness matter: matrix_rotate launches its kernel three times on the same matrix, and with the default out-of-order queue nothing orders those launches. The MI350X happened to run them one after another and passed; CI's CPU device overlapped them and got 33431 of 4194304 elements wrong. The fixed port passes on both. The remaining gap (about 2.7x per launch here) is the SYCL runtime's own submission cost through the HIP adapter, not the kernel.
 
 ## Problems found on real clouds, and what the tool does about them
 
@@ -158,6 +184,8 @@ The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the o
 | `deleted ... NOT CONFIRMED` although the droplet was gone (DigitalOcean) | droplet deletion is asynchronous; one immediate check still saw it | deletion is polled for up to 2 minutes before it is reported unconfirmed |
 | native build on DigitalOcean AMD: `'hip/hip_runtime.h' file not found` | `gpu-amd-base` ships the ROCm 7.14 runtime and `hipcc`, but not the HIP development headers | reported as a limitation; the SYCL port is still verified against the C++ reference |
 | hipified CUDA: `'cooperative_groups/reduce.h' file not found` (ROCm 7.14) | `hipify-perl` leaves that include unchanged; HIP keeps `cg::reduce` (ROCm 7+) at `hip/cooperative_groups/hip_reduce.h` | the include is pointed at the HIP header the host has; with none, the native build is skipped with that reason |
+| a SYCL port passes on the GPU but fails in CI's CPU run (matrix_rotate: 33431 wrong elements) | kernels launched on a default (out-of-order) queue with USM pointers have no ordering; the GPU serialised them, the CPU device did not | ports use an in-order queue, as CUDA's default stream is; CI verifies every example on a CPU device as well, which is what exposed it |
+| a run's temporary SSH key still on the account afterwards (DigitalOcean) | the key was deleted right after the droplet DELETE, before the droplet was gone, and only once; one key from an earlier run stayed for hours | the key is removed after the droplet is confirmed gone, and looked up until the API answers 404; a key that stays is reported in the result. Checked live: no key and no droplet left after a run |
 | the first GPU sells out between the stock check and the create | live markets | the next candidate is tried |
 | a Vast instance stuck in `loading`: `TLS handshake timeout` from Docker Hub | that host's network | the machine is deleted, its host is skipped, and another is tried; any machine silent past `--boot-minutes` is replaced the same way |
 

@@ -1,0 +1,25 @@
+{
+  "tool": "compile",
+  "status": "ok",
+  "summary": "compiled 1 source(s) -> /tmp/tmp.t6cZ5tQvVr/out/work/build/sycl (0 warning(s))",
+  "evidence": {
+    "run": {
+      "command": "/opt/sycl/bin/clang++ -fsycl -O2 -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfx950 /tmp/tmp.t6cZ5tQvVr/task/sycl/matrix_rotate.cpp -o /tmp/tmp.t6cZ5tQvVr/out/work/build/sycl",
+      "returncode": 0,
+      "duration_s": 2.119207,
+      "stdout": "",
+      "stderr": ""
+    },
+    "output": "/tmp/tmp.t6cZ5tQvVr/out/work/build/sycl",
+    "dpct_include_added": null,
+    "diagnostics": [],
+    "counts": {
+      "error": 0,
+      "warning": 0,
+      "note": 0
+    }
+  },
+  "limitations": [
+    "A successful compile says nothing about numerical correctness; run verify."
+  ]
+}

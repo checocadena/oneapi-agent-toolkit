@@ -8,28 +8,28 @@
       {
         "input": null,
         "reference": {
-          "command": "build/reference /tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_reference.out 2048 256",
+          "command": "build/reference /tmp/tmp.H4U7IjIsE5/out/work/v_sycl/case0_reference.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.004272,
+          "duration_s": 0.004261,
           "stdout": "",
           "stderr": "",
-          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
+          "cwd": "/tmp/tmp.H4U7IjIsE5/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_reference.out"
+          "output_file": "/tmp/tmp.H4U7IjIsE5/out/work/v_sycl/case0_reference.out"
         },
         "candidate": {
-          "command": "build/sycl /tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_candidate.out 2048 256",
+          "command": "build/sycl /tmp/tmp.H4U7IjIsE5/out/work/v_sycl/case0_candidate.out 2048 256",
           "returncode": 0,
-          "duration_s": 0.219646,
-          "stdout": "kernel_ms=16.896236\n",
+          "duration_s": 0.178521,
+          "stdout": "kernel_ms=0.945679\n",
           "stderr": "",
-          "cwd": "/tmp/tmp.x3fMLZMAhu/out/work",
+          "cwd": "/tmp/tmp.H4U7IjIsE5/out/work",
           "env_overrides": {
             "ONEAPI_DEVICE_SELECTOR": "hip:0"
           },
-          "output_file": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl/case0_candidate.out"
+          "output_file": "/tmp/tmp.H4U7IjIsE5/out/work/v_sycl/case0_candidate.out"
         },
         "reference_format": "f32",
         "candidate_format": "f32",
@@ -42,12 +42,12 @@
           "max_ulp_allowed": null,
           "passed": true,
           "max_abs_err": 9.685754776000977e-08,
-          "rms_err": 1.2287843837654536e-08,
-          "mean_abs_err": 4.582290797239957e-09,
+          "rms_err": 1.2248727874126591e-08,
+          "mean_abs_err": 4.5682002446491374e-09,
           "max_rel_err": 2.595138591754531e-06,
           "max_ulp_f32": 41,
           "median_ulp_f32": 14.0,
-          "exact_matches": 4864,
+          "exact_matches": 5125,
           "mismatches": 0,
           "nan_mismatches": 0,
           "reference_range": [
@@ -59,7 +59,7 @@
         "passed": true
       }
     ],
-    "work_dir": "/tmp/tmp.x3fMLZMAhu/out/work/v_sycl",
+    "work_dir": "/tmp/tmp.H4U7IjIsE5/out/work/v_sycl",
     "passed_cases": 1,
     "total_cases": 1,
     "worst_max_abs_err": 9.685754776000977e-08

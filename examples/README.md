@@ -14,6 +14,11 @@ Each example contains:
 | `saxpy/` | `y = a*x + y`, the HPC baseline | generated in-program | array, atol 1e-6 |
 | `softmax_hecbench/` | HeCBench `softmax-cuda`: two kernels, one with cooperative-groups warp reductions | generated in-program | array, atol 1e-6 |
 | `gemm_cublas/` | cuBLAS `cublasSgemm` (column-major, alpha/beta) → oneMath `oneapi::math::blas::column_major::gemm` | generated in-program | array, atol 2e-3 (worst-case float32 dot-product bound; see `task.json`) |
+| `stencil1d_hecbench/` | HeCBench `stencil1d-cuda`: `__shared__` tile with a halo of 7 on each side and `__syncthreads` | generated in-program | array (f64), exact |
+| `matrix_rotate_hecbench/` | HeCBench `matrix-rotate-cuda`: in-place 90-degree rotation, one thread per layer | generated in-program | array (f32), exact |
+| `atomic_reduction_hecbench/` | HeCBench `atomicReduction-cuda` (AMD, MIT): five grid-stride kernels ending in `atomicAdd`, four block sizes | generated in-program | array (f64), exact |
+| `scan_hecbench/` | HeCBench `scan-cuda`: Blelloch block scan in `__shared__` memory, plain and bank-conflict-avoiding | generated in-program | array (f64), exact |
+| `adam_hecbench/` | HeCBench `adam-cuda`: Adam optimizer, 10 steps per parameter | generated in-program | array (f32), atol 1e-5 + rtol 1e-4 (derivation in `task.json`) |
 
 `gemm_cublas` needs two libraries:
 - oneMKL SYCL, for the raw c2s output, which calls `oneapi::mkl::`.

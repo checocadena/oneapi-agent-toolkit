@@ -202,7 +202,7 @@ def test_task_file_expands_env_in_base_flags(tmp_path, monkeypatch):
 def test_repo_example_task_files_load():
     root = Path(__file__).resolve().parents[1] / "examples"
     tasks = sorted(root.glob("*/task.json"))
-    assert len(tasks) == 5
+    assert len(tasks) == 10
     for t in tasks:
         c = LoopConfig.from_task_file(t)
         assert Path(c.cuda_path).is_file()

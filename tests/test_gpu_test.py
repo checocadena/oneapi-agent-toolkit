@@ -257,3 +257,35 @@ def test_cg_reduce_header_is_mapped_to_hip_or_reported(tmp_path):
     assert "cooperative_groups/reduce.h" not in out and out.endswith("int x;\n")
     # Sources without the header pass through unchanged.
     assert map_cg_headers("int y;\n", inc) == ("int y;\n", None)
+
+
+def test_task_output_format_reaches_the_verifier(tmp_path, monkeypatch):
+    gt = importlib.import_module("oneapi_agent.tools.gpu_test")
+    bm = importlib.import_module("oneapi_agent.tools.benchmark")
+    from oneapi_agent.result import ToolResult
+
+    monkeypatch.setattr(bm, "find_tool", lambda n: "/x/sycl-ls")
+    monkeypatch.setattr(gt, "detect_amd_arch", lambda runner=None: "gfx950")
+    monkeypatch.setattr(gt, "compile_sycl", lambda *a, **k: ToolResult("compile", "ok", "ok"))
+    monkeypatch.setattr(gt, "benchmark", lambda *a, **k: ToolResult("benchmark", "ok", "ok"))
+    seen = []
+
+    def fake_verify(*a, **k):
+        seen.append(k)
+        return ToolResult("verify", "ok", "PASS")
+
+    monkeypatch.setattr(gt, "verify", fake_verify)
+
+    def runner(argv, **kw):
+        out = "[hip:gpu][hip:0] AMD HIP BACKEND, AMD Instinct MI350X gfx950 [HIP 7.14]\n"
+        return CommandResult(list(argv), 0, out, "", 0.0)
+
+    task = json.loads((REPO / "examples/saxpy/task.json").read_text())
+    tdir = tmp_path / "t"
+    tdir.mkdir()
+    for f in ("saxpy.cu", "saxpy_ref.cpp"):
+        (tdir / f).write_text((REPO / "examples/saxpy" / f).read_text())
+    (tdir / "task.json").write_text(json.dumps({**task, "output_format": "f64"}))
+    r = gpu_test(str(tdir / "task.json"), str(tmp_path / "o"), native=False, runner=runner)
+    assert r.status == "ok", r.summary
+    assert seen and all(k["output_format"] == "f64" for k in seen)

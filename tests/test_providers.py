@@ -274,15 +274,50 @@ def test_digitalocean_registers_and_removes_a_throwaway_key(monkeypatch):
         registered.update(body)
         return {"ssh_key": {"id": 99}}
 
-    api = FakeJSON({("GET", "/sizes"): SIZES, ("GET", "/account/keys"): {"ssh_keys": []},
+    api = FakeJSON({("GET", "/sizes"): SIZES, ("GET", "/account/keys/99"): http_error(404),
+                    ("GET", "/account/keys"): {"ssh_keys": []},
                     ("POST", "/account/keys"): add_key,
                     ("POST", "/droplets"): {"droplet": {"id": 5}},
                     ("DELETE", "/droplets/5"): None, ("DELETE", "/account/keys/99"): None})
     d = remote.DigitalOceanProvider("k", api=api)
     d.create("gpu-mi300x1-192gb", vendor="amd", image=None, env={})
     assert registered["public_key"].startswith("ssh-ed25519 ")
-    d.delete("5")
+    d.delete("5")  # the droplet only: its key goes once the droplet is confirmed gone
+    assert ("DELETE", "/account/keys/99", None) not in api.calls
+    assert d.cleanup(poll_s=0.01) is True
     assert ("DELETE", "/account/keys/99", None) in api.calls
+
+
+class StickyKeyAPI(FakeJSON):
+    """A key that is still found for a while after its DELETE was accepted."""
+
+    def __init__(self, sticky_for):
+        super().__init__({("DELETE", "/account/keys/"): None})
+        self.sticky_for = sticky_for
+
+    def req(self, method, path, body=None):
+        if method == "GET" and path.startswith("/account/keys/"):
+            self.calls.append((method, path, body))
+            self.sticky_for -= 1
+            if self.sticky_for >= 0:
+                return {"ssh_key": {"id": 99}}
+            raise http_error(404)
+        return super().req(method, path, body)
+
+
+def test_digitalocean_key_cleanup_repeats_until_the_key_is_gone():
+    api = StickyKeyAPI(sticky_for=2)
+    d = remote.DigitalOceanProvider("k", api=api)
+    d._temp_key_id = 99
+    assert d.cleanup(poll_s=0.01) is True and d._temp_key_id is None
+    assert [c[0] for c in api.calls].count("DELETE") == 3
+
+
+def test_digitalocean_key_that_never_goes_is_reported():
+    api = StickyKeyAPI(sticky_for=10**6)
+    d = remote.DigitalOceanProvider("k", api=api)
+    d._temp_key_id = 99
+    assert d.cleanup(poll_s=0.01, wait_s=0.05) is False and d._temp_key_id == 99
 
 
 def test_digitalocean_ssh_keys_env_override(monkeypatch):

@@ -310,3 +310,25 @@ def test_asynchronous_delete_is_waited_for_and_confirmed(tmp_path):
                        max_stuck=1, max_minutes=5, into=str(tmp_path), log=logs.append)
     assert prov.deleted == ["m1"] and prov.checks_after_delete == 3
     assert any("deleted fake machine m1: confirmed" in m for m in logs), logs
+
+
+class KeyLeakProvider(SlowDeleteProvider):
+    """Machine deletion works, but the provider's post-run cleanup cannot remove its key."""
+
+    def __init__(self):
+        super().__init__()
+        self.cleanup_calls = []
+
+    def cleanup(self, poll_s=5):
+        self.cleanup_calls.append(list(self.deleted))
+        return False
+
+
+def test_cleanup_runs_after_deletion_and_a_leftover_key_is_reported(tmp_path):
+    prov = KeyLeakProvider()
+    logs = []
+    r = remote.remote_test(str(REPO / "examples/saxpy/task.json"), provider=prov, poll_s=0.01,
+                           max_stuck=1, max_minutes=5, into=str(tmp_path), log=logs.append)
+    assert prov.cleanup_calls == [["m1"]]  # after the machine was deleted
+    assert any("SSH key" in lim for lim in r.limitations), r.limitations
+    assert any("SSH key NOT removed" in m for m in logs)

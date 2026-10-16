@@ -1,16 +1,16 @@
 {
   "tool": "compile",
   "status": "ok",
-  "summary": "compiled 1 source(s) -> /tmp/tmp.x3fMLZMAhu/out/work/build/sycl (0 warning(s))",
+  "summary": "compiled 1 source(s) -> /tmp/tmp.H4U7IjIsE5/out/work/build/sycl (0 warning(s))",
   "evidence": {
     "run": {
-      "command": "/opt/sycl/bin/clang++ -fsycl -O2 -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfx950 -I/tmp/tmp.x3fMLZMAhu/task /tmp/tmp.x3fMLZMAhu/task/sycl/softmax.cpp -o /tmp/tmp.x3fMLZMAhu/out/work/build/sycl",
+      "command": "/opt/sycl/bin/clang++ -fsycl -O2 -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfx950 -I/tmp/tmp.H4U7IjIsE5/task /tmp/tmp.H4U7IjIsE5/task/sycl/softmax.cpp -o /tmp/tmp.H4U7IjIsE5/out/work/build/sycl",
       "returncode": 0,
-      "duration_s": 2.220951,
+      "duration_s": 2.20411,
       "stdout": "",
       "stderr": ""
     },
-    "output": "/tmp/tmp.x3fMLZMAhu/out/work/build/sycl",
+    "output": "/tmp/tmp.H4U7IjIsE5/out/work/build/sycl",
     "dpct_include_added": null,
     "diagnostics": [],
     "counts": {

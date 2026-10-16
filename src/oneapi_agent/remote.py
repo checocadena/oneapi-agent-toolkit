@@ -713,17 +713,34 @@ class DigitalOceanProvider(Provider):
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 raise
-        self.cleanup()
+        # The throwaway SSH key is removed by cleanup(), once the droplet is confirmed gone.
 
-    def cleanup(self) -> None:
-        """Remove the throwaway SSH key, if this run registered one."""
-        if self._temp_key_id is not None:
+    def cleanup(self, poll_s: float = 5, wait_s: float = 120) -> bool:
+        """Remove the throwaway SSH key, if this run registered one; True once it is gone.
+
+        Called after the droplet is confirmed deleted. Removal is checked, not assumed: right
+        after a run the account's key list still showed the run's key, and a key from an
+        earlier run stayed for hours. So the key is looked up and the DELETE repeated until
+        the API answers 404; if it never does, the caller reports the key as left behind.
+        """
+        kid = self._temp_key_id
+        if kid is None:
+            return True
+        end = time.time() + wait_s
+        while True:
             try:
-                self.api.req("DELETE", f"/account/keys/{self._temp_key_id}")
+                self.api.req("DELETE", f"/account/keys/{kid}")
+            except urllib.error.HTTPError:
+                pass  # 404: already gone; anything else is retried after the lookup below
+            try:
+                self.api.req("GET", f"/account/keys/{kid}")
             except urllib.error.HTTPError as e:
-                if e.code != 404:
-                    raise
-            self._temp_key_id = None
+                if e.code == 404:
+                    self._temp_key_id = None
+                    return True
+            if time.time() >= end:
+                return False
+            time.sleep(max(min(poll_s, 5), 0.01))
 
     def exists(self, machine_id: str) -> bool:
         return self._droplet(machine_id) is not None
@@ -756,6 +773,17 @@ def _confirm_gone(prov: Provider, machine_id: str, poll_s: float, wait_s: float 
             return False
         time.sleep(max(min(poll_s, 5), 0.01))
     return True
+
+
+def _cleanup(prov: Provider, poll_s: float, log: Callable[[str], None]) -> bool:
+    """Run the provider's post-run cleanup (DigitalOcean: its throwaway SSH key), if any."""
+    cleanup = getattr(prov, "cleanup", None)
+    if cleanup is None:
+        return True
+    ok = cleanup(poll_s=poll_s) is not False
+    if not ok:
+        log(f"{prov.name}: temporary SSH key NOT removed")
+    return ok
 
 
 def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None = None,
@@ -893,12 +921,14 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             if time.time() >= t0 + max_minutes * 60:
                 break
         if url is None:
-            getattr(prov, "cleanup", lambda: None)()
+            limits = ["Usually means no stock or unhealthy hosts right now; retry later or "
+                      "pass --gpu."]
+            if not _cleanup(prov, poll_s, log):
+                limits.append(f"{prov.name}: a temporary SSH key registered for this run could "
+                              "not be removed: check the provider's console.")
             return ToolResult("remote_test", "error",
                               f"no {prov.name} machine became ready ({len(affordable)} GPU "
-                              f"type(s) tried, {stuck} stuck machine(s) replaced)", ev,
-                              ["Usually means no stock or unhealthy hosts right now; retry later "
-                               "or pass --gpu."])
+                              f"type(s) tried, {stuck} stuck machine(s) replaced)", ev, limits)
         ev.update(gpu=gpu, price_per_hour=price, max_minutes=round(max_minutes, 1),
                   machine_id=mid)
         assert url is not None
@@ -945,6 +975,9 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             gone = _confirm_gone(prov, mid, poll_s)
             ev["pod_deleted"] = gone
             log(f"deleted {prov.name} machine {mid}: {'confirmed' if gone else 'NOT CONFIRMED'}")
+    if not keep_pod and not _cleanup(prov, poll_s, log):
+        result.limitations.append(f"{prov.name}: a temporary SSH key registered for this run "
+                                  "could not be removed: check the provider's console.")
     minutes = (time.time() - t0) / 60
     ev["minutes"] = round(minutes, 1)
     if price is not None:

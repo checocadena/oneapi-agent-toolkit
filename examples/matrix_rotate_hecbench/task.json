@@ -1,0 +1,12 @@
+{
+  "name": "matrix_rotate_hecbench",
+  "goal": "Port matrix_rotate.cu (HeCBench matrix-rotate-cuda; in-place 90-degree rotation, one thread per concentric layer) to idiomatic SYCL 2020 with zero dpct helpers; the float32 output (whole numbers below 2^24, so exact) must match the C++ reference exactly.",
+  "cuda_path": "matrix_rotate.cu",
+  "reference_build": ["g++", "-O2", "-std=c++17", "{task_dir}/matrix_rotate_ref.cpp", "-o", "build/reference"],
+  "reference_cmd": "build/reference {output} 2048 3",
+  "candidate_cmd": "build/candidate {output} 2048 3",
+  "inputs": [],
+  "mode": "array",
+  "output_format": "f32",
+  "tolerance": 0.0
+}
