@@ -200,10 +200,10 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | Standalone loop, dry run (scripted model) | ✅ working | mocked and real-tool runs; success, stuck, max-iterations and budget paths are tested |
 | Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success`, see [docs/real-runs](docs/real-runs/) |
 | CUDA examples executed on NVIDIA hardware | ✅ done | RTX 2000 Ada; CUDA and SYCL-on-GPU both verify, see [docs/gpu-run](docs/gpu-run/rtx2000ada/SUMMARY.md) |
-| Tests | ✅ 100 passed | with the toolchain present; toolchain tests auto-skip without it |
+| Tests | ✅ 170 passed | with the toolchain present; toolchain tests auto-skip without it |
 | CI: real toolchain | ✅ | `toolchain` job installs icpx 2026.1.1 + SYCLomatic 20260701 + CUDA 12.3 headers + oneMath (cached) and runs doctor, pytest (toolchain tests must not skip) and the example pipeline on every push |
 | CI: claims gate | ✅ | [`scripts/check_claims.py`](scripts/check_claims.py) fails the build unless every idiomatic port compiles, verifies and has 0 dpct helpers, and c2s still emits `sycl::native::exp` without a DPCT warning |
-| `gpu-test`, `bundle`, `ingest` | 🟡 new | verify a port on any NVIDIA/AMD/Intel GPU, or ship a one-file test to a machine you can't reach; tested on CPU fallback here, not yet on AMD/Intel hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
+| `gpu-test`, `bundle`, `ingest`, `remote-test` | ✅ NVIDIA, AMD · 🟡 Intel | verify a port on a local GPU, ship a one-file test to a machine you can't reach, or rent one with a single command (Runpod, Vast.ai, Vultr, DigitalOcean; the machine is always deleted). Verified on 3 NVIDIA GPUs and an AMD MI350X (six HeCBench ports PASS); Intel not yet run on hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
 | Run-replay viewer | ✅ | [`scripts/render_trace.py`](scripts/render_trace.py) turns a trace into a self-contained, step-through HTML page; pages in [`docs/replay/`](docs/replay/) |
 | PyPI package | 🟡 ready | wheel ships the skill; `publish.yml` uploads on a GitHub release once the PyPI trusted publisher is configured |
 
