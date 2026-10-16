@@ -1,0 +1,27 @@
+{
+  "name": "scan_hecbench_agent",
+  "goal": "Port scan.cu (HeCBench scan-cuda; Blelloch block-wise exclusive scan in __shared__ memory with many __syncthreads, plain and bank-conflict-avoiding) to idiomatic SYCL 2020 with zero dpct helpers; both integer results (written as float64) must match the C++ reference exactly.",
+  "cuda_path": "scan.cu",
+  "include_dirs": [
+    "."
+  ],
+  "reference_build": [
+    "g++",
+    "-O2",
+    "-std=c++17",
+    "-I{task_dir}",
+    "{task_dir}/scan_ref.cpp",
+    "-o",
+    "build/reference"
+  ],
+  "reference_cmd": "build/reference {output} 1048576",
+  "candidate_cmd": "build/candidate {output} 1048576",
+  "inputs": [],
+  "mode": "array",
+  "output_format": "f64",
+  "tolerance": 0.0,
+  "sycl_sources": [
+    "agent_port/migrated/scan.dp.cpp"
+  ],
+  "port_origin": "agent-made: claude-sonnet-5-5, toolkit arm, run1 (docs/agent-ports/runs/claude-sonnet-5-5/toolkit/scan_hecbench/run1)"
+}

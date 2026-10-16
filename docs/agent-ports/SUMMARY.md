@@ -1,0 +1,20 @@
+| Model | Example | Arm | correct + 0 helpers | wrong output | dpct helpers left | said done but wasn't | cost |
+|---|---|---|---|---|---|---|---|
+| claude-sonnet-5-5 | **all** | toolkit | 15/15 | 0/15 | 0/15 | 0/15 | $0.86 |
+| claude-sonnet-5-5 | **all** | baseline | 6/15 | 0/15 | 9/15 | 9/15 | $0.86 |
+| claude-sonnet-5-5 | **all** | baseline_shell | 6/15 | 0/15 | 9/15 | 9/15 | $0.96 |
+| claude-sonnet-5-5 | stencil1d_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.12 |
+| claude-sonnet-5-5 | stencil1d_hecbench | baseline | 0/3 | 0/3 | 3/3 | 3/3 | $0.12 |
+| claude-sonnet-5-5 | stencil1d_hecbench | baseline_shell | 0/3 | 0/3 | 3/3 | 3/3 | $0.14 |
+| claude-sonnet-5-5 | matrix_rotate_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.12 |
+| claude-sonnet-5-5 | matrix_rotate_hecbench | baseline | 0/3 | 0/3 | 3/3 | 3/3 | $0.09 |
+| claude-sonnet-5-5 | matrix_rotate_hecbench | baseline_shell | 0/3 | 0/3 | 3/3 | 3/3 | $0.12 |
+| claude-sonnet-5-5 | atomic_reduction_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.20 |
+| claude-sonnet-5-5 | atomic_reduction_hecbench | baseline | 2/3 | 0/3 | 1/3 | 1/3 | $0.24 |
+| claude-sonnet-5-5 | atomic_reduction_hecbench | baseline_shell | 3/3 | 0/3 | 0/3 | 0/3 | $0.23 |
+| claude-sonnet-5-5 | scan_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.26 |
+| claude-sonnet-5-5 | scan_hecbench | baseline | 1/3 | 0/3 | 2/3 | 2/3 | $0.26 |
+| claude-sonnet-5-5 | scan_hecbench | baseline_shell | 1/3 | 0/3 | 2/3 | 2/3 | $0.28 |
+| claude-sonnet-5-5 | adam_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.16 |
+| claude-sonnet-5-5 | adam_hecbench | baseline | 3/3 | 0/3 | 0/3 | 0/3 | $0.15 |
+| claude-sonnet-5-5 | adam_hecbench | baseline_shell | 2/3 | 0/3 | 1/3 | 1/3 | $0.19 |

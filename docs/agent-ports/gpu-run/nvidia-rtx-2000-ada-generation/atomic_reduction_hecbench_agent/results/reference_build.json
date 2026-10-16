@@ -1,0 +1,8 @@
+{
+  "command": "g++ -O2 -std=c++17 -I/tmp/tmp.p94u02Cq3l/task /tmp/tmp.p94u02Cq3l/task/reduction_ref.cpp -o build/reference",
+  "returncode": 0,
+  "duration_s": 0.204978,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.p94u02Cq3l/out/work"
+}

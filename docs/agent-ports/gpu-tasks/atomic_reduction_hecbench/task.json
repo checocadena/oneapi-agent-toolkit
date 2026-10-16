@@ -1,0 +1,27 @@
+{
+  "name": "atomic_reduction_hecbench_agent",
+  "goal": "Port reduction.cu and kernels.h (HeCBench atomicReduction-cuda; five grid-stride kernels ending in atomicAdd, four block sizes) to idiomatic SYCL 2020 with zero dpct helpers; the 20 integer sums (written as float64) must match the C++ reference exactly.",
+  "cuda_path": "reduction.cu",
+  "include_dirs": [
+    "."
+  ],
+  "reference_build": [
+    "g++",
+    "-O2",
+    "-std=c++17",
+    "-I{task_dir}",
+    "{task_dir}/reduction_ref.cpp",
+    "-o",
+    "build/reference"
+  ],
+  "reference_cmd": "build/reference {output} 16777216",
+  "candidate_cmd": "build/candidate {output} 16777216 10",
+  "inputs": [],
+  "mode": "array",
+  "output_format": "f64",
+  "tolerance": 0.0,
+  "sycl_sources": [
+    "agent_port/migrated/reduction.dp.cpp"
+  ],
+  "port_origin": "agent-made: claude-sonnet-5-5, toolkit arm, run1 (docs/agent-ports/runs/claude-sonnet-5-5/toolkit/atomic_reduction_hecbench/run1)"
+}

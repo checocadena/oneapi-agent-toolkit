@@ -289,3 +289,20 @@ def test_task_output_format_reaches_the_verifier(tmp_path, monkeypatch):
     r = gpu_test(str(tdir / "task.json"), str(tmp_path / "o"), native=False, runner=runner)
     assert r.status == "ok", r.summary
     assert seen and all(k["output_format"] == "f64" for k in seen)
+
+
+def test_benchmark_stats_work_on_old_numpy(monkeypatch):
+    # Ubuntu 22.04's python3-numpy (1.21, the Runpod ROCm image) has no `method=` in percentile.
+    import numpy as np
+
+    bm = importlib.import_module("oneapi_agent.tools.benchmark")
+
+    real = np.percentile
+
+    def old_percentile(a, q, axis=None, out=None, overwrite_input=False, interpolation="linear",
+                       keepdims=False):
+        return real(a, q)
+
+    monkeypatch.setattr(bm.np, "percentile", old_percentile)
+    s = bm._stats([1.0, 2.0, 3.0, 4.0])
+    assert s["p95"] == real([1.0, 2.0, 3.0, 4.0], 95) and s["n"] == 4
