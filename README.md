@@ -13,6 +13,21 @@ oneapi-agent-toolkit is an open-source MCP server and agent skill that gives Cla
 Each result above links to the committed output behind it: traces, final sources and tool results for every run. A tool result carries a status, the exact commands that ran, parsed diagnostics, numbers, and an explicit list of limitations.
 "It works" means `verify` returned `ok` on the current code. "It's portable" means `scan_helpers` found zero helpers. Nothing is reported that was not measured.
 
+### Check it yourself
+
+| Claim | Evidence |
+|---|---|
+| 120 ports, two models: toolkit 40/40, no checks 23/40, shell only 14/40 | [`docs/ablation/round2/`](docs/ablation/round2/README.md): the table, plus every run's trace, report and final source |
+| An unchecked softmax port compiled cleanly and got 332,679 of 524,288 outputs wrong | [that run's trace, report and final source](docs/ablation/round2/runs/claude-sonnet-5-5/baseline/softmax_hecbench/run3/); a step-through replay is in [`docs/replay/`](docs/replay/) (download and open the `.html`) |
+| SYCLomatic silently turned `expf` into the reduced-precision `sycl::native::exp` (22,156 of 524,288 wrong on an AVX-512 CPU; within tolerance on AVX2) | [`examples/RESULTS.md`](examples/RESULTS.md) |
+| Five unseen programs end to end: toolkit 15/15, without 6/15; the agent's ports PASS 10/10 on NVIDIA and an AMD MI350X | [`docs/agent-ports/`](docs/agent-ports/README.md): 45 agent runs, the agent's exact sources, every GPU tool result |
+| One command rents a GPU on four clouds, verifies against the original CUDA, and deletes the machine | [`docs/gpu-testing.md`](docs/gpu-testing.md), results in [`docs/gpu-run/`](docs/gpu-run/) |
+| A real model ports the four original examples | [`docs/real-runs/`](docs/real-runs/) |
+| cuBLAS → oneMath, run and verified | [`examples/gemm_cublas/`](examples/gemm_cublas/) |
+| CI re-checks the claims with the real toolchain on every push | [`scripts/check_claims.py`](scripts/check_claims.py), [CI runs](https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml) |
+
+To re-run it: the [Quickstart](#quickstart) installs the toolchain; `scripts/ablation.py` repeats the with/without comparison with your own model key, and `oneapi-agent remote-test <task.json> --provider runpod` repeats a GPU check with your own GPU-cloud key.
+
 ## The last-mile problem, observed
 
 These results come from running this repo's pipeline (`examples/run_pipeline.py`) on its own examples.
