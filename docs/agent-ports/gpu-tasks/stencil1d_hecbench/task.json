@@ -1,0 +1,23 @@
+{
+  "name": "stencil1d_hecbench_agent",
+  "goal": "Port stencil_1d.cu (HeCBench stencil1d-cuda; a __shared__ tile with a RADIUS halo and __syncthreads) to idiomatic SYCL 2020 with zero dpct helpers; the integer output (written as float64) must match the C++ reference exactly.",
+  "cuda_path": "stencil_1d.cu",
+  "reference_build": [
+    "g++",
+    "-O2",
+    "-std=c++17",
+    "{task_dir}/stencil_1d_ref.cpp",
+    "-o",
+    "build/reference"
+  ],
+  "reference_cmd": "build/reference {output} 1048576",
+  "candidate_cmd": "build/candidate {output} 1048576",
+  "inputs": [],
+  "mode": "array",
+  "output_format": "f64",
+  "tolerance": 0.0,
+  "sycl_sources": [
+    "agent_port/migrated/stencil_1d.dp.cpp"
+  ],
+  "port_origin": "agent-made: claude-sonnet-5-5, toolkit arm, run1 (docs/agent-ports/runs/claude-sonnet-5-5/toolkit/stencil1d_hecbench/run1)"
+}

@@ -294,6 +294,39 @@ def pinned_context(cert: Path) -> ssl.SSLContext:
     return ctx
 
 
+PROXY_CODES = (0, 404, 502, 503, 504)  # a proxy (Runpod's) still routing to a fresh machine
+
+
+def _upload_bundle(url: str, token: str, data: bytes, args: list[str], context: Any,
+                   log: Callable[[str], None], poll_s: float, attempts: int = 12) -> None:
+    """PUT the bundle, retrying while a proxy in front of the agent is not routing yet.
+
+    Found live on Runpod: ``/status`` answered 200, then the PUT right after got an empty
+    HTTP 404 from the proxy (three machines in a row). The agent itself never answers a PUT
+    with 404. A retry is safe: an upload that did get through makes the agent answer 409, and
+    ``/status`` then shows the run under way.
+    """
+    code, resp = 0, b""
+    for i in range(attempts):
+        code, resp = _agent_call(url + "/bundle", token, "PUT", data,
+                                 {"X-Args": json.dumps(args)}, timeout=300, context=context)
+        if code == 202:
+            return
+        if code == 409:
+            scode, raw = _agent_call(url + "/status", token, timeout=30, context=context)
+            try:
+                phase = json.loads(raw).get("phase") if scode == 200 else None
+            except ValueError:
+                phase = None
+            if phase in ("running", "done"):
+                return
+        if code not in PROXY_CODES or i == attempts - 1:
+            break
+        log(f"bundle upload: HTTP {code or 'no answer'}; retrying")
+        time.sleep(max(poll_s, 0.0))
+    raise RuntimeError(f"bundle upload failed: HTTP {code} {resp[:200]!r}")
+
+
 def _agent_call(url: str, token: str, method: str = "GET", data: bytes | None = None,
                 headers: dict[str, str] | None = None, timeout: float = 60,
                 context: ssl.SSLContext | None = None) -> tuple[int, bytes]:
@@ -933,11 +966,8 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                   machine_id=mid)
         assert url is not None
         ev["agent_url"] = url
-        code, resp = _agent_call(url + "/bundle", token, "PUT", (tmp / "bundle.sh").read_bytes(),
-                                 {"X-Args": json.dumps(["--vendor", vendor])}, timeout=300,
-                                 context=ctx)
-        if code != 202:
-            raise RuntimeError(f"bundle upload failed: HTTP {code} {resp[:200]!r}")
+        _upload_bundle(url, token, (tmp / "bundle.sh").read_bytes(), ["--vendor", vendor], ctx,
+                       log, poll_s)
         log("bundle uploaded; waiting for the run")
         last = ""
         while time.time() < deadline:

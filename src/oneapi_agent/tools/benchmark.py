@@ -25,7 +25,7 @@ def _stats(samples: list[float]) -> dict[str, Any]:
         "n": int(arr.size),
         "min": float(min(samples)),
         "median": float(np.median(arr)),
-        "p95": float(np.percentile(arr, 95, method="linear")),
+        "p95": float(np.percentile(arr, 95)),  # linear is the default; `method=` needs numpy>=1.22
         "max": float(max(samples)),
         "mean": float(arr.mean()),
         "stdev": float(statistics.stdev(samples)) if len(samples) > 1 else 0.0,

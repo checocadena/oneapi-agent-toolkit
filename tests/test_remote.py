@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -332,3 +333,38 @@ def test_cleanup_runs_after_deletion_and_a_leftover_key_is_reported(tmp_path):
     assert prov.cleanup_calls == [["m1"]]  # after the machine was deleted
     assert any("SSH key" in lim for lim in r.limitations), r.limitations
     assert any("SSH key NOT removed" in m for m in logs)
+
+
+def _fake_agent(monkeypatch, put_codes, phase="running"):
+    calls = []
+
+    def call(url, token, method="GET", data=None, headers=None, timeout=30, context=None):
+        calls.append((method, url.rsplit("/", 1)[-1]))
+        if method == "PUT":
+            return put_codes.pop(0), b""
+        return 200, json.dumps({"phase": phase}).encode()
+
+    monkeypatch.setattr(remote, "_agent_call", call)
+    return calls
+
+
+def test_upload_retries_while_the_proxy_is_not_routing_yet(monkeypatch):
+    # Runpod: /status said 200, then the PUT got an empty 404 from the proxy.
+    calls = _fake_agent(monkeypatch, [404, 502, 202])
+    remote._upload_bundle("https://x", "t", b"b", [], None, lambda m: None, 0)
+    assert [c for c in calls if c[0] == "PUT"] == [("PUT", "bundle")] * 3
+
+
+def test_upload_that_already_got_through_is_not_sent_twice(monkeypatch):
+    calls = _fake_agent(monkeypatch, [404, 409], phase="running")
+    remote._upload_bundle("https://x", "t", b"b", [], None, lambda m: None, 0)
+    assert ("GET", "status") in calls
+
+
+def test_upload_gives_up_and_never_retries_a_real_refusal(monkeypatch):
+    _fake_agent(monkeypatch, [403])
+    with pytest.raises(RuntimeError, match="HTTP 403"):
+        remote._upload_bundle("https://x", "t", b"b", [], None, lambda m: None, 0)
+    _fake_agent(monkeypatch, [404] * 3)
+    with pytest.raises(RuntimeError, match="HTTP 404"):
+        remote._upload_bundle("https://x", "t", b"b", [], None, lambda m: None, 0, attempts=3)

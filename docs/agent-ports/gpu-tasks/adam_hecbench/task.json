@@ -1,0 +1,28 @@
+{
+  "name": "adam_hecbench_agent",
+  "goal": "Port adam.cu (HeCBench adam-cuda; grid-stride Adam optimizer, 10 updates per parameter) to idiomatic SYCL 2020 with zero dpct helpers; the float32 parameters must match the C++ reference within atol 1e-5 + rtol 1e-4. Tolerance: 1 - 0.999^t cancels, so a 1-ulp difference in pow (GPU vs CPU libm) becomes a ~6e-5 relative difference in the bias-corrected v. Where v starts near 0 the update m/sqrt(v) is large and p moves by up to ~3 (min p is -2.02), so the error scales with |p|: simulating a 1-ulp pow change gives 3.15e-5 at that element and 8.5e-7 at the 99.99th percentile. The bound is then 6.7x above the worst case and over 10x above the rest, while an indexing, mode or update-order bug moves p by 1e-3 or more.",
+  "cuda_path": "adam.cu",
+  "include_dirs": [
+    "."
+  ],
+  "reference_build": [
+    "g++",
+    "-O2",
+    "-std=c++17",
+    "-I{task_dir}",
+    "{task_dir}/adam_ref.cpp",
+    "-o",
+    "build/reference"
+  ],
+  "reference_cmd": "build/reference {output} 1048576 10 1",
+  "candidate_cmd": "build/candidate {output} 1048576 10 1",
+  "inputs": [],
+  "mode": "array",
+  "output_format": "f32",
+  "tolerance": 1e-05,
+  "rtol": 0.0001,
+  "sycl_sources": [
+    "agent_port/migrated/adam.dp.cpp"
+  ],
+  "port_origin": "agent-made: claude-sonnet-5-5, toolkit arm, run1 (docs/agent-ports/runs/claude-sonnet-5-5/toolkit/adam_hecbench/run1)"
+}

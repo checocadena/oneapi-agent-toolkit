@@ -91,6 +91,10 @@ Details and all 120 runs: [`docs/ablation/round2/`](docs/ablation/round2/README.
 
 5 runs per cell, two models from one vendor, CPU device only: indicative, not a benchmark.
 
+### End to end: the agent's ports on NVIDIA and AMD GPUs
+
+On five HeCBench programs the agent had never seen (stencil1d, matrix_rotate, atomic_reduction, scan, adam), the loop with the toolkit produced 15/15 correct, helper-free ports; without the checks, 6/15. One agent port per program then went, unedited, through `remote-test`: **all 5 PASS on an NVIDIA GPU and all 5 PASS on an AMD Instinct MI350X**, each against the C++ reference and the original CUDA built natively on the same GPU. No human edited any of these ports. Details: [`docs/agent-ports/`](docs/agent-ports/README.md).
+
 ## Architecture
 
 ```mermaid
