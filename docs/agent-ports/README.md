@@ -2,8 +2,9 @@
 
 The first end-to-end run of both halves of the toolkit, with no human edits in between:
 
-1. **`oneapi-agent loop`** (claude-sonnet-5-5) ported five HeCBench CUDA programs it had never
-   seen: stencil1d, matrix_rotate, atomic_reduction, scan and adam.
+1. **`oneapi-agent loop`** (claude-sonnet-5-5, and claude-haiku-5-5 for the comparison below)
+   ported five HeCBench CUDA programs it had never seen: stencil1d, matrix_rotate,
+   atomic_reduction, scan and adam.
 2. **`remote-test`** took the agent's final sources unchanged, rented a GPU and checked them
    against the C++ reference and against the original CUDA built natively on the same GPU
    (`nvcc`, or `hipify-perl` + `hipcc`). Every machine was deleted and the deletion confirmed.
@@ -36,20 +37,26 @@ few cents on NVIDIA.
 
 ## The agent runs: with and without the toolkit
 
-Same model, same five tasks, 3 runs each, every final port graded by a hidden compile + verify +
-helper scan the model never sees (`scripts/ablation.py`, as in
-[`docs/ablation/round2`](../ablation/round2/README.md)):
+Two models, the same five tasks, 3 runs per cell, every final port graded by a hidden compile +
+verify + helper scan the model never sees (`scripts/ablation.py`, as in
+[`docs/ablation/round2`](../ablation/round2/README.md)). Correct and 0 dpct helpers:
 
-| Arm | correct + 0 dpct helpers | wrong output | helpers left, but said done | cost |
-|---|---|---|---|---|
-| toolkit | **15/15** | 0/15 | 0/15 | $0.86 |
-| baseline (no verify/scan tools) | 6/15 | 0/15 | 9/15 | $0.86 |
-| baseline + shell | 6/15 | 0/15 | 9/15 | $0.96 |
+| Model | toolkit | baseline (no verify/scan tools) | baseline + shell |
+|---|---|---|---|
+| claude-sonnet-5-5 | **15/15** | 6/15 | 6/15 |
+| claude-haiku-5-5 | **15/15** | 12/15 | 11/15 |
+| both | **30/30** | 18/30 | 17/30 |
 
-With the toolkit, each port took 4-7 iterations and $0.03-0.10. Without the checks, every arm
-produced correct output on these programs; what it left behind was unfinished migration (dpct
-helpers) while reporting success, as in round 2. Per-program table: [`SUMMARY.md`](SUMMARY.md);
-traces, reports and final sources of all 45 runs: [`runs/`](runs/).
+- **Unfinished migration** is the main miss: outside the toolkit arm, 24 of 60 runs reported
+  success with dpct helpers still in the code (Sonnet 18 of 30, Haiku 6 of 30).
+- **One crash**: a Haiku baseline adam port hard-codes a GPU device selector, so it aborts
+  ("No device of requested type gpu") on the CPU grader. No other run produced wrong output.
+- **Cost**: Sonnet toolkit ports took 4-7 iterations and $0.03-0.10 each; Haiku toolkit ports
+  4-11 iterations and $0.002-0.007 each. All 90 runs: $2.89.
+- The GPU step below used the Sonnet toolkit ports.
+
+Per-program table: [`SUMMARY.md`](SUMMARY.md); traces, reports and final sources of all 90 runs:
+[`runs/`](runs/).
 
 ## What went wrong on the way (nothing here was edited out of the results)
 

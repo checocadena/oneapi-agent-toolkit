@@ -1,5 +1,23 @@
 | Model | Example | Arm | correct + 0 helpers | wrong output | dpct helpers left | said done but wasn't | cost |
 |---|---|---|---|---|---|---|---|
+| claude-haiku-5-5 | **all** | toolkit | 15/15 | 0/15 | 0/15 | 0/15 | $0.07 |
+| claude-haiku-5-5 | **all** | baseline | 12/15 | 1/15 | 2/15 | 3/15 | $0.06 |
+| claude-haiku-5-5 | **all** | baseline_shell | 11/15 | 0/15 | 4/15 | 4/15 | $0.07 |
+| claude-haiku-5-5 | stencil1d_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.01 |
+| claude-haiku-5-5 | stencil1d_hecbench | baseline | 3/3 | 0/3 | 0/3 | 0/3 | $0.01 |
+| claude-haiku-5-5 | stencil1d_hecbench | baseline_shell | 1/3 | 0/3 | 2/3 | 2/3 | $0.01 |
+| claude-haiku-5-5 | matrix_rotate_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.01 |
+| claude-haiku-5-5 | matrix_rotate_hecbench | baseline | 3/3 | 0/3 | 0/3 | 0/3 | $0.01 |
+| claude-haiku-5-5 | matrix_rotate_hecbench | baseline_shell | 2/3 | 0/3 | 1/3 | 1/3 | $0.01 |
+| claude-haiku-5-5 | atomic_reduction_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.02 |
+| claude-haiku-5-5 | atomic_reduction_hecbench | baseline | 2/3 | 0/3 | 1/3 | 1/3 | $0.02 |
+| claude-haiku-5-5 | atomic_reduction_hecbench | baseline_shell | 2/3 | 0/3 | 1/3 | 1/3 | $0.02 |
+| claude-haiku-5-5 | scan_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.01 |
+| claude-haiku-5-5 | scan_hecbench | baseline | 3/3 | 0/3 | 0/3 | 0/3 | $0.02 |
+| claude-haiku-5-5 | scan_hecbench | baseline_shell | 3/3 | 0/3 | 0/3 | 0/3 | $0.02 |
+| claude-haiku-5-5 | adam_hecbench | toolkit | 3/3 | 0/3 | 0/3 | 0/3 | $0.02 |
+| claude-haiku-5-5 | adam_hecbench | baseline | 1/3 | 1/3 | 1/3 | 2/3 | $0.01 |
+| claude-haiku-5-5 | adam_hecbench | baseline_shell | 3/3 | 0/3 | 0/3 | 0/3 | $0.02 |
 | claude-sonnet-5-5 | **all** | toolkit | 15/15 | 0/15 | 0/15 | 0/15 | $0.86 |
 | claude-sonnet-5-5 | **all** | baseline | 6/15 | 0/15 | 9/15 | 9/15 | $0.86 |
 | claude-sonnet-5-5 | **all** | baseline_shell | 6/15 | 0/15 | 9/15 | 9/15 | $0.96 |
