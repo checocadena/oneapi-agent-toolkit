@@ -2,22 +2,15 @@
 
 **Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.**
 
-> **Does it help?** We ran 120 ports of four CUDA programs to SYCL with two Claude models and graded every result with a hidden test the agent never saw.
-> With the toolkit, **40/40** ports were correct and fully converted.
-> Without its checks, **23/40** were. Given a shell to run its own tests but no toolkit, only **14/40** were: the code worked, but SYCLomatic's leftover dpct helpers stayed in.
->
-> **End to end, no human edits:** on five HeCBench programs it had never seen, the agent produced **15/15** correct, fully converted ports with the toolkit (**6/15** without). Its unedited ports then **passed on NVIDIA GPUs and an AMD Instinct MI350X, 10/10**, each checked against the C++ reference and the original CUDA built for that GPU.
-> [Results](#does-the-toolkit-actually-help) · [GPU results](#checked-on-nvidia-and-amd-gpus) · [every run's code and trace](docs/ablation/round2/)
+SYCLomatic migrates most of a CUDA code base to SYCL. What remains is the last mile: code it could not translate, output full of `dpct::` helpers, and no proof the port still behaves like the original. Coding agents can do this work, but left alone they drift back to CUDA idioms and report success without checking.
 
-SYCLomatic translates most of a CUDA code base to SYCL. What is left is the last mile:
-- code it could not migrate,
-- output full of `dpct::` helpers,
-- no proof that the port behaves like the original,
-- agents that keep writing CUDA-flavoured code.
+oneapi-agent-toolkit is an open-source MCP server and agent skill that gives Claude Code, Codex, Cursor and other MCP-capable agents (or the bundled standalone loop) five tools: **migrate** (SYCLomatic), **compile** (icpx), **scan_helpers**, **verify** and **benchmark**. Inspired by the evidence-first design of the [REA](https://github.com/morluto/rea) project, every tool returns structured evidence and its limitations, never a bare claim. A port counts as done only when behavioural verification passes and no dpct helpers remain, both on the same source.
 
-This toolkit gives an agent (Claude Code, Codex, Cursor, or the bundled standalone loop) five tools for that last mile: **migrate, compile, scan_helpers, verify, benchmark**. It also ships a skill that tells the agent how to use them.
+**[We ran 120 ports](#does-the-toolkit-actually-help)** of four workloads (an audio waveshaper, a 64-tap FIR filter, SAXPY and HeCBench softmax) on two Claude models, and graded every final port with a hidden test. With the toolkit, **40 of 40** ports were correct and helper-free. Without its checks, **23 of 40** were, and one unchecked softmax port compiled cleanly yet got 332,679 of 524,288 outputs wrong. Giving the agent a shell to test its own code removed wrong output but not unfinished migration: only **14 of 40** ports were helper-free. [SYCLomatic shows the same failure mode](#the-last-mile-problem-observed): its softmax output compiled with zero warnings while `expf` had silently become a reduced-precision builtin.
 
-Every tool returns **structured evidence, never a bare claim**: a status, the exact commands that ran, parsed diagnostics, numbers, and an explicit list of limitations.
+**[Then we closed the loop from CUDA to GPU](docs/agent-ports/README.md) with no human edits.** On five HeCBench programs the agent had never seen, it produced **15 of 15** correct, helper-free ports with the toolkit and **6 of 15** without. A [one-command GPU test](#checked-on-nvidia-and-amd-gpus), which rents a machine, runs the checks and always deletes it, then ran the agent's unedited ports on NVIDIA GPUs and an AMD Instinct MI350X: **all 10** matched both the C++ reference and the original CUDA built for that GPU.
+
+Each result above links to the committed output behind it: traces, final sources and tool results for every run. A tool result carries a status, the exact commands that ran, parsed diagnostics, numbers, and an explicit list of limitations.
 "It works" means `verify` returned `ok` on the current code. "It's portable" means `scan_helpers` found zero helpers. Nothing is reported that was not measured.
 
 ## The last-mile problem, observed
