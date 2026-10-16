@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native -I/tmp/tmp.hDen6y2MzL/task /tmp/tmp.hDen6y2MzL/task/reduction.cu -o build/native",
+  "returncode": 0,
+  "duration_s": 2.415123,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.hDen6y2MzL/out/work"
+}

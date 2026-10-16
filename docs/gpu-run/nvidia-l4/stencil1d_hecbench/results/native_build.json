@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native /tmp/tmp.VU3mNg22Lw/task/stencil_1d.cu -o build/native",
+  "returncode": 0,
+  "duration_s": 1.022006,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.VU3mNg22Lw/out/work"
+}

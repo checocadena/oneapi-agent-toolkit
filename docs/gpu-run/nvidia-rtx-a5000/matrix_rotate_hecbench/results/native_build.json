@@ -1,0 +1,8 @@
+{
+  "command": "/usr/local/cuda/bin/nvcc -O2 -std=c++17 -arch=native /tmp/tmp.KGKnuT86bF/task/matrix_rotate.cu -o build/native",
+  "returncode": 0,
+  "duration_s": 1.231771,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.KGKnuT86bF/out/work"
+}

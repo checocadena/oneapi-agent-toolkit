@@ -142,7 +142,7 @@ Every run is fully automated with `remote-test`, the machine deletion is confirm
 | RTX A4000 | Vast.ai | 9.69e-8 | 7.45e-9 |
 | AMD Instinct MI350X | DigitalOcean | 9.69e-8 ([results](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/softmax_hecbench/SUMMARY.md)) | 4.69e-7 |
 
-The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. The NVIDIA rows were measured with the previous softmax port (a 32-wide work-group per slice and an out-of-order queue); the current port (below) has so far been run on the MI350X only. An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
+The values are max abs error on HeCBench softmax, atol 1e-6. On the MI350X the original CUDA, run as HIP, is itself 5.25e-7 from the C++ reference, so the SYCL-vs-original gap there comes from the HIP build's math, not from the port. The first three NVIDIA rows were measured with the previous softmax port (a 32-wide work-group per slice and an out-of-order queue); the current port (below) gives the same numbers on an RTX 4090 (Runpod, 2026-10-16: 9.69e-8 vs the reference, 7.45e-9 vs the original CUDA; [results](gpu-run/nvidia-geforce-rtx-4090/softmax_hecbench/SUMMARY.md)). An earlier manual run on Runpod (an RTX 2000 Ada, [docs/gpu-run/rtx2000ada](gpu-run/rtx2000ada/SUMMARY.md)) gave the same softmax numbers.
 
 ## Six HeCBench programs on an AMD MI350X
 
@@ -157,7 +157,20 @@ Each program covers a different GPU pattern. The CUDA kernels are HeCBench's, un
 | [scan](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/scan_hecbench/SUMMARY.md) | Blelloch scan in shared memory, many barriers | 0 | 0 | exact |
 | [adam](gpu-run/amd-instinct-mi350x-vf-gfx950-sramecc-xnack-hip-71460-85/adam_hecbench/SUMMARY.md) | Adam optimizer, `pow`/`sqrt` | 2.38e-7 | 5.96e-8 | atol 1e-5 + rtol 1e-4 |
 
-All five new ports compiled and passed on their first run. They have not been run on NVIDIA yet.
+All five new ports compiled and passed on their first run.
+
+**The same six ports on NVIDIA** (Runpod, 2026-10-16, `remote-test`, every machine's deletion confirmed), against the C++ reference / the original CUDA built with `nvcc` on the same GPU:
+
+| Program | GPU | SYCL vs C++ reference | SYCL vs original CUDA |
+|---|---|---|---|
+| [softmax](gpu-run/nvidia-geforce-rtx-4090/softmax_hecbench/SUMMARY.md) | RTX 4090 | 9.69e-8 | 7.45e-9 |
+| [stencil1d](gpu-run/nvidia-l4/stencil1d_hecbench/SUMMARY.md) | L4 | 0 | 0 |
+| [matrix_rotate](gpu-run/nvidia-rtx-a5000/matrix_rotate_hecbench/SUMMARY.md) | RTX A5000 | 0 | 0 |
+| [atomic_reduction](gpu-run/nvidia-rtx-a4000/atomic_reduction_hecbench/SUMMARY.md) | RTX A4000 | 0 | 0 |
+| [scan](gpu-run/nvidia-a40/scan_hecbench/SUMMARY.md) | A40 | 0 | 0 |
+| [adam](gpu-run/nvidia-rtx-a5000/adam_hecbench/SUMMARY.md) | RTX A5000 | 2.38e-7 | 5.96e-8 |
+
+The GPU differs per program because `remote-test` takes the cheapest card in stock at that moment.
 
 **Speed.** Speed is reported, not graded. Most programs here run one short kernel, so a run's wall time is dominated by process and runtime start-up, and `kernel_ms` with one launch includes loading the kernel. To measure the launch cost, softmax was also run with 1000 launches per run (cost per launch, MI350X):
 

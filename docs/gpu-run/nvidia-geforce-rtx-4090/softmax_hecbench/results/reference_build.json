@@ -1,0 +1,8 @@
+{
+  "command": "g++ -O2 -std=c++17 -I/tmp/tmp.s2UTLv4Bj4/task /tmp/tmp.s2UTLv4Bj4/task/softmax_ref.cpp -o build/reference",
+  "returncode": 0,
+  "duration_s": 0.351838,
+  "stdout": "",
+  "stderr": "",
+  "cwd": "/tmp/tmp.s2UTLv4Bj4/out/work"
+}
