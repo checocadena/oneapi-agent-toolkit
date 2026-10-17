@@ -9,7 +9,6 @@
   <a href="https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml"><img src="https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
-  <a href="https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html"><img src="https://img.shields.io/badge/demo-step--through%20replays-8a2be2" alt="Step-through replays"></a>
 </p>
 
 <p align="center"><b>Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.</b><br>
