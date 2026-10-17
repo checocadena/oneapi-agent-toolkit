@@ -115,7 +115,7 @@ The original Intel DevCloud for oneAPI was retired on 2024-10-31.
 intel/llvm publishes no build with the HIP backend: its nightly workflow configures with `--cuda` only. This repo therefore builds one itself:
 
 - [`scripts/build-sycl-hip.sh`](../scripts/build-sycl-hip.sh) builds a pinned intel/llvm commit (the `nightly-2026-10-14` tag) with `buildbot/configure.py --hip` against ROCm 7.0, on Ubuntu 22.04 x86_64. It then compiles and links a SYCL program for gfx942 (MI300X) and gfx950 (MI350X/MI355X); no GPU is needed for that.
-- [`.github/workflows/sycl-hip-toolchain.yml`](../.github/workflows/sycl-hip-toolchain.yml) runs it on a standard GitHub runner and publishes `sycl-hip-linux-x86_64.tar.gz`, with its sha256, `BUILD-INFO.txt` and the adapter's `ldd`, as the release `sycl-hip-nightly-2026-10-14-rocm7.0-r2` (first published as `sycl-hip-nightly-2026-10-14-rocm7.0`; same file, re-tagged).
+- [`.github/workflows/sycl-hip-toolchain.yml`](../.github/workflows/sycl-hip-toolchain.yml) runs it on a standard GitHub runner and publishes `sycl-hip-linux-x86_64.tar.gz`, with its sha256, `BUILD-INFO.txt` and the adapter's `ldd`, as the release `sycl-hip-nightly-2026-10-14-rocm7.0-r3` (first published as `sycl-hip-nightly-2026-10-14-rocm7.0`; same file, re-tagged).
 - `remote-test --vendor amd` downloads that tarball to `/opt/sycl` on the machine and checks its sha256 (`DEFAULT_SYCL` in `remote.py`). `--sycl-url`/`--sycl-sha256` choose another tarball; `--image` alone trusts the image's own compiler.
 
 To rebuild it locally: `docker run --rm -v "$PWD:/src:ro" -v /big/disk:/work ubuntu:22.04 bash /src/scripts/build-sycl-hip.sh /work`.

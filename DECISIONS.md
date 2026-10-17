@@ -103,7 +103,8 @@ licenses for closed-source use. Consequences:
 ## D15. No release page offers an MIT-era snapshot
 GitHub offers "Source code (zip)" for the commit a release is tagged on. The AMD toolchain
 release was tagged on an MIT-era commit, so its page was a one-click MIT download. The same
-asset (unchanged, same sha256) is re-published under `sycl-hip-nightly-2026-10-14-rocm7.0-r2` on a post-AGPL commit and the
-old tag is deleted; `remote.py` and the workflow point at the new tag. A local `v0.2.0` tag
+asset (unchanged, same sha256) is re-published under `sycl-hip-nightly-2026-10-14-rocm7.0-r3` on a post-AGPL commit and the
+old tag is deleted; `remote.py` and the workflow point at the new tag. (A first attempt, `-r2`,
+was created on the old commit by the release editor's default target and is deleted too.) A local `v0.2.0` tag
 was never pushed to GitHub, so no MIT-labelled version is published.
 
