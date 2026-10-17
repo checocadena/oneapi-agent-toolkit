@@ -284,7 +284,7 @@ Copyright (C) 2026 Checo Cadena.
 
 **Commercial licenses** are available for using it in a closed-source product or service without the AGPL's terms: contact checo@innercircuit.com.
 
-- **Earlier versions:** everything up to and including commit `b08b687` (and the `v0.2.0` tag) was released under the MIT license, and copies of those versions remain under MIT.
+- **Earlier versions:** everything up to and including commit `b08b687` was released under the MIT license, and copies of those versions remain under MIT.
 - **Third-party example code** keeps its own license (BSD-3-Clause or MIT, see Credits); both are compatible with the AGPL.
 - **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md); outside code contributions need a contributor license agreement, which is not in place yet.
 
