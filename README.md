@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml"><img src="https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-AGPL--3.0%20%7C%20commercial-blue" alt="License: AGPL-3.0, commercial licenses available"></a>
 </p>
 
 <p align="center"><b>Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.</b><br>
@@ -273,12 +273,20 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 
 - **[REA](https://github.com/morluto/rea)** (MIT) inspired the design. Its evidence-first approach, where tools return structured evidence rather than claims, is the principle this toolkit is built on.
 - **[SYCLomatic](https://github.com/oneapi-src/SYCLomatic)** (Intel; Apache-2.0 with LLVM exceptions) does the bulk CUDA→SYCL migration that this toolkit drives and post-processes.
-- **[HeCBench](https://github.com/zjin-lcf/HeCBench)** (Zheming Jin et al.; BSD-3-Clause) is the source of the softmax example and the five other `examples/*_hecbench` programs. See the `LICENSE.HeCBench` file in each.
+- **[HeCBench](https://github.com/zjin-lcf/HeCBench)** is the source of the six `examples/*_hecbench` programs: five under BSD-3-Clause (Zheming Jin et al.; `LICENSE.HeCBench`), and `atomic_reduction` under MIT (AMD; `LICENSE.AMD`). See [`examples/README.md`](examples/README.md#licensing-and-provenance).
 - Intel oneAPI DPC++/C++ Compiler (`icpx`).
 
 ## License
 
-MIT; see [LICENSE](LICENSE). Third-party example code keeps its original license, as noted above.
+Copyright (C) 2026 Checo Cadena.
+
+**Open source: [AGPL-3.0](LICENSE).** Use it, study it, change it and share it freely. If you distribute a modified version, or let others use one over a network (for example as a hosted service), you must publish your source under the AGPL too.
+
+**Commercial licenses** are available for using it in a closed-source product or service without the AGPL's terms: contact checo@innercircuit.com.
+
+- **Earlier versions:** everything up to and including commit `b08b687` (and the `v0.2.0` tag) was released under the MIT license, and copies of those versions remain under MIT.
+- **Third-party example code** keeps its own license (BSD-3-Clause or MIT, see Credits); both are compatible with the AGPL.
+- **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md); outside code contributions need a contributor license agreement, which is not in place yet.
 
 ---
 Project tracking: [PROGRESS.md](PROGRESS.md) (what was done, what is blocked) · [DECISIONS.md](DECISIONS.md) (choices made autonomously) · [docs/install.md](docs/install.md)
