@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-label="oneapi-agent-toolkit: evidence-first tools that help coding agents finish CUDA to SYCL ports and prove them">
+<rect x="0.5" y="0.5" width="1199" height="499" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+<text x="48" y="74" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#1f2328" text-anchor="start">oneapi-agent-toolkit</text>
+<text x="48" y="108" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#59636e" text-anchor="start">Evidence-first tools that help coding agents finish CUDA → SYCL ports, and prove them.</text>
+<rect x="48" y="146" width="160" height="74" rx="10" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="128.0" y="179" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#1f2328" text-anchor="middle">CUDA</text>
+<text x="128.0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="middle">your kernels</text>
+<path d="M212 183.0 h18" stroke="#8c959f" stroke-width="2" fill="none"/>
+<path d="M230 178.0 l7 5 l-7 5 z" fill="#8c959f"/>
+<rect x="236" y="146" width="160" height="74" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+<text x="316.0" y="179" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#1f2328" text-anchor="middle">migrate</text>
+<text x="316.0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="middle">SYCLomatic</text>
+<path d="M400 183.0 h18" stroke="#8c959f" stroke-width="2" fill="none"/>
+<path d="M418 178.0 l7 5 l-7 5 z" fill="#8c959f"/>
+<rect x="424" y="146" width="160" height="74" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+<text x="504.0" y="179" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#1f2328" text-anchor="middle">compile</text>
+<text x="504.0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="middle">icpx -fsycl</text>
+<path d="M588 183.0 h18" stroke="#8c959f" stroke-width="2" fill="none"/>
+<path d="M606 178.0 l7 5 l-7 5 z" fill="#8c959f"/>
+<rect x="612" y="146" width="160" height="74" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+<text x="692.0" y="179" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#1f2328" text-anchor="middle">scan_helpers</text>
+<text x="692.0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="middle">0 dpct left</text>
+<path d="M776 183.0 h18" stroke="#8c959f" stroke-width="2" fill="none"/>
+<path d="M794 178.0 l7 5 l-7 5 z" fill="#8c959f"/>
+<rect x="800" y="146" width="160" height="74" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+<text x="880.0" y="179" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#1f2328" text-anchor="middle">verify</text>
+<text x="880.0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="middle">vs reference</text>
+<path d="M964 183.0 h18" stroke="#8c959f" stroke-width="2" fill="none"/>
+<path d="M982 178.0 l7 5 l-7 5 z" fill="#8c959f"/>
+<rect x="988" y="146" width="160" height="74" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+<text x="1068.0" y="179" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#1f2328" text-anchor="middle">GPU check</text>
+<text x="1068.0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="middle">NVIDIA · AMD</text>
+<text x="48" y="254" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#59636e" text-anchor="start">Done only when verify passes and scan_helpers finds zero dpct helpers, on the same freshly compiled source.</text>
+<rect x="48" y="290" width="352" height="150" rx="12" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="72" y="348" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif"><tspan font-size="44" font-weight="700" fill="#1a7f37">40/40</tspan><tspan dx="12" font-size="20" font-weight="600" fill="#59636e">vs 23/40</tspan></text>
+<text x="72" y="384" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2328" text-anchor="start">correct &amp; helper-free, with vs</text>
+<text x="72" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2328" text-anchor="start">without the toolkit (4 workloads)</text>
+<rect x="424" y="290" width="352" height="150" rx="12" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="448" y="348" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif"><tspan font-size="44" font-weight="700" fill="#1a7f37">30/30</tspan><tspan dx="12" font-size="20" font-weight="600" fill="#59636e">vs 18/30</tspan></text>
+<text x="448" y="384" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2328" text-anchor="start">on 5 HeCBench programs</text>
+<text x="448" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2328" text-anchor="start">the agent had never seen</text>
+<rect x="800" y="290" width="352" height="150" rx="12" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="824" y="348" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif"><tspan font-size="44" font-weight="700" fill="#1a7f37">10/10</tspan><tspan dx="12" font-size="20" font-weight="600" fill="#59636e">PASS</tspan></text>
+<text x="824" y="384" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2328" text-anchor="start">agent-written ports, unedited,</text>
+<text x="824" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2328" text-anchor="start">on NVIDIA and AMD MI350X GPUs</text>
+<text x="48" y="476" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#59636e" text-anchor="start">Claude Sonnet 5.5 and Haiku 5.5 · every port graded by a hidden check the agent never saw · each number links to its evidence below</text>
+</svg>

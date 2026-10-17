@@ -1,6 +1,19 @@
-# oneapi-agent-toolkit
+<h1 align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/banner-dark.svg">
+  <img src="docs/img/banner-light.svg" width="100%" alt="oneapi-agent-toolkit: evidence-first tools that help coding agents finish CUDA to SYCL ports, and prove them. Pipeline: CUDA, migrate (SYCLomatic), compile (icpx), scan_helpers (0 dpct left), verify (vs reference), GPU check (NVIDIA, AMD). Results: 40/40 vs 23/40 correct and helper-free with vs without the toolkit on 4 workloads; 30/30 vs 18/30 on 5 HeCBench programs the agent had never seen; 10/10 agent-written ports pass unedited on NVIDIA and AMD MI350X GPUs.">
+</picture>
+</h1>
 
-**Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.**
+<p align="center">
+  <a href="https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml"><img src="https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+  <a href="https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html"><img src="https://img.shields.io/badge/demo-step--through%20replays-8a2be2" alt="Step-through replays"></a>
+</p>
+
+<p align="center"><b>Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.</b><br>
+<a href="#results-at-a-glance">Results</a> · <a href="docs/overview.md">One-page overview</a> · <a href="#quickstart">Quickstart</a> · <a href="AGENTS.md">For any agent</a> · <a href="https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html">Demo</a></p>
 
 SYCLomatic gets CUDA code most of the way to SYCL, but leaves output full of `dpct::` helpers and no proof the port still behaves like the original, and coding agents asked to finish the job tend to stop as soon as it compiles. oneapi-agent-toolkit gives an agent five tools that return evidence instead of claims (**migrate**, **compile**, **scan_helpers**, **verify**, **benchmark**), through an MCP server or a bundled agent loop, and counts a port as done only when verification passes and no helpers remain on the same source. In measured runs with Claude models, agents using it finished every port correctly, while the same agents without its checks often stopped early; the agent-written ports then passed unedited on rented NVIDIA and AMD GPUs.
 
