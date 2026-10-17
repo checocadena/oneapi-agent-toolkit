@@ -62,7 +62,7 @@ DEFAULT_IMAGE = {
 # (scripts/build-sycl-hip.sh). It needs ROCm 7.x on the GPU host. NVIDIA keeps the latest
 # intel/llvm release (looked up on the machine).
 SYCL_HIP_RELEASE = ("https://github.com/checocadena/oneapi-agent-toolkit/releases/download/"
-                    "sycl-hip-nightly-2026-10-14-rocm7.0/sycl-hip-linux-x86_64.tar.gz")
+                    "sycl-hip-nightly-2026-10-14-rocm7.0-r3/sycl-hip-linux-x86_64.tar.gz")
 DEFAULT_SYCL: dict[str, tuple[str, str]] = {
     "amd": (SYCL_HIP_RELEASE,
             "e9bf82ee3d7bd18d8d86ad5e0ea918aab3d4a30578934af510ddbc50c43c8fc3"),

@@ -92,11 +92,19 @@ The author wants others to be able to use and build on the toolkit, without anyo
 it into a closed product without the author's involvement. MIT allowed exactly that, so
 from this change the code is under AGPL-3.0-only, and the author offers separate commercial
 licenses for closed-source use. Consequences:
-- Versions up to and including `b08b687` (and the `v0.2.0` tag) stay MIT for anyone who has
+- Versions up to and including `b08b687` stay MIT for anyone who has
   them; that cannot be revoked.
 - Dual licensing needs the author to hold the rights to all code, so outside code
   contributions wait for a contributor license agreement (`CONTRIBUTING.md`).
 - Third-party example code keeps its license (BSD-3-Clause from HeCBench, MIT from AMD);
   both are compatible with the AGPL.
 - AGPL is an OSI-approved open-source license, unlike "non-commercial" licenses.
+
+## D15. No release page offers an MIT-era snapshot
+GitHub offers "Source code (zip)" for the commit a release is tagged on. The AMD toolchain
+release was tagged on an MIT-era commit, so its page was a one-click MIT download. The same
+asset (unchanged, same sha256) is re-published under `sycl-hip-nightly-2026-10-14-rocm7.0-r3` on a post-AGPL commit and the
+old tag is deleted; `remote.py` and the workflow point at the new tag. (A first attempt, `-r2`,
+was created on the old commit by the release editor's default target and is deleted too.) A local `v0.2.0` tag
+was never pushed to GitHub, so no MIT-labelled version is published.
 

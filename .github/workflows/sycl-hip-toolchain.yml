@@ -13,7 +13,8 @@ env:
   # Bump these together with TAG; remote.py pins the resulting URL and sha256.
   INTEL_LLVM_REF: dfcf0080a27749a5c8c73b9d83658593726b01ea  # intel/llvm tag nightly-2026-10-14
   ROCM_VERSION: "7.0"
-  TAG: sycl-hip-nightly-2026-10-14-rocm7.0
+  # -r3: the same build (same sha256), re-published on a post-AGPL commit; see DECISIONS D15.
+  TAG: sycl-hip-nightly-2026-10-14-rocm7.0-r3
 jobs:
   build:
     runs-on: ubuntu-latest
