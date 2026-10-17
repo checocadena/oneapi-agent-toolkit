@@ -2,35 +2,29 @@
 
 **Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.**
 
-SYCLomatic migrates most of a CUDA code base to SYCL. What remains is the last mile: code it could not translate, output full of `dpct::` helpers, and no proof the port still behaves like the original. Coding agents can do this work, but left alone they drift back to CUDA idioms and report success without checking.
+SYCLomatic gets CUDA code most of the way to SYCL, but leaves output full of `dpct::` helpers and no proof the port still behaves like the original, and coding agents asked to finish the job tend to stop as soon as it compiles. oneapi-agent-toolkit gives an agent five tools that return evidence instead of claims (**migrate**, **compile**, **scan_helpers**, **verify**, **benchmark**), through an MCP server or a bundled agent loop, and counts a port as done only when verification passes and no helpers remain on the same source. In measured runs with Claude models, agents using it finished every port correctly, while the same agents without its checks often stopped early; the agent-written ports then passed unedited on rented NVIDIA and AMD GPUs.
 
-oneapi-agent-toolkit is an open-source MCP server and agent skill that gives Claude Code, Codex, Cursor and other MCP-capable agents (or the bundled standalone loop) five tools: **migrate** (SYCLomatic), **compile** (icpx), **scan_helpers**, **verify** and **benchmark**. Inspired by the evidence-first design of the [REA](https://github.com/morluto/rea) project, every tool returns structured evidence and its limitations, never a bare claim. A port counts as done only when behavioural verification passes and no dpct helpers remain, both on the same source.
+### Results at a glance
 
-**[We ran 120 ports](#does-the-toolkit-actually-help)** of four workloads (an audio waveshaper, a 64-tap FIR filter, SAXPY and HeCBench softmax) on two Claude models, and graded every final port with a hidden test. With the toolkit, **40 of 40** ports were correct and helper-free. Without its checks, **23 of 40** were, and one unchecked softmax port compiled cleanly yet got 332,679 of 524,288 outputs wrong. Giving the agent a shell to test its own code removed wrong output but not unfinished migration: only **14 of 40** ports were helper-free. [SYCLomatic shows the same failure mode](#the-last-mile-problem-observed): its softmax output compiled with zero warnings while `expf` had silently become a reduced-precision builtin.
+| What was measured | Result | Evidence |
+|---|---|---|
+| 4 workloads (audio waveshaper, 64-tap FIR, SAXPY, HeCBench softmax), Claude Sonnet and Haiku, 5 runs per workload and arm; correct **and** helper-free | toolkit **40/40** · no checks 23/40 · shell only 14/40 | [`docs/ablation/round2/`](docs/ablation/round2/README.md) |
+| 5 HeCBench programs the agent had never seen, same two models, 3 runs per program and arm | toolkit **30/30** · no checks 18/30 · shell only 17/30 | [`docs/agent-ports/`](docs/agent-ports/README.md) |
+| The agent's unedited ports (Sonnet, toolkit) on rented GPUs, vs the C++ reference and the original CUDA built on the same GPU | **10/10 PASS**: 5 on NVIDIA, 5 on an AMD Instinct MI350X | [`docs/agent-ports/`](docs/agent-ports/README.md#the-agents-ports-on-gpus) |
+| Worst miss without the checks | a softmax port compiled cleanly and got 332,679 of 524,288 outputs wrong | [replay](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html), [run](docs/ablation/round2/runs/claude-sonnet-5-5/baseline/softmax_hecbench/run3/) |
+| SYCLomatic on softmax, zero warnings | `expf` silently became the reduced-precision `sycl::native::exp` (22,156 of 524,288 wrong on an AVX-512 CPU; within tolerance on AVX2) | [`examples/RESULTS.md`](examples/RESULTS.md) |
 
-**[Then we closed the loop from CUDA to GPU](docs/agent-ports/README.md) with no human edits.** On five HeCBench programs the agent had never seen, Claude Sonnet produced **15 of 15** correct, helper-free ports with the toolkit and **6 of 15** without (Claude Haiku: 15 of 15 and 12 of 15). A [one-command GPU test](#checked-on-nvidia-and-amd-gpus), which rents a machine, runs the checks and always deletes it, then ran the agent's unedited ports on NVIDIA GPUs and an AMD Instinct MI350X: **all 10** matched both the C++ reference and the original CUDA built for that GPU.
-
-Each result above links to the committed output behind it: traces, final sources and tool results for every run. A tool result carries a status, the exact commands that ran, parsed diagnostics, numbers, and an explicit list of limitations.
-"It works" means `verify` returned `ok` on the current code. "It's portable" means `scan_helpers` found zero helpers. Nothing is reported that was not measured.
+Claude models only, graded on a CPU device by a hidden check the agent never saw: indicative, not a benchmark. Every number links to the committed traces, final sources and tool results.
 
 [![Replay of a run without the toolkit: every step the agent saw says OK, then the hidden check finds 332,679 of 524,288 outputs wrong](docs/img/replay-softmax-fail.png)](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html)
 
-*Without the toolkit's checks, every step the agent saw said OK and it declared itself done; the hidden check found 332,679 of 524,288 outputs wrong. Click for the step-through replay ([all replays](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html)).*
+*Demo: without the toolkit's checks, every step the agent saw said OK and it declared itself done; the hidden check found 332,679 of 524,288 outputs wrong. Click for the step-through replay ([all replays](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html)).*
 
-### Check it yourself
+**Try it in a minute, no toolchain or API key:** clone, `pip install -e ".[all]"`, then `oneapi-agent loop --dry-run --mock-tools` (a scripted model and canned tool results, clearly marked MOCK). The real tools need the oneAPI toolchain: see the [Quickstart](#quickstart).
 
-| Claim | Evidence |
-|---|---|
-| 120 ports, two models: toolkit 40/40, no checks 23/40, shell only 14/40 | [`docs/ablation/round2/`](docs/ablation/round2/README.md): the table, plus every run's trace, report and final source |
-| An unchecked softmax port compiled cleanly and got 332,679 of 524,288 outputs wrong | [step-through replay](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html), and [that run's trace, report and final source](docs/ablation/round2/runs/claude-sonnet-5-5/baseline/softmax_hecbench/run3/) |
-| SYCLomatic silently turned `expf` into the reduced-precision `sycl::native::exp` (22,156 of 524,288 wrong on an AVX-512 CPU; within tolerance on AVX2) | [`examples/RESULTS.md`](examples/RESULTS.md) |
-| Five unseen programs end to end, two models: toolkit 30/30, without 18/30; the agent's ports PASS 10/10 on NVIDIA and an AMD MI350X | [`docs/agent-ports/`](docs/agent-ports/README.md): 90 agent runs, the agent's exact sources, every GPU tool result |
-| One command rents a GPU on four clouds, verifies against the original CUDA, and deletes the machine | [`docs/gpu-testing.md`](docs/gpu-testing.md), results in [`docs/gpu-run/`](docs/gpu-run/) |
-| A real model ports the four original examples | [`docs/real-runs/`](docs/real-runs/) |
-| cuBLAS → oneMath, run and verified | [`examples/gemm_cublas/`](examples/gemm_cublas/) |
-| CI re-checks the claims with the real toolchain on every push | [`scripts/check_claims.py`](scripts/check_claims.py), [CI runs](https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml) |
+**More:** the full story and its limits in [`docs/overview.md`](docs/overview.md) · GPU testing on four clouds in [`docs/gpu-testing.md`](docs/gpu-testing.md) · a real model porting the original examples in [`docs/real-runs/`](docs/real-runs/) · cuBLAS → oneMath in [`examples/gemm_cublas/`](examples/gemm_cublas/) · CI re-checks the claims on every push with [`scripts/check_claims.py`](scripts/check_claims.py) ([runs](https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml)) · agents without MCP: [`AGENTS.md`](AGENTS.md).
 
-To re-run it: the [Quickstart](#quickstart) installs the toolchain; `scripts/ablation.py` repeats the with/without comparison with your own model key, and `oneapi-agent remote-test <task.json> --provider runpod` repeats a GPU check with your own GPU-cloud key.
+"It works" means `verify` returned `ok` on the current code. "It's portable" means `scan_helpers` found zero helpers. Nothing is reported that was not measured.
 
 ## The last-mile problem, observed
 
@@ -165,20 +159,24 @@ A missing binary is never faked: the result is `toolchain_missing`, with the exa
 git clone https://github.com/checocadena/oneapi-agent-toolkit && cd oneapi-agent-toolkit
 pip install -e ".[all]"                  # Python 3.11+; not on PyPI yet
 oneapi-agent --summary doctor            # what toolchain was found
+oneapi-agent loop --dry-run --mock-tools # works now: no toolchain, no API key (results marked MOCK)
 
-# Optional, real toolchain (see docs/install.md); this is the route verified here:
+# Everything below needs the oneAPI toolchain (icpx, SYCLomatic c2s). Without it each tool
+# returns status "toolchain_missing" (exit code 2) and names what is missing.
+# The route verified here (see docs/install.md):
 scripts/install-toolchain.sh /opt && source scripts/oneapi-env.sh
 
-# Use the tools directly
+# Use the tools directly (each prints a JSON ToolResult; add --summary for one line)
 oneapi-agent migrate examples/saxpy/saxpy.cu -o /tmp/saxpy_mig
 oneapi-agent compile /tmp/saxpy_mig/saxpy.dp.cpp -o /tmp/saxpy_sycl
-oneapi-agent scan-helpers /tmp/saxpy_mig
+oneapi-agent scan-helpers /tmp/saxpy_mig     # expect "fail" (exit 1): raw c2s output keeps dpct helpers (11 here with c2s 21.0.0); closing that gap is the agent's job
 g++ -O2 examples/saxpy/saxpy_ref.cpp -o /tmp/saxpy_ref
 oneapi-agent verify --ref "/tmp/saxpy_ref {output}" --cand "/tmp/saxpy_sycl {output}" --atol 1e-6
 oneapi-agent benchmark "/tmp/saxpy_sycl /tmp/out.bin" --runs 5
 
 # Register the MCP server (and the oneapi-port skill) with your agents, in one command
-oneapi-agent setup --dry-run             # show what would change
+oneapi-agent setup --dry-run             # show what would change (needs an installed agent)
+oneapi-agent setup --dry-run --agent claude   # preview for a named agent, installed or not
 oneapi-agent setup                       # every detected agent: claude, codex, cursor, gemini
 oneapi-agent setup --agent claude        # or pick
 
@@ -188,14 +186,16 @@ oneapi-agent bundle examples/saxpy/task.json   # -> gputest-saxpy.sh; `bash` it 
 
 # Standalone agent loop
 oneapi-agent loop --dry-run --mock-tools                 # no toolchain, no API key
-oneapi-agent loop --dry-run --config examples/saxpy/task.json   # scripted model, real tools
-ONEAPI_AGENT_API_KEY=... oneapi-agent loop --config examples/fir/task.json   # real model
+oneapi-agent loop --dry-run --config examples/saxpy/task.json   # scripted model, real tools (needs the toolchain)
+ONEAPI_AGENT_API_KEY=... oneapi-agent loop --config examples/fir/task.json   # real model (paid API calls)
 ```
 
 The loop's model comes from `ONEAPI_AGENT_MODEL` (default `claude-sonnet-5-5`).
 - The API key comes from `ONEAPI_AGENT_API_KEY` if set, otherwise `ANTHROPIC_API_KEY`. Use `ONEAPI_AGENT_API_KEY` inside Claude Code sessions, which blank `ANTHROPIC_API_KEY`; with it the loop always talks to `https://api.anthropic.com` (override with `ONEAPI_AGENT_BASE_URL`), never an inherited `ANTHROPIC_BASE_URL`.
 - Optional: `ONEAPI_AGENT_EFFORT` sets the effort level.
 - `ONEAPI_AGENT_FALLBACKS=0` disables the server-side refusal fallback, which is on by default.
+- **Cost cap:** each run stops at `max_cost_usd` ($5 by default), priced from a built-in table of Claude models. For any other model set `ONEAPI_AGENT_PRICE_IN` and `ONEAPI_AGENT_PRICE_OUT` (USD per million tokens; optionally `ONEAPI_AGENT_PRICE_CACHED_IN`). Without a price the loop refuses to start, because the cap could not apply; `ONEAPI_AGENT_ALLOW_UNPRICED=1` runs anyway with only the token cap, and says so.
+- A missing API key is reported before any work starts.
 
 The loop declares success only when compile, verify and a zero-helper scan all hold for **the same current source tree**. The model cannot pick verify's commands or tolerances.
 
@@ -248,7 +248,8 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 
 ## Roadmap
 
-- Ablation on models from other vendors; harder, multi-file tasks.
+- **PLANNED, no results yet:** evaluate non-Claude models, including Meta's Muse models through the Meta Model API, with the same hidden checks, workloads, arms and run counts as the Claude comparisons. Needs a provider-agnostic model layer in the loop first (`AnthropicModel` is the only client today); prices for the cost cap come from `ONEAPI_AGENT_PRICE_IN` / `ONEAPI_AGENT_PRICE_OUT`.
+- Harder, multi-file tasks.
 - cuFFT → oneMath, and a multi-file HeCBench app.
 - Intel GPU validation (Arc/Max through Level Zero).
 - AOT builds (`-fsycl-targets=`) and in-process kernel timing by default, so benchmarks exclude JIT.
@@ -260,7 +261,7 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 
 - **[REA](https://github.com/morluto/rea)** (MIT) inspired the design. Its evidence-first approach, where tools return structured evidence rather than claims, is the principle this toolkit is built on.
 - **[SYCLomatic](https://github.com/oneapi-src/SYCLomatic)** (Intel; Apache-2.0 with LLVM exceptions) does the bulk CUDA→SYCL migration that this toolkit drives and post-processes.
-- **[HeCBench](https://github.com/zjin-lcf/HeCBench)** (Zheming Jin et al.; BSD-3-Clause) is the source of the softmax example. See `examples/softmax_hecbench/LICENSE.HeCBench`.
+- **[HeCBench](https://github.com/zjin-lcf/HeCBench)** (Zheming Jin et al.; BSD-3-Clause) is the source of the softmax example and the five other `examples/*_hecbench` programs. See the `LICENSE.HeCBench` file in each.
 - Intel oneAPI DPC++/C++ Compiler (`icpx`).
 
 ## License

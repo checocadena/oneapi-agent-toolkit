@@ -63,3 +63,27 @@ The decorator API is the same in both.
 ## D10. compile auto-adds the dpct helper include dir
 Raw c2s output always includes `<dpct/dpct.hpp>`, so `compile` adds `-I<c2s>/../include` when it can find it.
 This is recorded in the evidence (`dpct_include_added`). Pass `add_dpct_include=False` to prove that refactored code no longer needs it.
+
+## D11. No silent "free" runs: an unpriced model refuses to start
+The per-run USD cap (`max_cost_usd`) needs a price per token. The built-in table covers
+Claude models only, and before this change any other model name made the estimate `None`,
+which silently disabled the cap. Now `ONEAPI_AGENT_PRICE_IN` / `ONEAPI_AGENT_PRICE_OUT`
+(USD per million tokens, optional `ONEAPI_AGENT_PRICE_CACHED_IN`) price any model; an
+override wins over the table. A real-model run with neither refuses to start.
+`ONEAPI_AGENT_ALLOW_UNPRICED=1` is the explicit opt-in to run with only the token cap; it
+prints a warning and the trace records a `warning` event. Cached input defaults to the full
+input price under an override (over-estimating is the safe direction for a cap).
+
+## D12. Real-model preconditions are checked before any work
+A missing API key used to surface as an SDK `TypeError` traceback on the first model call,
+after the reference build had already run. `preflight_real_model` checks the key and the
+price first and exits with one line.
+
+## D13. Agent-neutral access is documented, not claimed
+`AGENTS.md` gives any agent the porting procedure and the CLI form of each tool (the CLI
+prints the same `ToolResult` JSON the MCP server returns; exit code 0 ok, 1 fail, 2 other).
+`docs/tool-result-schema.json` is generated from `ToolResult` and a test keeps them equal.
+What is verified is stated as such: measured ports come from the bundled loop with Claude
+models; MCP registration was checked in Claude Code, Gemini CLI, Cursor and Codex; nothing
+else is claimed.
+

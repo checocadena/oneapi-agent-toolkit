@@ -199,7 +199,9 @@ def setup(agents: Sequence[str] | None = None, *, dry_run: bool = False, skill: 
         return ToolResult("setup", "error", f"unknown agent(s): {bad}; choose from {AGENTS}")
     if not chosen:
         return ToolResult("setup", "error",
-                          "no supported agent detected; pass --agent claude|codex|cursor|gemini",
+                          "no supported agent found (looked for claude, codex, cursor, gemini on "
+                          "PATH and in the home directory); install one, or pass --agent NAME "
+                          "to write its config anyway (add --dry-run to preview)",
                           {"looked_for": list(AGENTS), "home": str(home)})
     cmd, env = server_command(), server_env(environ)
     entry = {"command": cmd[0], "args": cmd[1:], "env": env}

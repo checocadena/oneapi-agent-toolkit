@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/checocadena/oneapi-agent-toolkit/blob/main/docs/tool-result-schema.json",
+  "title": "ToolResult",
+  "description": "What every oneapi-agent tool returns, over MCP and on the CLI (stdout). CLI exit code: 0 = ok, 1 = fail, 2 = anything else.",
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "string",
+      "description": "Name of the tool that produced this result (e.g. compile, verify)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "fail",
+        "error",
+        "toolchain_missing",
+        "timeout"
+      ],
+      "description": "ok: the checked property holds. fail: the tool ran and it does not hold. error: the tool could not do its job. toolchain_missing: a required binary was not found (evidence names it). timeout: an external command timed out."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One line for humans; never a substitute for evidence."
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Tool-specific facts: commands that ran, exit codes, parsed diagnostics, numbers. Keys differ per tool."
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "What this result does NOT prove. Carry these into any report."
+    }
+  },
+  "required": [
+    "tool",
+    "status",
+    "summary",
+    "evidence",
+    "limitations"
+  ],
+  "additionalProperties": false
+}

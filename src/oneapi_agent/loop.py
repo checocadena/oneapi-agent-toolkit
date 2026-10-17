@@ -33,7 +33,8 @@ import hashlib
 import json
 import os
 import shutil
-from collections.abc import Callable
+import sys
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -530,15 +531,65 @@ def failure_signature(r: ToolResult) -> str | None:
     return f"{r.tool}:{r.status}:{r.summary[:160]}"
 
 
-def estimate_cost(model: str, usage: dict[str, int]) -> float | None:
-    price = PRICES_PER_MTOK.get(model)
-    if price is None:
+PRICE_ENV = ("ONEAPI_AGENT_PRICE_IN", "ONEAPI_AGENT_PRICE_OUT", "ONEAPI_AGENT_PRICE_CACHED_IN")
+ALLOW_UNPRICED_ENV = "ONEAPI_AGENT_ALLOW_UNPRICED"
+
+
+@dataclass(frozen=True)
+class Pricing:
+    """USD per million tokens. ``source`` says where the numbers came from."""
+
+    input: float
+    output: float
+    cache_write: float
+    cache_read: float
+    source: str
+
+
+def model_pricing(model: str, environ: Mapping[str, str] | None = None) -> Pricing:
+    """Pricing for ``model``: the env override if set, else the built-in table.
+
+    Raises ``ValueError`` when the model is not in the table and no override is set, or when
+    the override is incomplete or not a number. Without a price the per-run cost cap
+    (``max_cost_usd``) cannot apply, so callers must not treat "unknown" as "free".
+    Override: ``ONEAPI_AGENT_PRICE_IN`` and ``ONEAPI_AGENT_PRICE_OUT`` (both required), and
+    optionally ``ONEAPI_AGENT_PRICE_CACHED_IN`` for cached input (defaults to the input price,
+    the conservative choice). Cache writes are billed at the input price under an override.
+    """
+    env = os.environ if environ is None else environ
+    pin_s, pout_s, cached_s = (env.get(k, "").strip() for k in PRICE_ENV)
+    if pin_s or pout_s or cached_s:
+        if not (pin_s and pout_s):
+            raise ValueError(f"set both {PRICE_ENV[0]} and {PRICE_ENV[1]} (USD per million "
+                             "tokens), or neither")
+        try:
+            pin, pout = float(pin_s), float(pout_s)
+            cached = float(cached_s) if cached_s else pin
+        except ValueError:
+            raise ValueError(f"{', '.join(PRICE_ENV)} must be numbers (USD per million "
+                             "tokens)") from None
+        if min(pin, pout, cached) < 0:
+            raise ValueError("prices must not be negative")
+        return Pricing(pin, pout, pin, cached, "env override")
+    if model in PRICES_PER_MTOK:
+        pin, pout = PRICES_PER_MTOK[model]
+        return Pricing(pin, pout, pin * 1.25, pin * 0.10, "built-in table")
+    raise ValueError(f"no price known for model {model!r}: set {PRICE_ENV[0]} and "
+                     f"{PRICE_ENV[1]} (USD per million tokens) so the per-run cost cap applies, "
+                     f"or set {ALLOW_UNPRICED_ENV}=1 to run with only the token cap")
+
+
+def estimate_cost(model: str, usage: dict[str, int],
+                  environ: Mapping[str, str] | None = None) -> float | None:
+    """USD for ``usage``, or None when the model has no known price (see ``model_pricing``)."""
+    try:
+        p = model_pricing(model, environ)
+    except ValueError:
         return None
-    pin, pout = price
-    return (usage["input_tokens"] * pin
-            + usage["cache_creation_input_tokens"] * pin * 1.25
-            + usage["cache_read_input_tokens"] * pin * 0.10
-            + usage["output_tokens"] * pout) / 1e6
+    return (usage["input_tokens"] * p.input
+            + usage["cache_creation_input_tokens"] * p.cache_write
+            + usage["cache_read_input_tokens"] * p.cache_read
+            + usage["output_tokens"] * p.output) / 1e6
 
 
 # ----------------------------------------------------------------------------- loop
@@ -562,6 +613,7 @@ class AgentLoop:
         self.state = LoopState(goal=cfg.goal, cuda_source=cuda_text)
         self.messages: list[dict[str, Any]] = []
         self._text_only_turns = 0
+        self._warned_unpriced = False
 
     # -- tracing
     def _trace(self, kind: str, **data: Any) -> None:
@@ -706,6 +758,12 @@ class AgentLoop:
             # Scripted dry runs cost nothing; unknown models -> None (token budget still applies).
             self.state.cost_usd = 0.0 if isinstance(self.model, ScriptedModel) \
                 else estimate_cost(self.model.name, self.state.usage)
+            if self.state.cost_usd is None and not self._warned_unpriced:
+                self._warned_unpriced = True
+                msg = (f"no price known for {self.model.name!r}: the USD cap "
+                       f"(max_cost_usd={c.max_cost_usd}) cannot apply; only the token cap does")
+                self._trace("warning", iteration=it, message=msg)
+                print(f"WARNING: {msg}", file=sys.stderr)
             self._trace("model_response", iteration=it, stop_reason=resp.stop_reason,
                         content=resp.content, usage=resp.usage, model=resp.model)
             self.messages.append({"role": "assistant", "content": resp.content})
@@ -1016,6 +1074,33 @@ def mock_queues(scenario: str) -> dict[str, list[ToolResult]]:
     raise ValueError(f"unknown scenario {scenario!r}")
 
 
+API_KEY_ENV = ("ONEAPI_AGENT_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+
+
+def preflight_real_model(model: str, environ: Mapping[str, str] | None = None,
+                         warn: Callable[[str], None] | None = None) -> None:
+    """Fail before any work when a real-model run could not start or could not be cost-capped.
+
+    - No API key: a one-line error instead of an SDK traceback on the first model call.
+    - No price for the model (and no override): refuse, because the per-run USD cap would
+      silently not apply. ``ONEAPI_AGENT_ALLOW_UNPRICED=1`` opts in to running with only the
+      token cap, with a warning.
+    """
+    env = os.environ if environ is None else environ
+    say = warn or (lambda m: print(m, file=sys.stderr))
+    if not any(env.get(k) for k in API_KEY_ENV):
+        raise SystemExit(f"no API key: set {API_KEY_ENV[0]} (or {API_KEY_ENV[1]}) to run the "
+                         "loop with a real model; `--dry-run --mock-tools` needs no key")
+    try:
+        model_pricing(model, env)
+    except ValueError as e:
+        if env.get(ALLOW_UNPRICED_ENV) == "1" and "no price known" in str(e):
+            say(f"WARNING: no price known for {model!r}; {ALLOW_UNPRICED_ENV}=1 is set, so this "
+                "run is capped only by tokens (max_total_tokens), not by USD.")
+            return
+        raise SystemExit(str(e)) from None
+
+
 def default_task_file() -> Path:
     return Path(__file__).resolve().parents[2] / "examples" / "saxpy" / "task.json"
 
@@ -1044,6 +1129,7 @@ def cli_entry(args: Any) -> dict[str, Any]:
     else:
         if args.mock_tools:
             raise SystemExit("--mock-tools requires --dry-run")
+        preflight_real_model(cfg.model)
         model = AnthropicModel(cfg.model)
         factory = None
     loop = AgentLoop(cfg, model, runs_dir=args.runs_dir, toolbox_factory=factory)
