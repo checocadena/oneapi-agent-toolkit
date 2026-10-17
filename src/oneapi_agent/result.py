@@ -53,3 +53,47 @@ class ToolResult:
             evidence=dict(data.get("evidence", {})),
             limitations=list(data.get("limitations", [])),
         )
+
+
+SCHEMA_ID = ("https://github.com/checocadena/oneapi-agent-toolkit/blob/main/"
+             "docs/tool-result-schema.json")
+_FIELD_DOCS = {
+    "tool": "Name of the tool that produced this result (e.g. compile, verify).",
+    "status": "ok: the checked property holds. fail: the tool ran and it does not hold. "
+              "error: the tool could not do its job. toolchain_missing: a required binary "
+              "was not found (evidence names it). timeout: an external command timed out.",
+    "summary": "One line for humans; never a substitute for evidence.",
+    "evidence": "Tool-specific facts: commands that ran, exit codes, parsed diagnostics, "
+                "numbers. Keys differ per tool.",
+    "limitations": "What this result does NOT prove. Carry these into any report.",
+}
+
+
+def tool_result_json_schema() -> dict[str, Any]:
+    """JSON Schema (draft 2020-12) of ``ToolResult.to_dict()``, derived from the dataclass.
+
+    ``docs/tool-result-schema.json`` is this function's output; a test keeps them equal.
+    """
+    from dataclasses import fields
+
+    types: dict[str, dict[str, Any]] = {
+        "tool": {"type": "string"},
+        "status": {"type": "string", "enum": list(STATUSES)},
+        "summary": {"type": "string"},
+        "evidence": {"type": "object"},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+    }
+    names = [f.name for f in fields(ToolResult)]
+    if set(names) != set(types):  # a new field must be described here before it ships
+        raise RuntimeError(f"ToolResult fields changed: {names}")
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": SCHEMA_ID,
+        "title": "ToolResult",
+        "description": "What every oneapi-agent tool returns, over MCP and on the CLI "
+                       "(stdout). CLI exit code: 0 = ok, 1 = fail, 2 = anything else.",
+        "type": "object",
+        "properties": {n: {**types[n], "description": _FIELD_DOCS[n]} for n in names},
+        "required": names,
+        "additionalProperties": False,
+    }

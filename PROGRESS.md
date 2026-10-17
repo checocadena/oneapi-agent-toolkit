@@ -137,7 +137,42 @@ All four CUDA examples compile with nvcc and verify against the C++ references; 
 
 ## Known gaps / next steps (honest list)
 
+> **Update 2026-10-17.** Items below are kept as written at the time. Since then: the
+> with/without comparison exists (`docs/ablation/round2/`, `docs/agent-ports/`); Codex, Cursor
+> and Gemini registration was exercised in the real clients (`docs/agent-registration.md`);
+> agent-made ports were run on NVIDIA and AMD GPUs (`docs/agent-ports/`). Intel GPUs remain
+> untested. See "Polish (2026-10-17)" at the end for the current list.
+
 - One real-model run per example; no comparison yet against the same agent without the toolkit.
 - No Intel GPU tested. GPU kernel timings are single small launches, not a performance claim.
 - Codex, Cursor and Gemini registration is unit-tested but not exercised in those clients.
 - The idiomatic SYCL ports in `examples/*/sycl/` were written by hand as target end states; the loop's own edits are recorded in `docs/real-runs/*/trace.jsonl`.
+
+## Polish (2026-10-17)
+
+Found by a clean clone from GitHub, a fresh venv and the README Quickstart run exactly as
+written, once without the oneAPI toolchain and once with it:
+
+- A real-model run without an API key showed an SDK traceback after the reference build
+  had run. Now it stops first with one line (test: `tests/test_schema_and_cli.py`).
+- `setup --dry-run` on a machine with no agent installed failed tersely. The message now
+  says to install one or pass `--agent NAME`; the Quickstart shows `--dry-run --agent claude`.
+- The Quickstart did not say which lines need the toolchain, or that `scan-helpers`
+  failing on raw c2s output is expected. Both are now marked.
+- The per-run USD cap silently did not apply to unknown models. Fixed (D11), with tests
+  that show the cap stopping a run of an overridden model (`tests/test_pricing.py`).
+
+Added: `AGENTS.md` (procedure + CLI for agents without MCP), `docs/tool-result-schema.json`
+(generated from `ToolResult`), `docs/overview.md` (one-page summary), and a README first
+screen built only from committed results.
+
+Current gaps (honest list):
+- All measured ports used Claude models through the bundled loop. Non-Claude models,
+  including Meta's Muse models, are planned, not run.
+- No port made by an MCP client (Claude Code, Codex, Cursor, Gemini CLI) has been measured;
+  only their registration was checked.
+- No Intel GPU tested.
+- 5 or 3 runs per cell on small single-file programs, CPU grading: indicative, not a
+  benchmark.
+- Not on PyPI.
+
