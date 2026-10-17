@@ -70,4 +70,6 @@ These numbers say nothing about GPU performance. AOT compilation (`-fsycl-target
 - `softmax_hecbench/` adapts `src/softmax-cuda/main.cu` from [HeCBench](https://github.com/zjin-lcf/HeCBench) (commit `f0c817aa`).
   - Copyright (c) 2020 Argonne National Laboratory and 2020- Oak Ridge National Laboratory (Zheming Jin), under the BSD 3-Clause License. See `softmax_hecbench/LICENSE.HeCBench`.
   - The kernels are unchanged. Input generation is a deterministic LCG instead of `rand()`, results are written to a file, and the argument order changed.
-- All other examples were written for this repository under its MIT license.
+- `stencil1d_hecbench/`, `matrix_rotate_hecbench/`, `scan_hecbench/` and `adam_hecbench/` adapt the HeCBench programs named in each `task.json` (same commit), under the same BSD 3-Clause License; see each `LICENSE.HeCBench`. The CUDA kernels are unchanged.
+- `atomic_reduction_hecbench/` adapts HeCBench `atomicReduction-cuda`, whose code is Copyright (c) 2015-2016 Advanced Micro Devices, Inc., under the MIT License; see `atomic_reduction_hecbench/LICENSE.AMD`.
+- The C++ references, the SYCL ports, `task.json` files and all other examples (`fuzz`, `fir`, `saxpy`, `gemm_cublas`) were written for this repository and are covered by its license (AGPL-3.0 from the license change on; see the top-level README).

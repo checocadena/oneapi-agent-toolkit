@@ -87,3 +87,16 @@ What is verified is stated as such: measured ports come from the bundled loop wi
 models; MCP registration was checked in Claude Code, Gemini CLI, Cursor and Codex; nothing
 else is claimed.
 
+## D14. AGPL-3.0 plus commercial licenses (dual licensing)
+The author wants others to be able to use and build on the toolkit, without anyone turning
+it into a closed product without the author's involvement. MIT allowed exactly that, so
+from this change the code is under AGPL-3.0-only, and the author offers separate commercial
+licenses for closed-source use. Consequences:
+- Versions up to and including `b08b687` (and the `v0.2.0` tag) stay MIT for anyone who has
+  them; that cannot be revoked.
+- Dual licensing needs the author to hold the rights to all code, so outside code
+  contributions wait for a contributor license agreement (`CONTRIBUTING.md`).
+- Third-party example code keeps its license (BSD-3-Clause from HeCBench, MIT from AMD);
+  both are compatible with the AGPL.
+- AGPL is an OSI-approved open-source license, unlike "non-commercial" licenses.
+

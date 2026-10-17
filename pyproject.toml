@@ -7,9 +7,9 @@ name = "oneapi-agent-toolkit"
 version = "0.2.0"
 description = "Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL (last-mile CUDA-to-SYCL migration)."
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-only"
 requires-python = ">=3.11"
-authors = [{ name = "oneapi-agent-toolkit contributors" }]
+authors = [{ name = "Checo Cadena", email = "checo@innercircuit.com" }]
 keywords = ["oneapi", "sycl", "cuda", "syclomatic", "mcp", "coding-agent", "claude"]
 classifiers = [
   "Programming Language :: Python :: 3",
