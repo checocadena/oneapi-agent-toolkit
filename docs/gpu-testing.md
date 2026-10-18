@@ -123,7 +123,7 @@ To rebuild it locally: `docker run --rm -v "$PWD:/src:ro" -v /big/disk:/work ubu
 Requirements and limits:
 - The GPU host needs **ROCm 7.x**, because the HIP adapter links `libamdhip64.so.7`. DigitalOcean's `gpu-amd-base` has ROCm 7.14 (HIP 7.14.60), and the adapter loaded there; the Runpod AMD default image is now `rocm/dev-ubuntu-22.04:7.0.2-complete`.
 - AMD code is compiled with `-fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfxXXX`. intel/llvm's `amd_gpu_*` shorthand stops at gfx942, but the AMDGPU backend accepts gfx950.
-- Two intel/llvm naming bugs are worked around in the script: `configure.py --hip` names the AMD libclc runtime `amdgcn-amd-amdhsa-llvm` while CMake requires `amdgcn-amd-amdhsa`, and the driver looks for libspirv under `amdgpu-amd-amdhsa/` while it is installed under `amdgcn-amd-amdhsa/` (the tarball ships a link).
+- Two intel/llvm naming bugs are worked around in the script: `configure.py --hip` names the AMD libclc runtime `amdgcn-amd-amdhsa-llvm` while CMake requires `amdgcn-amd-amdhsa`, and the driver looks for libspirv under `amdgpu-amd-amdhsa/` while it is installed under `amdgcn-amd-amdhsa/` (the tarball ships a link). Both are reported upstream: [intel/llvm#23531](https://github.com/intel/llvm/issues/23531) (configure) and [intel/llvm#23532](https://github.com/intel/llvm/issues/23532) (driver).
 - The first published tarball (sha256 `e9bf82ee…c8fc3`, 280 MB) was built on an 8-core DigitalOcean droplet (about 1 h, about $0.25) with the same script; the 4-core CI runner takes about 2 h.
 - `sycl::ext::oneapi::experimental::architecture` has no gfx950 value, so code that branches on the device architecture will not recognise an MI350X.
 
