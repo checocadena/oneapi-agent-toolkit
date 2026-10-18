@@ -176,3 +176,11 @@ Current gaps (honest list):
   benchmark.
 - Not on PyPI.
 
+
+## Upstream reports (2026-10-18)
+
+The two intel/llvm bugs worked around in `scripts/build-sycl-hip.sh` are reported upstream:
+[intel/llvm#23531](https://github.com/intel/llvm/issues/23531) (`configure.py --hip` names the
+AMD libclc runtime differently from the CMake check) and
+[intel/llvm#23532](https://github.com/intel/llvm/issues/23532) (the driver does not look for the
+AMD libspirv where libclc installs it). Linked from `docs/gpu-testing.md`.
