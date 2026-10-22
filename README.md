@@ -32,7 +32,7 @@ Claude models only, graded on a CPU device by a hidden check the agent never saw
 
 *Demo: without the toolkit's checks, every step the agent saw said OK and it declared itself done; the hidden check found 332,679 of 524,288 outputs wrong. Click for the step-through replay ([all replays](https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/index.html)).*
 
-**Try it in a minute, no toolchain or API key:** clone, `pip install -e ".[all]"`, then `oneapi-agent loop --dry-run --mock-tools` (a scripted model and canned tool results, clearly marked MOCK). The real tools need the oneAPI toolchain: see the [Quickstart](#quickstart).
+**Try it in a minute, no toolchain or API key:** clone, `pip install -e ".[all]"`, then `scripts/demo.sh`. It runs the agent loop end to end through both model providers (Claude, and Meta's client against a scripted server) with canned tool results, clearly marked MOCK. The real tools need the oneAPI toolchain: see the [Quickstart](#quickstart).
 
 **More:** the full story and its limits in [`docs/overview.md`](docs/overview.md) · GPU testing on four clouds in [`docs/gpu-testing.md`](docs/gpu-testing.md) · a real model porting the original examples in [`docs/real-runs/`](docs/real-runs/) · cuBLAS → oneMath in [`examples/gemm_cublas/`](examples/gemm_cublas/) · CI re-checks the claims on every push with [`scripts/check_claims.py`](scripts/check_claims.py) ([runs](https://github.com/checocadena/oneapi-agent-toolkit/actions/workflows/ci.yml)) · agents without MCP: [`AGENTS.md`](AGENTS.md).
 
@@ -141,9 +141,14 @@ Nearly every miss was dpct helpers left in while the agent reported success; one
 flowchart LR
     subgraph Agents
         CC[Claude Code / Codex / Cursor<br/>+ skills/oneapi-port/SKILL.md]
-        LOOP[oneapi-agent loop<br/>standalone, Anthropic SDK]
+        LOOP[oneapi-agent loop<br/>standalone]
+    end
+    subgraph Models["model providers (models.py)"]
+        ANT[anthropic<br/>Claude, Anthropic SDK]
+        META[meta<br/>Muse, OpenAI-compatible API]
     end
     CC <-- MCP stdio --> SRV[oneapi-agent serve<br/>MCP server]
+    LOOP --> ANT & META
     LOOP --> LIB
     SRV --> LIB[oneapi_agent.tools<br/>ToolResult: status · summary · evidence · limitations]
     LIB --> MIG[migrate] --> C2S[(SYCLomatic c2s)]
@@ -172,6 +177,7 @@ git clone https://github.com/checocadena/oneapi-agent-toolkit && cd oneapi-agent
 pip install -e ".[all]"                  # Python 3.11+; not on PyPI yet
 oneapi-agent --summary doctor            # what toolchain was found
 oneapi-agent loop --dry-run --mock-tools # works now: no toolchain, no API key (results marked MOCK)
+scripts/demo.sh                          # the same through both providers (anthropic, meta)
 
 # Everything below needs the oneAPI toolchain (icpx, SYCLomatic c2s). Without it each tool
 # returns status "toolchain_missing" (exit code 2) and names what is missing.
@@ -200,9 +206,10 @@ oneapi-agent bundle examples/saxpy/task.json   # -> gputest-saxpy.sh; `bash` it 
 oneapi-agent loop --dry-run --mock-tools                 # no toolchain, no API key
 oneapi-agent loop --dry-run --config examples/saxpy/task.json   # scripted model, real tools (needs the toolchain)
 ONEAPI_AGENT_API_KEY=... oneapi-agent loop --config examples/fir/task.json   # real model (paid API calls)
+oneapi-agent loop --dry-run --mock-tools --provider meta   # Meta client, scripted server: no key
 ```
 
-The loop's model comes from `ONEAPI_AGENT_MODEL` (default `claude-sonnet-5-5`).
+The loop's model comes from `--model` or `ONEAPI_AGENT_MODEL` (default `claude-sonnet-5-5`), and its provider from `--provider` (`anthropic` or `meta`; by default inferred from the model name). Meta's Muse models: see [`docs/meta-model-api.md`](docs/meta-model-api.md). All settings are listed in [`.env.example`](.env.example).
 - The API key comes from `ONEAPI_AGENT_API_KEY` if set, otherwise `ANTHROPIC_API_KEY`. Use `ONEAPI_AGENT_API_KEY` inside Claude Code sessions, which blank `ANTHROPIC_API_KEY`; with it the loop always talks to `https://api.anthropic.com` (override with `ONEAPI_AGENT_BASE_URL`), never an inherited `ANTHROPIC_BASE_URL`.
 - Optional: `ONEAPI_AGENT_EFFORT` sets the effort level.
 - `ONEAPI_AGENT_FALLBACKS=0` disables the server-side refusal fallback, which is on by default.
@@ -249,9 +256,10 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 | `oneapi-agent setup` | ✅ working | verified against the real clients: Claude Code and Gemini CLI `Connected`, Cursor `ready` (6 tools listed), Codex reads the entry (`codex mcp get`); idempotent re-runs. See [docs/agent-registration.md](docs/agent-registration.md) |
 | Skill `oneapi-port` | ✅ written | the procedure, loop rules and report template |
 | Standalone loop, dry run (scripted model) | ✅ working | mocked and real-tool runs; success, stuck, max-iterations and budget paths are tested |
+| Model providers | ✅ anthropic · 🟡 meta | `meta` (Muse, OpenAI-compatible API) is tested offline against a scripted server only: no request has reached Meta's API and no Muse result exists yet ([docs/meta-model-api.md](docs/meta-model-api.md)) |
 | Standalone loop with a real model | ✅ working | `claude-sonnet-5-5`: 4/4 examples `success` ([docs/real-runs](docs/real-runs/)); `claude-sonnet-5-5` and `claude-haiku-5-5`: 15/15 each on five unseen HeCBench programs ([docs/agent-ports](docs/agent-ports/README.md)) |
 | CUDA examples executed on GPUs | ✅ done | NVIDIA (RTX 2000 Ada, A16, RTX A4000, RTX A4500, RTX A5000, RTX 4000 Ada, RTX 4090, L4, A40) and AMD MI350X; the original CUDA (nvcc or hipified) and the SYCL port both verify. See [docs/gpu-testing.md](docs/gpu-testing.md) |
-| Tests | ✅ 174 passed | with the toolchain present; toolchain tests auto-skip without it |
+| Tests | ✅ 203 | 199 pass and 4 toolchain tests skip without the oneAPI toolchain; CI also runs them with it |
 | CI: real toolchain | ✅ | `toolchain` job installs icpx 2026.1.1 + SYCLomatic 20260701 + CUDA 12.3 headers + oneMath (cached) and runs doctor, pytest (toolchain tests must not skip) and the example pipeline on every push |
 | CI: claims gate | ✅ | [`scripts/check_claims.py`](scripts/check_claims.py) fails the build unless every idiomatic port compiles, verifies and has 0 dpct helpers, and c2s still emits `sycl::native::exp` without a DPCT warning |
 | `gpu-test`, `bundle`, `ingest`, `remote-test` | ✅ NVIDIA, AMD · 🟡 Intel | verify a port on a local GPU, ship a one-file test to a machine you can't reach, or rent one with a single command (Runpod, Vast.ai, Vultr, DigitalOcean; the machine is always deleted). Verified on nine NVIDIA GPU types and an AMD MI350X, with hand-written and agent-made ports; Intel not yet run on hardware. See [docs/gpu-testing.md](docs/gpu-testing.md) |
@@ -260,7 +268,7 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 
 ## Roadmap
 
-- **PLANNED, no results yet:** evaluate non-Claude models, including Meta's Muse models through the Meta Model API, with the same hidden checks, workloads, arms and run counts as the Claude comparisons. Needs a provider-agnostic model layer in the loop first (`AnthropicModel` is the only client today); prices for the cost cap come from `ONEAPI_AGENT_PRICE_IN` / `ONEAPI_AGENT_PRICE_OUT`.
+- **PLANNED, no results yet:** evaluate non-Claude models, including Meta's Muse models through the Meta Model API, with the same hidden checks, workloads, arms and run counts as the Claude comparisons. The provider layer is in place (`--provider meta`, tested offline); prices for the cost cap come from `ONEAPI_AGENT_PRICE_IN` / `ONEAPI_AGENT_PRICE_OUT`.
 - Harder, multi-file tasks.
 - cuFFT → oneMath, and a multi-file HeCBench app.
 - Intel GPU validation (Arc/Max through Level Zero).
@@ -275,6 +283,21 @@ Benchmark numbers are whole-process wall time on a 4-vCPU cloud VM's OpenCL **CP
 - **[SYCLomatic](https://github.com/oneapi-src/SYCLomatic)** (Intel; Apache-2.0 with LLVM exceptions) does the bulk CUDA→SYCL migration that this toolkit drives and post-processes.
 - **[HeCBench](https://github.com/zjin-lcf/HeCBench)** is the source of the six `examples/*_hecbench` programs: five under BSD-3-Clause (Zheming Jin et al.; `LICENSE.HeCBench`), and `atomic_reduction` under MIT (AMD; `LICENSE.AMD`). See [`examples/README.md`](examples/README.md#licensing-and-provenance).
 - Intel oneAPI DPC++/C++ Compiler (`icpx`).
+
+### Third-party components
+
+| Component | Used for | License | Shipped here? |
+|---|---|---|---|
+| [numpy](https://numpy.org) | `verify` statistics | BSD-3-Clause | dependency |
+| [mcp](https://github.com/modelcontextprotocol/python-sdk) (optional `[mcp]`) | MCP server | MIT | dependency |
+| [anthropic](https://github.com/anthropics/anthropic-sdk-python) (optional `[agent]`) | Claude provider | MIT | dependency |
+| [keyring](https://github.com/jaraco/keyring) (optional `[keyring]`) | storing GPU-provider keys | MIT | dependency |
+| SYCLomatic `c2s`, Intel `icpx`, CUDA headers, oneMath | the tools drive them | Apache-2.0 with LLVM exceptions / vendor licenses | no: installed separately (`scripts/install-toolchain.sh`) |
+| intel/llvm built with HIP (AMD toolchain release) | `remote-test --vendor amd` | Apache-2.0 with LLVM exceptions | release asset built from source by CI |
+| HeCBench programs | `examples/*_hecbench` | BSD-3-Clause / MIT | yes, with their license files |
+| Meta Model API | `--provider meta` | Meta's API terms | no: remote service, your own key |
+
+Everything else in this repository is original work by the author.
 
 ## License
 
