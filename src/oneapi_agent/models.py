@@ -380,8 +380,9 @@ def make_model(provider: str, model: str, *, dry_run_script: list[Any] | None = 
     anthropic gets ``ScriptedModel``; meta gets its real client over ``ScriptedTransport``."""
     if dry_run_script is not None:
         if provider == "meta":
-            m = OpenAICompatModel(model, provider="meta", api_key="",
-                                  transport=ScriptedTransport(dry_run_script))
+            # The name says "scripted" so no report or trace can pass for a real Muse run.
+            m = OpenAICompatModel(f"scripted-dry-run (meta client, {model})", provider="meta",
+                                  api_key="", transport=ScriptedTransport(dry_run_script))
             m.is_mock = True
             return m
         return ScriptedModel(dry_run_script)

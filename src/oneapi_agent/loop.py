@@ -145,7 +145,8 @@ class LoopConfig:
     max_total_tokens: int = 600_000
     max_cost_usd: float = 5.0
     stuck_threshold: int = 3
-    model: str = field(default_factory=lambda: os.environ.get("ONEAPI_AGENT_MODEL", DEFAULT_MODEL))
+    model: str = field(default_factory=lambda: os.environ.get("ONEAPI_AGENT_MODEL")
+                       or DEFAULT_MODEL)
     name: str = "task"
     baseline: bool = False  # ablation arm: no scan_helpers/verify/benchmark; ends on finish
     evaluate: bool = False  # grade the final sources with a hidden compile+verify+scan

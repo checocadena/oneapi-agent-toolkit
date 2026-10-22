@@ -179,4 +179,5 @@ def test_cli_dry_run_with_meta_provider_needs_no_key(tmp_path, monkeypatch, caps
     out = json.loads(capsys.readouterr().out)
     assert code == 0 and out["stop_reason"] == "success"
     trace = Path(out["run_dir"], "trace.jsonl").read_text().splitlines()
-    assert json.loads(trace[0])["model"] == "muse-spark-1.3"
+    assert json.loads(trace[0])["model"] == "scripted-dry-run (meta client, muse-spark-1.3)"
+    assert "**Model:** `scripted-dry-run" in Path(out["report"]).read_text()
