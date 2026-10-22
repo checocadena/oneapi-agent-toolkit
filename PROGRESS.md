@@ -176,3 +176,12 @@ Current gaps (honest list):
   benchmark.
 - Not on PyPI.
 
+
+## Meta hackathon prep (2026-10-22, branch `meta-hackathon-prep`)
+
+- Provider layer: `--provider anthropic|meta`, Meta through an OpenAI-compatible client,
+  tested offline with a scripted server (10 new tests; 199 pass, 4 skip). No request has
+  reached Meta's API; no Muse result exists.
+- `.env.example`, `docs/meta-model-api.md` (setup and day-one checklist), `scripts/demo.sh`.
+- README: providers in the architecture and quickstart, status updated, third-party table.
+- `docs/hackathon/`: audit, feature options (proposal only), submission outline (placeholder).

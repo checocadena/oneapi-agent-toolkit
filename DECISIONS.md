@@ -108,3 +108,15 @@ old tag is deleted; `remote.py` and the workflow point at the new tag. (A first 
 was created on the old commit by the release editor's default target and is deleted too.) A local `v0.2.0` tag
 was never pushed to GitHub, so no MIT-labelled version is published.
 
+
+## D16. One model interface, providers behind it; Meta through its OpenAI-compatible API
+The loop already spoke Anthropic-shaped messages through `ModelClient.create`, so providers
+plug in under that interface (`models.py`) and nothing in the loop's control flow changed.
+Meta's Muse models are reached through the Meta Model API's OpenAI-compatible chat
+completions endpoint, with the loop's tool calls and tool results translated both ways,
+using only the standard library (no new dependency). Its transport is a plain function, so
+`--dry-run --provider meta` runs the real client against a scripted server: the Meta path
+is tested before API access opens. A scripted run's model is named
+`scripted-dry-run (meta client, <id>)` so no report can pass for a real Muse result. Muse
+gets no built-in price until Meta's pricing page is confirmed; until then the price comes
+from `ONEAPI_AGENT_PRICE_IN` / `_OUT`, and D11 still refuses an unpriced run.

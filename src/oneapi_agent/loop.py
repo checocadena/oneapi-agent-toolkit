@@ -37,14 +37,29 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
+from .models import (  # noqa: F401  (clients moved to models.py; re-exported here)
+    DEFAULT_API_BASE_URL,
+    PROVIDERS,
+    AnthropicModel,
+    ModelClient,
+    ModelResponse,
+    OpenAICompatModel,
+    ScriptedModel,
+    make_anthropic_client,
+    make_model,
+    provider_api_key,
+    resolve_provider,
+)
 from .parsers.c2s import MIGRATED_SUFFIXES
 from .result import ToolResult
 from .toolchain import run_command, split_command
 from .tools import benchmark, compile_sycl, migrate, scan_helpers, verify
 
 DEFAULT_MODEL = "claude-sonnet-5-5"
+# Used when the provider is meta and no model is named. Check the live model list on Oct 26.
+DEFAULT_META_MODEL = "muse-spark-1.3"
 
 # USD per million tokens (input, output). Cache writes bill 1.25x input, reads 0.1x input.
 PRICES_PER_MTOK: dict[str, tuple[float, float]] = {
@@ -130,11 +145,13 @@ class LoopConfig:
     max_total_tokens: int = 600_000
     max_cost_usd: float = 5.0
     stuck_threshold: int = 3
-    model: str = field(default_factory=lambda: os.environ.get("ONEAPI_AGENT_MODEL", DEFAULT_MODEL))
+    model: str = field(default_factory=lambda: os.environ.get("ONEAPI_AGENT_MODEL")
+                       or DEFAULT_MODEL)
     name: str = "task"
     baseline: bool = False  # ablation arm: no scan_helpers/verify/benchmark; ends on finish
     evaluate: bool = False  # grade the final sources with a hidden compile+verify+scan
     shell: bool = False  # offer the `run` tool (a bash shell in the work dir)
+    provider: str | None = None  # anthropic|meta; None: infer from the model name (models.py)
 
     @classmethod
     def from_task_file(cls, path: str | Path, **overrides: Any) -> LoopConfig:
@@ -164,131 +181,12 @@ class LoopConfig:
             threshold_dbfs=data.get("threshold_dbfs", -96.0),
             benchmark_runs=data.get("benchmark_runs", 5),
             name=data.get("name", p.parent.name),
+            provider=data.get("provider"),
         )
         for k, v in overrides.items():
             if v is not None:
                 setattr(cfg, k, v)
         return cfg
-
-
-# ----------------------------------------------------------------------------- model
-
-
-@dataclass
-class ModelResponse:
-    content: list[dict[str, Any]]  # API-shaped content blocks, passed back verbatim
-    stop_reason: str
-    usage: dict[str, int]
-    model: str = ""
-
-    @property
-    def tool_uses(self) -> list[dict[str, Any]]:
-        return [b for b in self.content if b.get("type") == "tool_use"]
-
-    @property
-    def text(self) -> str:
-        return "\n".join(b.get("text", "") for b in self.content if b.get("type") == "text")
-
-
-class ModelClient(Protocol):
-    name: str
-
-    def create(self, *, system: str, messages: list[dict[str, Any]],
-               tools: list[dict[str, Any]]) -> ModelResponse: ...
-
-
-DEFAULT_API_BASE_URL = "https://api.anthropic.com"
-
-
-def make_anthropic_client(anthropic_module: Any) -> Any:
-    """Build the SDK client for the loop.
-
-    ``ONEAPI_AGENT_API_KEY`` takes precedence over the SDK's own credential lookup. Hosts
-    that reserve ``ANTHROPIC_API_KEY`` for their own auth (Claude Code sessions blank it)
-    can use this name instead. With it, the base URL is pinned to ``ONEAPI_AGENT_BASE_URL``
-    (default: the public API) so an inherited ``ANTHROPIC_BASE_URL`` meant for the host
-    never receives the loop's key.
-    """
-    key = os.environ.get("ONEAPI_AGENT_API_KEY")
-    if key:
-        base = os.environ.get("ONEAPI_AGENT_BASE_URL", DEFAULT_API_BASE_URL)
-        return anthropic_module.Anthropic(api_key=key, base_url=base)
-    return anthropic_module.Anthropic()  # ANTHROPIC_API_KEY or other SDK credential sources
-
-
-class AnthropicModel:
-    """Claude via the Anthropic Python SDK (manual tool-use loop)."""
-
-    def __init__(self, model: str, max_tokens: int = 16000) -> None:
-        import anthropic  # optional dependency: pip install .[agent]
-
-        self.client = make_anthropic_client(anthropic)
-        self.name = model
-        self.max_tokens = max_tokens
-        self.effort = os.environ.get("ONEAPI_AGENT_EFFORT")  # low|medium|high|xhigh|max
-        # Server-side refusal fallback (re-runs a declined request on another model).
-        self.fallbacks = os.environ.get("ONEAPI_AGENT_FALLBACKS", "1") != "0"
-
-    def create(self, *, system: str, messages: list[dict[str, Any]],
-               tools: list[dict[str, Any]]) -> ModelResponse:
-        kwargs: dict[str, Any] = {
-            "model": self.name,
-            "max_tokens": self.max_tokens,
-            "system": system,
-            "messages": messages,
-            "tools": tools,
-            "cache_control": {"type": "ephemeral"},  # history grows append-only: cache it
-        }
-        if self.effort:
-            kwargs["output_config"] = {"effort": self.effort}
-        if self.fallbacks:
-            resp = self.client.beta.messages.create(
-                betas=["server-side-fallback-2026-07-01"], fallbacks="default", **kwargs
-            )
-        else:
-            resp = self.client.messages.create(**kwargs)
-        u = resp.usage
-        usage = {
-            "input_tokens": u.input_tokens or 0,
-            "output_tokens": u.output_tokens or 0,
-            "cache_creation_input_tokens": getattr(u, "cache_creation_input_tokens", 0) or 0,
-            "cache_read_input_tokens": getattr(u, "cache_read_input_tokens", 0) or 0,
-        }
-        content = [b.model_dump(mode="json", exclude_none=True) for b in resp.content]
-        return ModelResponse(content, resp.stop_reason or "", usage, resp.model)
-
-
-class ScriptedModel:
-    """Deterministic fake model for --dry-run and tests.
-
-    ``script`` is a list of turns; each turn is a list of ``(tool_name, input)`` pairs,
-    or a string (a text-only turn). After the script ends, it replies with text only.
-    """
-
-    def __init__(self, script: list[list[tuple[str, dict[str, Any]]] | str],
-                 tokens_per_turn: tuple[int, int] = (1500, 200)) -> None:
-        self.script = list(script)
-        self.turn = 0
-        self.name = "scripted-dry-run"
-        self.tokens_per_turn = tokens_per_turn
-
-    def create(self, *, system: str, messages: list[dict[str, Any]],
-               tools: list[dict[str, Any]]) -> ModelResponse:
-        usage = {"input_tokens": self.tokens_per_turn[0], "output_tokens": self.tokens_per_turn[1],
-                 "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
-        if self.turn >= len(self.script):
-            self.turn += 1
-            return ModelResponse([{"type": "text", "text": "(script exhausted)"}], "end_turn",
-                                 usage, self.name)
-        step = self.script[self.turn]
-        self.turn += 1
-        if isinstance(step, str):
-            return ModelResponse([{"type": "text", "text": step}], "end_turn", usage, self.name)
-        content: list[dict[str, Any]] = [{"type": "text", "text": f"[scripted turn {self.turn}]"}]
-        for i, (name, inp) in enumerate(step):
-            content.append({"type": "tool_use", "id": f"toolu_dry_{self.turn:03d}_{i}",
-                            "name": name, "input": inp})
-        return ModelResponse(content, "tool_use", usage, self.name)
 
 
 # ----------------------------------------------------------------------------- tools
@@ -756,7 +654,7 @@ class AgentLoop:
             for k in self.state.usage:
                 self.state.usage[k] += int(resp.usage.get(k, 0))
             # Scripted dry runs cost nothing; unknown models -> None (token budget still applies).
-            self.state.cost_usd = 0.0 if isinstance(self.model, ScriptedModel) \
+            self.state.cost_usd = 0.0 if getattr(self.model, "is_mock", False) \
                 else estimate_cost(self.model.name, self.state.usage)
             if self.state.cost_usd is None and not self._warned_unpriced:
                 self._warned_unpriced = True
@@ -1078,7 +976,8 @@ API_KEY_ENV = ("ONEAPI_AGENT_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKE
 
 
 def preflight_real_model(model: str, environ: Mapping[str, str] | None = None,
-                         warn: Callable[[str], None] | None = None) -> None:
+                         warn: Callable[[str], None] | None = None,
+                         provider: str = "anthropic") -> None:
     """Fail before any work when a real-model run could not start or could not be cost-capped.
 
     - No API key: a one-line error instead of an SDK traceback on the first model call.
@@ -1088,9 +987,11 @@ def preflight_real_model(model: str, environ: Mapping[str, str] | None = None,
     """
     env = os.environ if environ is None else environ
     say = warn or (lambda m: print(m, file=sys.stderr))
-    if not any(env.get(k) for k in API_KEY_ENV):
-        raise SystemExit(f"no API key: set {API_KEY_ENV[0]} (or {API_KEY_ENV[1]}) to run the "
-                         "loop with a real model; `--dry-run --mock-tools` needs no key")
+    keys = PROVIDERS[provider].key_env
+    if not provider_api_key(provider, env):
+        raise SystemExit(f"no API key for provider {provider!r}: set {keys[0]} (or {keys[1]}) "
+                         "to run the loop with a real model; `--dry-run --mock-tools` needs no "
+                         "key")
     try:
         model_pricing(model, env)
     except ValueError as e:
@@ -1113,11 +1014,20 @@ def cli_entry(args: Any) -> dict[str, Any]:
     cfg = LoopConfig.from_task_file(task, max_iterations=args.max_iterations,
                                     baseline=getattr(args, "baseline", False) or None,
                                     evaluate=getattr(args, "evaluate", False) or None,
-                                    shell=getattr(args, "shell", False) or None)
+                                    shell=getattr(args, "shell", False) or None,
+                                    model=getattr(args, "model", None))
+    try:
+        cfg.provider = resolve_provider(cfg.model, getattr(args, "provider", None) or cfg.provider)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
+    if cfg.provider == "meta" and not getattr(args, "model", None) \
+            and not os.environ.get("ONEAPI_AGENT_MODEL") and cfg.model == DEFAULT_MODEL:
+        cfg.model = DEFAULT_META_MODEL
     if args.dry_run:
         sol_path = task.parent / "sycl" / (Path(cfg.cuda_path).stem + ".cpp")
         sol = sol_path.read_text() if sol_path.is_file() else None
-        model: ModelClient = ScriptedModel(dry_run_script(args.scenario, cfg, sol))
+        model: ModelClient = make_model(cfg.provider, cfg.model,
+                                        dry_run_script=dry_run_script(args.scenario, cfg, sol))
         factory = None
         if args.mock_tools:
             queues = mock_queues(args.scenario)
@@ -1129,8 +1039,8 @@ def cli_entry(args: Any) -> dict[str, Any]:
     else:
         if args.mock_tools:
             raise SystemExit("--mock-tools requires --dry-run")
-        preflight_real_model(cfg.model)
-        model = AnthropicModel(cfg.model)
+        preflight_real_model(cfg.model, provider=cfg.provider)
+        model = make_model(cfg.provider, cfg.model)
         factory = None
     loop = AgentLoop(cfg, model, runs_dir=args.runs_dir, toolbox_factory=factory)
     return loop.run()
