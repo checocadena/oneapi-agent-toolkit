@@ -1,4 +1,4 @@
-# Meta-powered feature: options (proposal, nothing built yet)
+# Meta-powered feature: options (decided; nothing built yet)
 
 Constraint: real building time is about Oct 29 (afternoon) to Nov 3, plus short sessions on
 Oct 26 to 28. Credit: $150 of Meta Model API usage. Costs below assume Muse Spark at the
@@ -55,5 +55,5 @@ Oct 29. B is the new Meta-centric feature. A few llm.c kernels ported end to end
 of C) give the demo its "real repository" moment without betting the submission on a full
 port. Each step is shippable on its own.
 
-Decision needed from the author before any build: which option, the track, and the
-spending cap for Muse runs.
+**Decision (2026-10-22): the recommendation is adopted.** Still open: the track and the
+spending cap for Muse runs (needed before any paid run).

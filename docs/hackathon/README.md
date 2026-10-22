@@ -38,7 +38,8 @@ and must be re-checked against the Official Rules (published Oct 26).**
 |---|---|---|
 | by Oct 25 | Repo audited; provider interface + mock client working; README cleaned up | ✅ done on branch `meta-hackathon-prep` (needs review and merge) |
 | Oct 26 | Real Meta Model API swapped in (day-one checklist); Official Rules read; this file updated | ⏳ |
-| Oct 29 to Nov 2 | Build the chosen Meta feature | ⏳ choose from FEATURE-OPTIONS.md |
+| Oct 26 to 28 | Option A: Muse through the hidden-grader comparison (unattended runs) | ⏳ needs the spending cap |
+| Oct 29 to Nov 2 | Option B (Muse Port Planner) plus a small slice of C (llm.c kernels) | ⏳ |
 | Nov 3 | Record the demo video; finalize the submission | ⏳ |
 | Nov 4 | Submit by midday | ⏳ |
 
