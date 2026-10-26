@@ -57,3 +57,14 @@ port. Each step is shippable on its own.
 
 **Decision (2026-10-22): the recommendation is adopted.** Still open: the track and the
 spending cap for Muse runs (needed before any paid run).
+
+## Revised after the Participant Guide (2026-10-26)
+
+The rules require that what is presented be built during the event (Oct 27 to Nov 4), and
+the demo may show only new work. Option A uses the existing comparison harness, so it is
+**supporting evidence**, not the entry. The entry is **Muse Port**: Option B (Muse plans the
+port of a real repository) plus the slice of C (the loop, driven by Muse, ports and proves
+a set of llm.c kernels), all built from Oct 27. Judging rewards "use of Meta AI tooling
+beyond a basic integration" (25%), so Muse does the repository-scale reading and planning,
+not only the edits. A Muse Spark Open variant through an OpenAI-compatible partner endpoint
+(Baseten or Modal) would also qualify for the open-weight bonus prize at little extra work.
