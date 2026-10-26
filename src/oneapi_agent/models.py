@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import time
 import urllib.error
 import urllib.request
@@ -72,12 +73,19 @@ PROVIDERS: dict[str, Provider] = {
     "anthropic": Provider("anthropic", ("ONEAPI_AGENT_API_KEY", "ANTHROPIC_API_KEY",
                                         "ANTHROPIC_AUTH_TOKEN"),
                           "ONEAPI_AGENT_BASE_URL", "https://api.anthropic.com", ("claude-",)),
-    # Base URL and key names are from Meta's developer docs as read before the hackathon's
-    # API access opened; check them against the live docs (docs/meta-model-api.md).
-    "meta": Provider("meta", ("ONEAPI_AGENT_META_API_KEY", "META_API_KEY"),
+    # Meta Model API (https://dev.meta.ai/docs/authentication, read 2026-10-26): Bearer
+    # auth; the docs name the key MODEL_API_KEY.
+    "meta": Provider("meta", ("ONEAPI_AGENT_META_API_KEY", "MODEL_API_KEY", "META_API_KEY"),
                      "ONEAPI_AGENT_META_BASE_URL", "https://api.meta.ai/v1", ("muse-",)),
+    # Muse Spark Open (open weights) on Baseten, per dev.meta.ai/docs/muse-spark-open/deploy.
+    "baseten": Provider("baseten", ("ONEAPI_AGENT_BASETEN_API_KEY", "BASETEN_API_KEY"),
+                        "ONEAPI_AGENT_BASETEN_BASE_URL", "https://inference.baseten.co/v1",
+                        ("meta-models/",)),
 }
 PROVIDER_ENV = "ONEAPI_AGENT_PROVIDER"
+# Set to 1 when the key is added to requests outside this process (e.g. a proxy that injects
+# the Authorization header for the provider's host): no key is needed or sent.
+NETWORK_AUTH_ENV = "ONEAPI_AGENT_AUTH_FROM_NETWORK"
 
 
 def resolve_provider(model: str, explicit: str | None = None,
@@ -99,6 +107,11 @@ def resolve_provider(model: str, explicit: str | None = None,
 def provider_api_key(provider: str, environ: Mapping[str, str] | None = None) -> str | None:
     env = os.environ if environ is None else environ
     return next((env[k] for k in PROVIDERS[provider].key_env if env.get(k)), None)
+
+
+def auth_from_network(environ: Mapping[str, str] | None = None) -> bool:
+    env = os.environ if environ is None else environ
+    return env.get(NETWORK_AUTH_ENV) == "1"
 
 
 # ----------------------------------------------------------------------------- anthropic
@@ -170,6 +183,16 @@ Transport = Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]]
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
 
 
+def _backoff(attempt: int, retry_after: str | None = None) -> float:
+    """Seconds to wait: the server's ``Retry-After`` if given, else exponential with jitter."""
+    if retry_after:
+        try:
+            return min(float(retry_after), 120.0)
+        except ValueError:
+            pass
+    return 2 ** attempt + random.uniform(0, 1)
+
+
 def http_transport(timeout_s: float = 300.0, attempts: int = 4) -> Transport:
     """POST JSON with retries on rate limits and server errors. Never logs headers (key)."""
 
@@ -184,12 +207,13 @@ def http_transport(timeout_s: float = 300.0, attempts: int = 4) -> Transport:
             except urllib.error.HTTPError as e:
                 detail = e.read().decode(errors="replace")[:500]
                 if e.code in RETRY_STATUS and attempt + 1 < attempts:
-                    time.sleep(2 ** attempt)
+                    time.sleep(_backoff(attempt, e.headers.get("Retry-After") if e.headers
+                                        else None))
                     continue
                 raise RuntimeError(f"{url}: HTTP {e.code}: {detail}") from None
             except urllib.error.URLError as e:
                 if attempt + 1 < attempts:
-                    time.sleep(2 ** attempt)
+                    time.sleep(_backoff(attempt))
                     continue
                 raise RuntimeError(f"{url}: {e.reason}") from None
         raise AssertionError("unreachable")
@@ -275,7 +299,12 @@ def from_openai_response(resp: dict[str, Any]) -> ModelResponse:
 
 
 class OpenAICompatModel:
-    """Any OpenAI-compatible chat completions API with tool calling (used for Meta)."""
+    """Any OpenAI-compatible chat completions API with tool calling (Meta, Baseten).
+
+    Follows the Meta Model API's documented constraints: ``max_completion_tokens`` (it counts
+    reasoning tokens), no ``tool_choice`` other than the default ``auto``, and an optional
+    ``reasoning_effort`` from ``ONEAPI_AGENT_EFFORT`` (minimal|low|medium|high|xhigh|max).
+    """
 
     def __init__(self, model: str, *, provider: str = "meta", api_key: str | None = None,
                  base_url: str | None = None, transport: Transport | None = None,
@@ -284,6 +313,7 @@ class OpenAICompatModel:
         self.name = model
         self.provider = provider
         self.api_key = api_key if api_key is not None else provider_api_key(provider)
+        self.effort = os.environ.get("ONEAPI_AGENT_EFFORT")
         self.base_url = (base_url or (os.environ.get(p.base_url_env) if p.base_url_env else None)
                          or p.default_base_url or "").rstrip("/")
         self.transport = transport or http_transport()
@@ -292,8 +322,10 @@ class OpenAICompatModel:
 
     def create(self, *, system: str, messages: list[dict[str, Any]],
                tools: list[dict[str, Any]]) -> ModelResponse:
-        body: dict[str, Any] = {"model": self.name, "max_tokens": self.max_tokens,
+        body: dict[str, Any] = {"model": self.name, "max_completion_tokens": self.max_tokens,
                                 "messages": to_openai_messages(system, messages)}
+        if self.effort:
+            body["reasoning_effort"] = self.effort
         if tools:
             body["tools"] = to_openai_tools(tools)
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
@@ -377,15 +409,17 @@ class ScriptedTransport:
 def make_model(provider: str, model: str, *, dry_run_script: list[Any] | None = None
                ) -> ModelClient:
     """The client for ``provider``. With ``dry_run_script`` nothing leaves the machine:
-    anthropic gets ``ScriptedModel``; meta gets its real client over ``ScriptedTransport``."""
+    anthropic gets ``ScriptedModel``; OpenAI-compatible providers (meta, baseten) get their
+    real client over ``ScriptedTransport``."""
     if dry_run_script is not None:
-        if provider == "meta":
+        if provider != "anthropic":
             # The name says "scripted" so no report or trace can pass for a real Muse run.
-            m = OpenAICompatModel(f"scripted-dry-run (meta client, {model})", provider="meta",
-                                  api_key="", transport=ScriptedTransport(dry_run_script))
+            m = OpenAICompatModel(f"scripted-dry-run ({provider} client, {model})",
+                                  provider=provider, api_key="",
+                                  transport=ScriptedTransport(dry_run_script))
             m.is_mock = True
             return m
         return ScriptedModel(dry_run_script)
-    if provider == "meta":
-        return OpenAICompatModel(model, provider="meta")
-    return AnthropicModel(model)
+    if provider == "anthropic":
+        return AnthropicModel(model)
+    return OpenAICompatModel(model, provider=provider)

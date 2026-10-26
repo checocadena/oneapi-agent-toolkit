@@ -165,8 +165,71 @@ def test_preflight_checks_the_providers_own_key():
                              provider="meta")
     preflight_real_model("muse-spark-1.3", {"META_API_KEY": "k", "ONEAPI_AGENT_PRICE_IN": "1",
                                             "ONEAPI_AGENT_PRICE_OUT": "4"}, provider="meta")
+    preflight_real_model("muse-spark-1.3", {"MODEL_API_KEY": "k"}, provider="meta")  # priced
     with pytest.raises(SystemExit, match="no price known"):
-        preflight_real_model("muse-spark-1.3", {"META_API_KEY": "k"}, provider="meta")
+        preflight_real_model("muse-spark-9", {"META_API_KEY": "k"}, provider="meta")
+
+
+def test_network_injected_auth_needs_no_key_and_sends_no_header(monkeypatch):
+    env = {"ONEAPI_AGENT_AUTH_FROM_NETWORK": "1"}
+    preflight_real_model("muse-spark-1.3", env, provider="meta")
+    with pytest.raises(SystemExit, match="no API key"):  # never for Claude
+        preflight_real_model("claude-sonnet-5-5", env, provider="anthropic")
+    for k in ("ONEAPI_AGENT_META_API_KEY", "MODEL_API_KEY", "META_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    seen = {}
+
+    def transport(url, headers, body):
+        seen["headers"] = headers
+        return {"choices": [{"finish_reason": "stop", "message": {"content": "ok"}}]}
+
+    OpenAICompatModel("muse-spark-1.3", transport=transport).create(
+        system="s", messages=[{"role": "user", "content": "q"}], tools=[])
+    assert seen["headers"] == {}
+
+
+def test_request_follows_meta_api_constraints(monkeypatch):
+    monkeypatch.setenv("ONEAPI_AGENT_EFFORT", "high")
+    seen = {}
+
+    def transport(url, headers, body):
+        seen.update(body)
+        return {"choices": [{"finish_reason": "stop", "message": {"content": "ok"}}]}
+
+    OpenAICompatModel("muse-spark-1.3", api_key="k", transport=transport, max_tokens=900).create(
+        system="s", messages=[{"role": "user", "content": "q"}],
+        tools=[{"name": "t", "description": "", "input_schema": {"type": "object"}}])
+    assert seen["max_completion_tokens"] == 900 and "max_tokens" not in seen
+    assert seen["reasoning_effort"] == "high"
+    assert "tool_choice" not in seen  # Meta accepts only "auto", the default
+
+
+def test_muse_prices_and_cached_input():
+    from oneapi_agent.loop import estimate_cost, model_pricing
+
+    p = model_pricing("muse-spark-1.3", {})
+    assert (p.input, p.output, p.cache_read, p.cache_write) == (1.25, 4.25, 0.15, 1.25)
+    usage = {"input_tokens": 1_000_000, "output_tokens": 1_000_000,
+             "cache_creation_input_tokens": 0, "cache_read_input_tokens": 1_000_000}
+    assert estimate_cost("muse-spark-1.3", usage, {}) == pytest.approx(1.25 + 4.25 + 0.15)
+
+
+def test_baseten_provider_for_muse_spark_open(monkeypatch):
+    monkeypatch.delenv("ONEAPI_AGENT_PROVIDER", raising=False)
+    assert resolve_provider("meta-models/muse-spark-open", environ={}) == "baseten"
+    m = OpenAICompatModel("meta-models/muse-spark-open", provider="baseten", api_key="k",
+                          transport=lambda *a: {})
+    assert m.base_url == "https://inference.baseten.co/v1"
+    dry = make_model("baseten", "meta-models/muse-spark-open", dry_run_script=[])
+    assert dry.is_mock and dry.name.startswith("scripted-dry-run (baseten client")
+
+
+def test_backoff_honours_retry_after():
+    from oneapi_agent.models import _backoff
+
+    assert _backoff(0, "7") == 7.0
+    assert _backoff(0, "999") == 120.0
+    assert 1.0 <= _backoff(0, None) <= 2.0 and 4.0 <= _backoff(2, "soon") <= 5.0
 
 
 def test_cli_dry_run_with_meta_provider_needs_no_key(tmp_path, monkeypatch, capsys):

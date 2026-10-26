@@ -154,9 +154,9 @@ def build_parser() -> argparse.ArgumentParser:
     lp.add_argument("--scenario", default="success", choices=["success", "stuck", "max_iterations"],
                     help="dry-run script to play")
     lp.add_argument("--max-iterations", type=int)
-    lp.add_argument("--provider", choices=["anthropic", "meta"],
+    lp.add_argument("--provider", choices=["anthropic", "meta", "baseten"],
                     help="model provider (default: from the model name, else anthropic); "
-                         "with --dry-run, meta runs its real client against a scripted server")
+                         "with --dry-run, meta/baseten run their real client against a scripted server")
     lp.add_argument("--model", help="model id (default: $ONEAPI_AGENT_MODEL, else the "
                                     "provider's default)")
     lp.add_argument("--baseline", action="store_true",
