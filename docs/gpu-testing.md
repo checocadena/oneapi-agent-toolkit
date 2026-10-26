@@ -16,6 +16,8 @@ oneapi-agent gpu-test my/task.json --vendor amd                           # or p
 oneapi-agent gpu-test my/task.json --device level_zero:1                  # or an exact device
 ```
 
+A task whose CUDA calls NVIDIA libraries lists their link flags in `native_flags` (for example `["-lcublas", "-lcublasLt"]`); they are added to the `nvcc` command of the native build. `nvcc` links only the CUDA runtime by default.
+
 If `sycl-ls` lists no GPU, the result is `toolchain_missing`, together with the device list. The tool never falls back to a CPU silently; `--allow-cpu` exists for testing only.
 Agents get the same command as the `gpu_test` MCP tool.
 
