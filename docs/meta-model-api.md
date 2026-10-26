@@ -4,10 +4,10 @@ The loop reaches models through a provider layer ([`src/oneapi_agent/models.py`]
 `anthropic` (Claude) is the default. `meta` sends the same conversation to the Meta Model API's
 OpenAI-compatible chat completions endpoint, translating the loop's tool calls both ways.
 
-**Status (2026-10-22):** the Meta path is tested offline only, against a scripted server
+**Status (2026-10-26):** the Meta path is tested offline only, against a scripted server
 that answers with real chat-completion JSON. **No request has reached Meta's API yet**, and
-no Muse result exists. The base URL, key name and model ids below come from Meta's developer
-docs as read before API access opened; the checklist at the end confirms them.
+no Muse result exists. Base URL, auth, model ids, prices and request constraints below were
+checked against Meta's docs at https://dev.meta.ai/docs on 2026-10-26.
 
 ## Try it now (no key, no network)
 
@@ -22,8 +22,7 @@ in `runs/<ts>/trace.jsonl` shows `"provider": "meta"` and the model id.
 ## Real runs
 
 ```bash
-export ONEAPI_AGENT_META_API_KEY=...        # or META_API_KEY; never commit it
-export ONEAPI_AGENT_PRICE_IN=... ONEAPI_AGENT_PRICE_OUT=...   # USD per 1M tokens, from Meta's pricing page
+export MODEL_API_KEY=...      # Meta's documented name; never commit it
 oneapi-agent loop --provider meta --model muse-spark-1.3 --config examples/saxpy/task.json
 ```
 
@@ -31,11 +30,25 @@ oneapi-agent loop --provider meta --model muse-spark-1.3 --config examples/saxpy
 |---|---|---|
 | `--provider` / `ONEAPI_AGENT_PROVIDER` / task `"provider"` | from the model name | `muse-*` selects meta, `claude-*` anthropic |
 | `--model` / `ONEAPI_AGENT_MODEL` | `muse-spark-1.3` for meta | |
-| `ONEAPI_AGENT_META_API_KEY` or `META_API_KEY` | none | sent as `Authorization: Bearer`; never logged |
+| `ONEAPI_AGENT_META_API_KEY`, `MODEL_API_KEY` or `META_API_KEY` | none | sent as `Authorization: Bearer`; never logged |
+| `ONEAPI_AGENT_AUTH_FROM_NETWORK=1` | off | the key is added outside this process (e.g. a proxy that injects the header for `api.meta.ai`): no key needed, none sent. Not used for Claude |
 | `ONEAPI_AGENT_META_BASE_URL` | `https://api.meta.ai/v1` | the client POSTs to `<base>/chat/completions` |
-| `ONEAPI_AGENT_PRICE_IN` / `_OUT` | none | required: Muse has no built-in price, and the loop refuses to run a model it cannot cost-cap ([D11](../DECISIONS.md)) |
+| `ONEAPI_AGENT_EFFORT` | unset (model decides) | sent as `reasoning_effort`: minimal, low, medium, high, xhigh, max (`max` on 1.3 and Wonder only) |
+| prices | built in | Muse Spark 1.1–1.3 $1.25 in / $0.15 cached / $4.25 out per 1M tokens; Muse Wonder $4.00 / $0.20 / $20.00; override with `ONEAPI_AGENT_PRICE_IN` / `_OUT` / `_CACHED_IN` |
 
-Requests retry on HTTP 429 and 5xx (4 attempts, exponential back-off). Every run keeps the
+Requests use `max_completion_tokens` (it counts reasoning tokens), never set `tool_choice`
+(Meta accepts only the default `auto`), and handle several tool calls per turn.
+
+### Muse Spark Open (open weights) on Baseten
+
+`--provider baseten` (or any model named `meta-models/...`) sends the same requests to
+`https://inference.baseten.co/v1` with `BASETEN_API_KEY`; default model
+`meta-models/muse-spark-open` (Meta's deploy page; the hackathon guide names
+`meta-models/muse-spark-open-1026`, which is not on Meta's or Baseten's pages yet). Same
+built-in price as Muse Spark.
+
+Requests retry on HTTP 429 and 5xx (4 attempts), waiting for `Retry-After` when the server
+sends it, else exponential back-off with jitter. Every run keeps the
 per-run caps: `max_cost_usd` (default $5), `max_total_tokens` and `max_iterations`.
 
 ## How the translation works
@@ -55,10 +68,9 @@ retry, instead of the run crashing.
 
 ## Day-one checklist (when API access opens)
 
-1. Confirm the base URL, the auth header and the key's environment name in Meta's docs. If
-   they differ, change `PROVIDERS["meta"]` in `models.py` (one line each).
-2. List the available model ids and pick the default (`DEFAULT_META_MODEL` in `loop.py`).
-3. Read the pricing page; put the prices in `.env` (`ONEAPI_AGENT_PRICE_IN` / `_OUT`).
-4. One smoke call with a tiny budget: `--max-iterations 2` on `examples/saxpy`.
-5. Check that tool calling works (the trace shows `tool_call` events with parsed inputs).
-6. Record the outcome, including any failure, in `PROGRESS.md` before running anything larger.
+1. ✅ Base URL, auth header, key name, model ids and prices checked in Meta's docs
+   (2026-10-26).
+2. `GET /v1/models` with the real key, to confirm the ids the account can use.
+3. One smoke call with a tiny budget: `--max-iterations 2` on `examples/saxpy`.
+4. Check that tool calling works (the trace shows `tool_call` events with parsed inputs).
+5. Record the outcome, including any failure, in `PROGRESS.md` before running anything larger.

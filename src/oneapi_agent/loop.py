@@ -41,12 +41,14 @@ from typing import Any
 
 from .models import (  # noqa: F401  (clients moved to models.py; re-exported here)
     DEFAULT_API_BASE_URL,
+    NETWORK_AUTH_ENV,
     PROVIDERS,
     AnthropicModel,
     ModelClient,
     ModelResponse,
     OpenAICompatModel,
     ScriptedModel,
+    auth_from_network,
     make_anthropic_client,
     make_model,
     provider_api_key,
@@ -58,8 +60,20 @@ from .toolchain import run_command, split_command
 from .tools import benchmark, compile_sycl, migrate, scan_helpers, verify
 
 DEFAULT_MODEL = "claude-sonnet-5-5"
-# Used when the provider is meta and no model is named. Check the live model list on Oct 26.
 DEFAULT_META_MODEL = "muse-spark-1.3"
+# Default model per provider when none is named (dev.meta.ai/docs/models, 2026-10-26).
+PROVIDER_DEFAULT_MODELS = {"meta": DEFAULT_META_MODEL, "baseten": "meta-models/muse-spark-open"}
+
+# Muse models, USD per million tokens (input, cached input, output); standard mode, from
+# https://dev.meta.ai/docs/pricing-rate-limits (read 2026-10-26). Muse Spark Open on Baseten
+# is listed at the same rates. Caching is automatic; there is no cache-write charge.
+MUSE_PRICES_PER_MTOK: dict[str, tuple[float, float, float]] = {
+    "muse-spark-1.3": (1.25, 0.15, 4.25),
+    "muse-spark-1.2": (1.25, 0.15, 4.25),
+    "muse-spark-1.1": (1.25, 0.15, 4.25),
+    "muse-wonder-1.0": (4.00, 0.20, 20.00),
+    "meta-models/muse-spark-open": (1.25, 0.15, 4.25),
+}
 
 # USD per million tokens (input, output). Cache writes bill 1.25x input, reads 0.1x input.
 PRICES_PER_MTOK: dict[str, tuple[float, float]] = {
@@ -472,6 +486,9 @@ def model_pricing(model: str, environ: Mapping[str, str] | None = None) -> Prici
     if model in PRICES_PER_MTOK:
         pin, pout = PRICES_PER_MTOK[model]
         return Pricing(pin, pout, pin * 1.25, pin * 0.10, "built-in table")
+    if model in MUSE_PRICES_PER_MTOK:
+        pin, cached, pout = MUSE_PRICES_PER_MTOK[model]
+        return Pricing(pin, pout, pin, cached, "built-in table (Meta pricing page)")
     raise ValueError(f"no price known for model {model!r}: set {PRICE_ENV[0]} and "
                      f"{PRICE_ENV[1]} (USD per million tokens) so the per-run cost cap applies, "
                      f"or set {ALLOW_UNPRICED_ENV}=1 to run with only the token cap")
@@ -988,10 +1005,11 @@ def preflight_real_model(model: str, environ: Mapping[str, str] | None = None,
     env = os.environ if environ is None else environ
     say = warn or (lambda m: print(m, file=sys.stderr))
     keys = PROVIDERS[provider].key_env
-    if not provider_api_key(provider, env):
+    if not provider_api_key(provider, env) and not (provider != "anthropic"
+                                                    and auth_from_network(env)):
         raise SystemExit(f"no API key for provider {provider!r}: set {keys[0]} (or {keys[1]}) "
-                         "to run the loop with a real model; `--dry-run --mock-tools` needs no "
-                         "key")
+                         f"to run the loop with a real model (or {NETWORK_AUTH_ENV}=1 if a proxy "
+                         "adds the key); `--dry-run --mock-tools` needs no key")
     try:
         model_pricing(model, env)
     except ValueError as e:
@@ -1020,9 +1038,9 @@ def cli_entry(args: Any) -> dict[str, Any]:
         cfg.provider = resolve_provider(cfg.model, getattr(args, "provider", None) or cfg.provider)
     except ValueError as e:
         raise SystemExit(str(e)) from None
-    if cfg.provider == "meta" and not getattr(args, "model", None) \
+    if cfg.provider in PROVIDER_DEFAULT_MODELS and not getattr(args, "model", None) \
             and not os.environ.get("ONEAPI_AGENT_MODEL") and cfg.model == DEFAULT_MODEL:
-        cfg.model = DEFAULT_META_MODEL
+        cfg.model = PROVIDER_DEFAULT_MODELS[cfg.provider]
     if args.dry_run:
         sol_path = task.parent / "sycl" / (Path(cfg.cuda_path).stem + ".cpp")
         sol = sol_path.read_text() if sol_path.is_file() else None
