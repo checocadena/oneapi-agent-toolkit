@@ -170,8 +170,11 @@ def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str]
             "/usr/local/cuda/bin/nvcc" if Path("/usr/local/cuda/bin/nvcc").exists() else None)
         if not nvcc:
             return None, "nvcc not found"
+        # native_flags: extra nvcc arguments after the source, e.g. ["-lcublas", "-lcublasLt"]
+        # for CUDA that calls NVIDIA libraries (nvcc links only the CUDA runtime by default).
         return run([nvcc, "-O2", "-std=c++17", "-arch=native", *incs, str(src),
-                    "-o", "build/native"], cwd=str(work), timeout=900), None
+                    *task.get("native_flags", []), "-o", "build/native"],
+                   cwd=str(work), timeout=900), None
     if vendor == "amd":
         hipcc = os.environ.get("HIPCC") or shutil.which("hipcc")
         hipify = os.environ.get("HIPIFY") or shutil.which("hipify-perl")

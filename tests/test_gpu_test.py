@@ -235,6 +235,24 @@ def test_native_hip_build_without_headers_is_a_stated_limitation(tmp_path, monke
     assert not any(a.startswith(f"-I{tmp_path / 'core-7.14'}") for a in calls[-1])
 
 
+def test_native_nvidia_build_appends_native_flags(tmp_path, monkeypatch):
+    gt = importlib.import_module("oneapi_agent.tools.gpu_test")
+    monkeypatch.setenv("NVCC", "/usr/local/cuda/bin/nvcc")
+    calls = []
+
+    def runner(argv, **kw):
+        calls.append(list(argv))
+        return CommandResult(list(argv), 0, "", "", 0.0)
+
+    src = str(tmp_path / "k.cu")
+    gt._native_build({"cuda_path_abs": src}, "nvidia", tmp_path, ["-Ia"], None, runner)
+    assert calls[-1][calls[-1].index(src) + 1] == "-o"  # unchanged without native_flags
+    task = {"cuda_path_abs": src, "native_flags": ["-lcublas", "-lcublasLt"]}
+    gt._native_build(task, "nvidia", tmp_path, ["-Ia"], None, runner)
+    argv = calls[-1]
+    assert argv[argv.index(src) + 1:argv.index("-o")] == ["-lcublas", "-lcublasLt"]
+
+
 def test_cg_reduce_header_is_mapped_to_hip_or_reported(tmp_path):
     from oneapi_agent.tools.gpu_test import map_cg_headers
 
