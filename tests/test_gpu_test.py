@@ -358,3 +358,54 @@ def test_benchmark_stats_work_on_old_numpy(monkeypatch):
     monkeypatch.setattr(bm.np, "percentile", old_percentile)
     s = bm._stats([1.0, 2.0, 3.0, 4.0])
     assert s["p95"] == real([1.0, 2.0, 3.0, 4.0], 95) and s["n"] == 4
+
+
+def _fetch_task(tmp_path: Path, **extra) -> Path:
+    t = tmp_path / "t"
+    (t / "sycl").mkdir(parents=True, exist_ok=True)
+    (t / "k.cu").write_text("// cuda")
+    (t / "sycl/k.cpp").write_text("// sycl")
+    (t / "big.bin").write_bytes(b"\1" * 64)  # stands for a large input fetched on the machine
+    (t / "task.json").write_text(json.dumps({
+        "cuda_path": "k.cu", "inputs": ["big.bin"], "reference_build": ["true"],
+        "reference_cmd": "r", "candidate_cmd": "c", **extra}))
+    return t / "task.json"
+
+
+def test_bundle_fetches_large_files_instead_of_packing_them(tmp_path):
+    sha = "a" * 64
+    task = _fetch_task(tmp_path, fetch=[{"path": "big.bin", "sha256": sha,
+                                         "url": "https://example.org/big.bin?download=true"}])
+    (tmp_path / "t/big.bin").unlink()  # need not exist locally
+    r = make_bundle(str(task), str(tmp_path / "b.sh"))
+    assert r.status == "ok", r.summary
+    assert "task/big.bin" not in _payload(tmp_path / "b.sh").getnames()
+    script = (tmp_path / "b.sh").read_text()
+    assert ("fetch_file \"$D/task\"/'big.bin' 'https://example.org/big.bin?download=true' "
+            + sha) in script
+
+
+def test_bundle_rejects_bad_fetch_entries(tmp_path):
+    for bad in ({"path": "../x", "url": "https://e/x", "sha256": "a" * 64},
+                {"path": "x", "url": "http://e/x", "sha256": "a" * 64},
+                {"path": "x", "url": "https://e/x", "sha256": "nothex"},
+                {"path": "x", "url": "https://e/x"}):
+        task = _fetch_task(tmp_path, fetch=[bad])
+        assert make_bundle(str(task), str(tmp_path / "b.sh")).status == "error", bad
+
+
+def test_bundle_sources_gpu_setup_and_archives_its_log(tmp_path):
+    import subprocess
+
+    task = _fetch_task(tmp_path, gpu_setup="setup.sh")
+    (tmp_path / "t/setup.sh").write_text('echo "setup ran"; export GT_SETUP_MARK=yes\n')
+    r = make_bundle(str(task), str(tmp_path / "b.sh"))
+    assert r.status == "ok", r.summary
+    # an unknown flag ends gpu-test early; setup has run and its log is archived
+    subprocess.run(["bash", str(tmp_path / "b.sh"), "--no-such-flag"], cwd=tmp_path,
+                   capture_output=True, text=True, timeout=300)
+    [archive] = tmp_path.glob("gputest-results-*.tar.gz")
+    with tarfile.open(archive) as t:
+        assert "setup ran" in t.extractfile("setup.log").read().decode()
+    task2 = _fetch_task(tmp_path, gpu_setup="../escape.sh")
+    assert make_bundle(str(task2), str(tmp_path / "b2.sh")).status == "error"
