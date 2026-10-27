@@ -164,6 +164,24 @@ def test_toolbox_confines_paths(cfg, tmp_path):
     assert tb("nope", {}).status == "error"
 
 
+def test_read_file_opens_included_headers_but_not_other_task_files(tmp_path):
+    task = tmp_path / "task"
+    (task / "llmc").mkdir(parents=True)
+    (task / "harness.cu").write_text('#include "train.cu"\nint main(){}\n')
+    (task / "train.cu").write_text('#include "llmc/utils.h"\n')
+    (task / "llmc" / "utils.h").write_text("int u;\n")
+    (task / "reference.cpp").write_text("// hidden\n")
+    c = LoopConfig(goal="g", cuda_path=str(task / "harness.cu"), reference_cmd="r",
+                   candidate_cmd="c", name="t")
+    work = tmp_path / "w"
+    work.mkdir()
+    tb = Toolbox(c, work)
+    assert tb("read_file", {"path": str(task / "train.cu")}).status == "ok"
+    assert tb("read_file", {"path": str(task / "llmc" / "utils.h")}).status == "ok"
+    hidden = tb("read_file", {"path": str(task / "reference.cpp")})
+    assert hidden.status == "error" and "escapes" in hidden.summary
+
+
 def test_read_file_reads_a_line_range(cfg, tmp_path):
     work = tmp_path / "w"
     work.mkdir()
