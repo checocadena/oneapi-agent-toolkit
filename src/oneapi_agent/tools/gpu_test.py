@@ -160,6 +160,28 @@ def map_cg_headers(src: str, hip_inc: Path) -> tuple[str, str | None]:
     return src, None
 
 
+LOCAL_INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"', re.MULTILINE)
+
+
+def local_headers(src: Path) -> list[Path]:
+    """Headers ``src`` includes with quotes that sit next to it (relative to its directory),
+    and the ones they include in turn, each once."""
+    seen: list[Path] = []
+    todo = [src]
+    while todo:
+        cur = todo.pop()
+        try:
+            text = cur.read_text(errors="replace")
+        except OSError:
+            continue
+        for name in LOCAL_INCLUDE.findall(text):
+            h = (cur.parent / name).resolve()
+            if h.is_file() and h not in seen and h != src.resolve():
+                seen.append(h)
+                todo.append(h)
+    return seen
+
+
 def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str],
                   amd_arch: str | None, runner: Runner | None):
     """Build the original CUDA for this GPU, or return (None, reason)."""
@@ -194,6 +216,19 @@ def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str]
         hip_text, missing = map_cg_headers(conv.stdout, hip_inc)
         if missing:
             return None, missing
+        # Local headers the source includes ("common.h") are CUDA too: hipify each and write it
+        # next to the converted source, where a quoted #include finds it before -I paths.
+        for h in local_headers(src):
+            rel = h.relative_to(src.parent.resolve()) if src.parent.resolve() in h.parents \
+                else Path(h.name)
+            hconv = run([hipify, str(h)], cwd=str(work), timeout=300)
+            if hconv.returncode != 0:
+                return hconv, None
+            h_text, missing = map_cg_headers(hconv.stdout, hip_inc)
+            if missing:
+                return None, missing
+            (work / rel).parent.mkdir(parents=True, exist_ok=True)
+            (work / rel).write_text(h_text)
         hip_src = work / f"{src.stem}.hip.cpp"
         hip_src.write_text(hip_text)
         return run([hipcc, "-O2", "-std=c++17", f"--offload-arch={amd_arch}", *incs,
