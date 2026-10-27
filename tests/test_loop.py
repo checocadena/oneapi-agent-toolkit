@@ -164,6 +164,42 @@ def test_toolbox_confines_paths(cfg, tmp_path):
     assert tb("nope", {}).status == "error"
 
 
+def test_read_file_reads_a_line_range(cfg, tmp_path):
+    work = tmp_path / "w"
+    work.mkdir()
+    (work / "big.cpp").write_text("".join(f"line {i}\n" for i in range(1, 11)))
+    tb = Toolbox(cfg, work)
+    whole = tb("read_file", {"path": "big.cpp"})
+    assert whole.evidence["content"].count("\n") == 10 and "total_lines" not in whole.evidence
+    part = tb("read_file", {"path": "big.cpp", "offset": 3, "limit": 2})
+    assert part.evidence["content"] == "line 3\nline 4\n"
+    assert (part.evidence["total_lines"], part.evidence["last_line"]) == (10, 4)
+    assert "lines 3-4 of 10" in part.summary
+    tail = tb("read_file", {"path": "big.cpp", "offset": 9, "limit": 50})
+    assert tail.evidence["content"] == "line 9\nline 10\n"
+
+
+def test_delete_file_removes_work_files_but_keeps_build(cfg, tmp_path):
+    work = tmp_path / "w"
+    (work / "migrated").mkdir(parents=True)
+    (work / "migrated" / "a.dp.cpp").write_text("dpct")
+    (work / "migrated" / "common.h").write_text("dpct")
+    (work / "port.cpp").write_text("x")
+    (work / "build").mkdir()
+    (work / "build" / "reference").write_text("bin")
+    tb = Toolbox(cfg, work)
+    r = tb("delete_file", {"path": "migrated"})
+    assert r.status == "ok" and r.evidence["files"] == 2 and not (work / "migrated").exists()
+    assert tb("delete_file", {"path": "port.cpp"}).status == "ok"
+    assert tb("delete_file", {"path": "port.cpp"}).status == "error"  # already gone
+    for kept in (".", "build", "build/reference", "../w"):
+        assert tb("delete_file", {"path": kept}).status == "error"
+    assert (work / "build" / "reference").exists()
+    assert tb("delete_file", {"path": "../outside"}).status == "error"
+    assert "delete_file" in {t["name"] for t in tool_schemas()}
+    assert "delete_file" in {t["name"] for t in tool_schemas(baseline=True)}
+
+
 def test_failure_signature():
     assert failure_signature(ToolResult("compile", "ok", "")) is None
     assert failure_signature(ToolResult("scan_helpers", "fail", "3 remain")) is None
