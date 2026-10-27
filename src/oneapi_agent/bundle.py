@@ -58,6 +58,19 @@ ensure_numpy() {
 }
 mkdir -p "$D/out/results"
 ensure_numpy || echo "WARNING: numpy is missing and could not be installed"
+# Large task files (task "fetch") are downloaded here and checked against their sha256 instead
+# of travelling in the bundle.
+fetch_file() {  # <dest> <url> <sha256>
+  [ -f "$1" ] && echo "$3  $1" | sha256sum -c - >/dev/null 2>&1 && return 0
+  mkdir -p "$(dirname "$1")"
+  curl -fsSL --retry 3 -o "$1.part" "$2" && echo "$3  $1.part" | sha256sum -c - >/dev/null \
+    && mv "$1.part" "$1" && echo "fetched $1" \
+    || { echo "FETCH FAILED: $2 -> $1"; rm -f "$1.part"; }
+}
+__FETCH__
+# The task's own setup script (task "gpu_setup"), sourced so that what it exports (e.g. a
+# library prefix used in base_flags) reaches gpu-test. Its output goes to setup.log.
+__SETUP__
 PYTHONPATH="$D/pkg" python3 -m oneapi_agent.cli --summary gpu-test "__TASK__" --out "$D/out" "$@" \
   2>&1 | tee "$D/out/run.log"
 rc=${PIPESTATUS[0]}
@@ -74,7 +87,8 @@ summary = {"tool": "gpu_test", "status": "error",
 PY
 fi
 OUTF="$HERE/gputest-results-__NAME__-$(hostname | tr -cd 'A-Za-z0-9_-').tar.gz"
-tar czf "$OUTF" -C "$D/out" summary.json SUMMARY.md results run.log
+EXTRA=""; [ -f "$D/out/setup.log" ] && EXTRA="setup.log"
+tar czf "$OUTF" -C "$D/out" summary.json SUMMARY.md results run.log $EXTRA
 echo; cat "$D/out/SUMMARY.md"; echo; echo "results archive: $OUTF"
 exit $rc
 __PAYLOAD_BELOW__
@@ -85,7 +99,8 @@ def _common_root(paths: list[Path]) -> Path:
     return Path(os.path.commonpath([str(p) for p in paths]))
 
 
-def _add_tree(tar: tarfile.TarFile, src: Path, arcname: str) -> None:
+def _add_tree(tar: tarfile.TarFile, src: Path, arcname: str,
+              skip: frozenset[Path] = frozenset()) -> None:
     if src.is_file():
         tar.add(src, arcname=arcname)
         return
@@ -93,15 +108,44 @@ def _add_tree(tar: tarfile.TarFile, src: Path, arcname: str) -> None:
         rel = p.relative_to(src)
         if any(part in _SKIP_DIRS for part in rel.parts) or not p.is_file():
             continue
+        if p.absolute() in skip:  # fetched on the GPU machine instead
+            continue
         tar.add(p, arcname=f"{arcname}/{rel.as_posix()}")
+
+
+def _fetch_entries(task: dict[str, Any]) -> list[dict[str, str]]:
+    """The task's ``fetch`` list: ``{"path", "url", "sha256"}`` per large file, path relative
+    to the task dir. Checked here so a bad entry fails at bundle time, not on the machine."""
+    entries = task.get("fetch") or []
+    for e in entries:
+        if not (isinstance(e, dict) and {"path", "url", "sha256"} <= e.keys()):
+            raise ValueError(f"fetch entry needs path, url and sha256: {e!r}")
+        if Path(e["path"]).is_absolute() or ".." in Path(e["path"]).parts:
+            raise ValueError(f"fetch path must stay inside the task dir: {e['path']!r}")
+        if not re.fullmatch(r"[0-9a-f]{64}", e["sha256"]) or not e["url"].startswith("https://"):
+            raise ValueError(f"fetch entry needs an https url and a sha256 hex digest: {e!r}")
+    return entries
+
+
+def _q(s: str) -> str:
+    return "'" + s.replace("'", "'\\''") + "'"
 
 
 def make_bundle(task_file: str, output: str | None = None) -> ToolResult:
     """Pack ``task_file``'s task and this package into one runnable ``.sh`` file."""
     task = load_task(task_file)
     tdir = Path(task["task_dir"])
+    try:
+        fetch = _fetch_entries(task)
+    except ValueError as exc:
+        return ToolResult("bundle", "error", str(exc))
+    fetched = frozenset((tdir / e["path"]).absolute() for e in fetch)
+    setup = task.get("gpu_setup")
+    if setup and (Path(setup).is_absolute() or ".." in Path(setup).parts):
+        return ToolResult("bundle", "error", f"gpu_setup must be inside the task dir: {setup!r}")
     missing = [s for s in [task["cuda_path_abs"], *task["sycl_sources_abs"],
-                           *task["inputs_abs"], *task["include_dirs_abs"]]
+                           *[i for i in task["inputs_abs"] if Path(i).absolute() not in fetched],
+                           *task["include_dirs_abs"], *([str(tdir / setup)] if setup else [])]
                if not Path(s).exists()]
     if missing:
         return ToolResult("bundle", "error", f"task references missing file(s): {missing}",
@@ -110,7 +154,8 @@ def make_bundle(task_file: str, output: str | None = None) -> ToolResult:
                            "generated before bundling."])
     # Everything keeps its path relative to one common root, so "../common" style task paths
     # stay valid inside the bundle.
-    parts = [tdir, *map(Path, task["include_dirs_abs"]), *map(Path, task["inputs_abs"])]
+    parts = [tdir, *map(Path, task["include_dirs_abs"]),
+             *[Path(i) for i in task["inputs_abs"] if Path(i).absolute() not in fetched]]
     root = _common_root([p if p.is_dir() else p.parent for p in parts])
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
@@ -120,7 +165,7 @@ def make_bundle(task_file: str, output: str | None = None) -> ToolResult:
             arc = "task" if rel == "." else f"task/{rel}"
             if arc in added or any(arc.startswith(a + "/") for a in added):
                 continue
-            _add_tree(tar, p, arc)
+            _add_tree(tar, p, arc, fetched)
             added.add(arc)
         _add_tree(tar, PKG_DIR, "pkg/oneapi_agent")
     data = buf.getvalue()
@@ -130,8 +175,14 @@ def make_bundle(task_file: str, output: str | None = None) -> ToolResult:
     name = re.sub(r"[^A-Za-z0-9_-]", "-", task["name"])
     out = Path(output or f"gputest-{name}.sh").resolve()
     task_arc = "task/" + (tdir / Path(task_file).name).relative_to(root).as_posix()
+    tdir_arc = "$D/" + str(Path(task_arc).parent)
+    fetch_sh = "\n".join(f'fetch_file "{tdir_arc}"/{_q(e["path"])} {_q(e["url"])} {e["sha256"]}'
+                         for e in fetch)
+    setup_sh = (f'{{ . "{tdir_arc}"/{_q(setup)}; }} > "$D/out/setup.log" 2>&1 '
+                '|| echo "gpu_setup failed: see setup.log"' if setup else "")
     script = (RUNNER.replace("__NAME__", name).replace("__FILE__", out.name)
-              .replace("__TASK__", task_arc))
+              .replace("__TASK__", task_arc).replace("__FETCH__", fetch_sh)
+              .replace("__SETUP__", setup_sh))
     out.write_text(script + base64.encodebytes(data).decode())
     out.chmod(0o755)
     return ToolResult("bundle", "ok", f"wrote {out.name} ({out.stat().st_size // 1024} KiB): "
