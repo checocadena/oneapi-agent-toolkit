@@ -96,6 +96,8 @@ Rules:
 - Do not write CUDA idioms (warp size 32, error-code plumbing, 3-D launches for 1-D work).
 - Fix the first compiler error first. Keep edits small and targeted.
 - write_file replaces a whole file: always send the complete file content.
+- read_file takes offset/limit to read part of a long file; delete_file removes files you
+  no longer need (e.g. migrate's output once your own port replaces it).
 - The loop declares success only when verify passes AND scan_helpers reports zero helpers,
   both on the current sources and after a successful compile of those sources.
 - Never widen tolerances (you cannot; they are fixed by the task).
@@ -115,6 +117,8 @@ Rules:
 - Do not write CUDA idioms (warp size 32, error-code plumbing, 3-D launches for 1-D work).
 - Fix the first compiler error first. Keep edits small and targeted.
 - write_file replaces a whole file: always send the complete file content.
+- read_file takes offset/limit to read part of a long file; delete_file removes files you
+  no longer need (e.g. migrate's output once your own port replaces it).
 - The port must produce the same output as the original within the stated tolerance.
 - Call finish when the current sources compile and you believe the port is complete and
   correct.
@@ -237,10 +241,18 @@ def _all_tool_schemas() -> list[dict[str, Any]]:
         {"name": "benchmark", "description": "Time the candidate on each SYCL device.",
          "input_schema": obj({"runs": {"type": "integer", "minimum": 1, "maximum": 50}})},
         {"name": "read_file", "description": "Read a text file under the work dir (or the task's "
-         "CUDA source).", "input_schema": obj({"path": {"type": "string"}}, ["path"])},
+         "CUDA source). Optional offset (first line, 1-based) and limit (number of lines) read "
+         "part of a long file; the result says how many lines the file has.",
+         "input_schema": obj({"path": {"type": "string"},
+                              "offset": {"type": "integer", "minimum": 1},
+                              "limit": {"type": "integer", "minimum": 1}}, ["path"])},
         {"name": "write_file", "description": "Create/replace a whole text file under the work dir.",
          "input_schema": obj({"path": {"type": "string"}, "content": {"type": "string"}},
                              ["path", "content"])},
+        {"name": "delete_file", "description": "Delete a file or a directory (with its "
+         "contents) under the work dir, e.g. migrate's output once your own port replaces it. "
+         "The work dir itself and build/ cannot be deleted.",
+         "input_schema": obj({"path": {"type": "string"}}, ["path"])},
         {"name": "list_files", "description": "List files under a work-dir path.",
          "input_schema": obj({"path": {"type": "string"}})},
         {"name": "finish", "description": "Declare you are done. The loop checks the evidence "
@@ -320,8 +332,35 @@ class Toolbox:
     def t_read_file(self, a: dict[str, Any]) -> ToolResult:
         p = self._inside(a["path"], allow_task_source=True)
         text = p.read_text(errors="replace")
-        return ToolResult("read_file", "ok", f"{p.name}: {len(text)} chars",
-                          {"path": str(p), "content": text})
+        if not a.get("offset") and not a.get("limit"):
+            return ToolResult("read_file", "ok", f"{p.name}: {len(text)} chars",
+                              {"path": str(p), "content": text})
+        lines = text.splitlines(keepends=True)
+        start = max(int(a.get("offset") or 1), 1)
+        stop = len(lines) if not a.get("limit") else min(start - 1 + int(a["limit"]), len(lines))
+        part = "".join(lines[start - 1:stop])
+        return ToolResult("read_file", "ok",
+                          f"{p.name}: lines {start}-{stop} of {len(lines)} ({len(part)} chars)",
+                          {"path": str(p), "content": part, "first_line": start,
+                           "last_line": stop, "total_lines": len(lines)})
+
+    def t_delete_file(self, a: dict[str, Any]) -> ToolResult:
+        p = self._inside(a["path"])
+        build = (self.work / "build").resolve()
+        if p == self.work or p == build or build in p.parents:
+            raise PermissionError(f"cannot delete {a['path']!r}: the work dir and build/ "
+                                  "(the reference and candidate binaries) are kept")
+        if not p.exists():
+            return ToolResult("delete_file", "error", f"no such file: {a['path']}")
+        if p.is_dir():
+            n = sum(1 for q in p.rglob("*") if q.is_file())
+            shutil.rmtree(p)
+            return ToolResult("delete_file", "ok",
+                              f"deleted {p.relative_to(self.work)}/ ({n} file(s))",
+                              {"path": str(p), "files": n})
+        p.unlink()
+        return ToolResult("delete_file", "ok", f"deleted {p.relative_to(self.work)}",
+                          {"path": str(p), "files": 1})
 
     def t_write_file(self, a: dict[str, Any]) -> ToolResult:
         p = self._inside(a["path"])
@@ -425,7 +464,8 @@ def source_hash(work: Path) -> str:
 
 def failure_signature(r: ToolResult) -> str | None:
     """Stable fingerprint of a failure, used for stuck detection."""
-    if r.status == "ok" or r.tool in ("read_file", "list_files", "write_file", "finish"):
+    if r.status == "ok" or r.tool in ("read_file", "list_files", "write_file", "delete_file",
+                                      "finish"):
         return None
     if r.tool == "scan_helpers" and r.status == "fail":
         return None  # helpers remaining is a work list, not an error
