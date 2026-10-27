@@ -235,6 +235,40 @@ def test_native_hip_build_without_headers_is_a_stated_limitation(tmp_path, monke
     assert not any(a.startswith(f"-I{tmp_path / 'core-7.14'}") for a in calls[-1])
 
 
+def test_native_hip_build_hipifies_local_headers(tmp_path, monkeypatch):
+    # llm.c: the harness includes "common.h", which includes <cuda_runtime.h>; converting only
+    # the .cu left common.h as CUDA and hipcc failed with "cuda_runtime.h file not found".
+    gt = importlib.import_module("oneapi_agent.tools.gpu_test")
+    hipcc = _hip_tree(tmp_path / "rocm", headers=True)
+    monkeypatch.setenv("HIPCC", str(hipcc))
+    monkeypatch.setenv("HIPIFY", "/bin/hipify-perl")
+    monkeypatch.setattr(gt, "find_hip_include", lambda h: tmp_path / "rocm" / "include")
+    task_dir = tmp_path / "task"
+    (task_dir / "sub").mkdir(parents=True)
+    (task_dir / "k.cu").write_text('#include "common.h"\n#include <stdio.h>\nint main(){}\n')
+    (task_dir / "common.h").write_text('#include <cuda_runtime.h>\n#include "sub/util.h"\n')
+    (task_dir / "sub" / "util.h").write_text('#include "../common.h"\nint util;\n')
+    work = tmp_path / "work"
+    work.mkdir()
+    calls = []
+
+    def runner(argv, **kw):
+        calls.append(list(argv))
+        if argv[0] == "/bin/hipify-perl":
+            text = Path(argv[1]).read_text().replace("cuda_runtime.h", "hip/hip_runtime.h")
+            return CommandResult(list(argv), 0, text, "", 0.0)
+        return CommandResult(list(argv), 0, "", "", 0.0)
+
+    res, note = gt._native_build({"cuda_path_abs": str(task_dir / "k.cu")}, "amd", work,
+                                 ["-Ia"], "gfx950", runner)
+    assert note is None and res.returncode == 0
+    hipified = [Path(c[1]).name for c in calls if c[0] == "/bin/hipify-perl"]
+    assert sorted(hipified) == ["common.h", "k.cu", "util.h"]  # each header once
+    assert (work / "common.h").read_text().startswith("#include <hip/hip_runtime.h>")
+    assert (work / "sub" / "util.h").exists() and (work / "k.hip.cpp").exists()
+    assert calls[-1][0] == str(hipcc)
+
+
 def test_native_nvidia_build_appends_native_flags(tmp_path, monkeypatch):
     gt = importlib.import_module("oneapi_agent.tools.gpu_test")
     monkeypatch.setenv("NVCC", "/usr/local/cuda/bin/nvcc")
