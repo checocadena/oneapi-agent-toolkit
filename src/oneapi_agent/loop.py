@@ -58,6 +58,7 @@ from .parsers.c2s import MIGRATED_SUFFIXES
 from .result import ToolResult
 from .toolchain import run_command, split_command
 from .tools import benchmark, compile_sycl, migrate, scan_helpers, verify
+from .tools.gpu_test import local_headers
 
 DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_META_MODEL = "muse-spark-1.3"
@@ -240,8 +241,9 @@ def _all_tool_schemas() -> list[dict[str, Any]]:
          "input_schema": obj({})},
         {"name": "benchmark", "description": "Time the candidate on each SYCL device.",
          "input_schema": obj({"runs": {"type": "integer", "minimum": 1, "maximum": 50}})},
-        {"name": "read_file", "description": "Read a text file under the work dir (or the task's "
-         "CUDA source). Optional offset (first line, 1-based) and limit (number of lines) read "
+        {"name": "read_file", "description": "Read a text file under the work dir (or, by "
+         "absolute path, the task's CUDA source and the local headers it #includes). Optional "
+         "offset (first line, 1-based) and limit (number of lines) read "
          "part of a long file; the result says how many lines the file has.",
          "input_schema": obj({"path": {"type": "string"},
                               "offset": {"type": "integer", "minimum": 1},
@@ -279,6 +281,10 @@ class Toolbox:
             src = Path(self.cfg.cuda_path).resolve()
             q = Path(rel).resolve()
             if q == src or (src.is_dir() and src in q.parents):
+                return q
+            # the local headers the source #includes (and theirs), never other task files:
+            # a task directory can hold the hidden reference
+            if src.is_file() and q in local_headers(src):
                 return q
         raise PermissionError(f"path escapes the work dir: {rel}")
 
