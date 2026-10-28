@@ -110,7 +110,8 @@ def load_task(task_file: str | os.PathLike[str]) -> dict[str, Any]:
     task["task_dir"] = str(tdir)
     task["name"] = task.get("name", tdir.name)
     task["cuda_path_abs"] = str((tdir / task["cuda_path"]).resolve())
-    task["reference_cmd"] = task.get("reference_cmd", "").replace("{task_dir}", task["task_dir"])
+    for k in ("reference_cmd", "candidate_cmd"):
+        task[k] = task.get(k, "").replace("{task_dir}", task["task_dir"])
     sycl = task.get("sycl_sources") or [f"sycl/{Path(task['cuda_path']).stem}.cpp"]
     task["sycl_sources_abs"] = [str((tdir / s).resolve()) for s in sycl]
     task["include_dirs_abs"] = [str((tdir / d).resolve()) for d in task.get("include_dirs", [])]

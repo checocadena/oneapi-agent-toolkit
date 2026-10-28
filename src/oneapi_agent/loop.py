@@ -188,7 +188,9 @@ class LoopConfig:
             # {task_dir}: files the reference needs that the model must not see (they stay
             # outside the work dir, which is all the model's tools can read)
             reference_cmd=data["reference_cmd"].replace("{task_dir}", str(base)),
-            candidate_cmd=data["candidate_cmd"],
+            # ...and for the candidate, a fixed wrapper the model must not edit (e.g. a script
+            # that runs the program with set arguments and turns its printout into numbers)
+            candidate_cmd=data["candidate_cmd"].replace("{task_dir}", str(base)),
             inputs=[absolute(i) for i in data.get("inputs", [])],
             reference_build=[
                 a.replace("{task_dir}", str(base)) for a in data["reference_build"]

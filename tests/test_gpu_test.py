@@ -458,3 +458,18 @@ def test_reference_cmd_may_name_the_task_dir(tmp_path):
     want = f"python3 {tmp_path.resolve()}/ref.py {{input}} {{output}}"
     assert LoopConfig.from_task_file(tmp_path / "task.json").reference_cmd == want
     assert load_task(str(tmp_path / "task.json"))["reference_cmd"] == want
+
+
+def test_candidate_cmd_may_name_the_task_dir(tmp_path):
+    # a wrapper in the task dir runs the candidate; gpu_test's native command is derived from
+    # candidate_cmd, so the native CUDA build runs through the same wrapper
+    from oneapi_agent.loop import LoopConfig
+    from oneapi_agent.tools.gpu_test import load_task
+
+    (tmp_path / "k.cu").write_text("// cuda")
+    (tmp_path / "task.json").write_text(json.dumps({
+        "goal": "g", "cuda_path": "k.cu", "reference_build": ["true"], "reference_cmd": "r",
+        "candidate_cmd": "python3 {task_dir}/run.py build/candidate {input} {output}"}))
+    want = f"python3 {tmp_path.resolve()}/run.py build/candidate {{input}} {{output}}"
+    assert LoopConfig.from_task_file(tmp_path / "task.json").candidate_cmd == want
+    assert load_task(str(tmp_path / "task.json"))["candidate_cmd"] == want
