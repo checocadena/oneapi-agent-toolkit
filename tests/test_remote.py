@@ -368,3 +368,33 @@ def test_upload_gives_up_and_never_retries_a_real_refusal(monkeypatch):
     _fake_agent(monkeypatch, [404] * 3)
     with pytest.raises(RuntimeError, match="HTTP 404"):
         remote._upload_bundle("https://x", "t", b"b", [], None, lambda m: None, 0, attempts=3)
+
+
+def test_public_tls_droplet_names_itself_and_serves_443():
+    from oneapi_agent.remote import DigitalOceanProvider, cloud_init_script, public_host
+
+    script = cloud_init_script({"GT_TOKEN": "t"}, public_tls=True)
+    assert "169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address" in script
+    assert "certbot certonly --standalone" in script and ".sslip.io" in script
+    assert "export GT_PORT=443" in script and "GT_TLS_CERT_FILE" in script
+    assert "ufw allow 8000" not in script
+    assert "certbot" not in cloud_init_script({"GT_TOKEN": "t"})  # default path unchanged
+    assert public_host("203.0.113.5") == "203-0-113-5.sslip.io"
+
+    class Api:
+        def req(self, method, path, body=None):
+            return {"droplet": {"status": "active", "networks": {"v4": [
+                {"type": "private", "ip_address": "10.0.0.2"},
+                {"type": "public", "ip_address": "203.0.113.5"}]}}}
+
+    assert DigitalOceanProvider("k", Api(), public_tls=True).agent_url("1") == \
+        "https://203-0-113-5.sslip.io"
+    assert DigitalOceanProvider("k", Api()).agent_url("1") == "https://203.0.113.5:8000"
+
+
+def test_public_tls_is_digitalocean_only(tmp_path, monkeypatch):
+    from oneapi_agent.remote import remote_test
+
+    monkeypatch.setenv("RUNPOD_API_KEY", "k")
+    r = remote_test(str(tmp_path / "task.json"), provider="runpod", public_tls=True)
+    assert r.status == "error" and "digitalocean only" in r.summary
