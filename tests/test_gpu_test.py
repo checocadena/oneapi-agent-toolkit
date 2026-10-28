@@ -409,3 +409,52 @@ def test_bundle_sources_gpu_setup_and_archives_its_log(tmp_path):
         assert "setup ran" in t.extractfile("setup.log").read().decode()
     task2 = _fetch_task(tmp_path, gpu_setup="../escape.sh")
     assert make_bundle(str(task2), str(tmp_path / "b2.sh")).status == "error"
+
+
+def test_record_native_keeps_the_original_programs_outputs(tmp_path):
+    import hashlib
+    import sys
+
+    gt = importlib.import_module("oneapi_agent.tools.gpu_test")
+    prog = tmp_path / "native.py"  # stands in for the CUDA binary: doubles the input floats
+    prog.write_text("import array, sys\na = array.array('f'); a.frombytes(open(sys.argv[1], 'rb')"
+                    ".read())\narray.array('f', [2 * x for x in a]).tofile(open(sys.argv[2], 'wb'))\n")
+    inp = tmp_path / "in.bin"
+    import array
+    array.array("f", [1.0, 2.5, -3.0]).tofile(open(inp, "wb"))
+    out, results, work = tmp_path / "o", tmp_path / "o/results", tmp_path / "o/work"
+    results.mkdir(parents=True)
+    work.mkdir()
+    steps: list = []
+    vkw = dict(tolerance=1e-5, rtol=0.0, mode="array", output_format="f32",
+               threshold_dbfs=-96.0, cwd=str(work), runner=None)
+    res = gt._record_native({"name": "t"}, out, results, work, steps, lambda *a: None, True,
+                            None, f"{sys.executable} {prog} {{input}} {{output}}", [str(inp)],
+                            vkw, {"name": "RTX"}, "nvidia")
+    assert res.status == "ok" and res.evidence["deterministic"], res.summary
+    [rec] = res.evidence["recorded"]
+    data = (results / rec["file"]).read_bytes()
+    assert array.array("f", data).tolist() == [2.0, 5.0, -6.0]
+    assert rec["sha256"] == hashlib.sha256(data).hexdigest() and rec["input"] == "in.bin"
+    bad = gt._record_native({"name": "t"}, out, results, work, [], lambda *a: None, False,
+                            "nvcc not found", "x", [str(inp)], vkw, {"name": "RTX"}, "nvidia")
+    assert bad.status == "error" and "nvcc not found" in bad.summary
+
+
+def test_bundle_of_a_recording_task_needs_no_port(tmp_path):
+    task = _fetch_task(tmp_path, record_native=True)
+    (tmp_path / "t/sycl/k.cpp").unlink()
+    assert make_bundle(str(task), str(tmp_path / "b.sh")).status == "ok"
+
+
+def test_reference_cmd_may_name_the_task_dir(tmp_path):
+    from oneapi_agent.loop import LoopConfig
+    from oneapi_agent.tools.gpu_test import load_task
+
+    (tmp_path / "k.cu").write_text("// cuda")
+    (tmp_path / "task.json").write_text(json.dumps({
+        "goal": "g", "cuda_path": "k.cu", "reference_build": ["true"],
+        "reference_cmd": "python3 {task_dir}/ref.py {input} {output}", "candidate_cmd": "c"}))
+    want = f"python3 {tmp_path.resolve()}/ref.py {{input}} {{output}}"
+    assert LoopConfig.from_task_file(tmp_path / "task.json").reference_cmd == want
+    assert load_task(str(tmp_path / "task.json"))["reference_cmd"] == want
