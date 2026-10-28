@@ -96,7 +96,8 @@ Procedure: migrate -> compile -> fix errors -> scan_helpers -> refactor to idiom
 Rules:
 - Do not write CUDA idioms (warp size 32, error-code plumbing, 3-D launches for 1-D work).
 - Fix the first compiler error first. Keep edits small and targeted.
-- write_file replaces a whole file: always send the complete file content.
+- write_file replaces a whole file: always send the complete file content. To change part of
+  an existing file, use edit_file (old_str, which must appear exactly once, -> new_str).
 - read_file takes offset/limit to read part of a long file; delete_file removes files you
   no longer need (e.g. migrate's output once your own port replaces it).
 - The loop declares success only when verify passes AND scan_helpers reports zero helpers,
@@ -117,7 +118,8 @@ dpct:: helper, DPCT_* macro and #include <dpct/...>) -> compile -> finish.
 Rules:
 - Do not write CUDA idioms (warp size 32, error-code plumbing, 3-D launches for 1-D work).
 - Fix the first compiler error first. Keep edits small and targeted.
-- write_file replaces a whole file: always send the complete file content.
+- write_file replaces a whole file: always send the complete file content. To change part of
+  an existing file, use edit_file (old_str, which must appear exactly once, -> new_str).
 - read_file takes offset/limit to read part of a long file; delete_file removes files you
   no longer need (e.g. migrate's output once your own port replaces it).
 - The port must produce the same output as the original within the stated tolerance.
@@ -255,6 +257,12 @@ def _all_tool_schemas() -> list[dict[str, Any]]:
         {"name": "write_file", "description": "Create/replace a whole text file under the work dir.",
          "input_schema": obj({"path": {"type": "string"}, "content": {"type": "string"}},
                              ["path", "content"])},
+        {"name": "edit_file", "description": "Change part of an existing text file under the "
+         "work dir: replace old_str, which must appear exactly once in the file (include enough "
+         "surrounding lines to make it unique), with new_str. The rest of the file is kept as "
+         "it is, so a small change to a long file needs no full rewrite.",
+         "input_schema": obj({"path": {"type": "string"}, "old_str": {"type": "string"},
+                              "new_str": {"type": "string"}}, ["path", "old_str", "new_str"])},
         {"name": "delete_file", "description": "Delete a file or a directory (with its "
          "contents) under the work dir, e.g. migrate's output once your own port replaces it. "
          "The work dir itself and build/ cannot be deleted.",
@@ -379,6 +387,29 @@ class Toolbox:
         return ToolResult("write_file", "ok", f"wrote {p.relative_to(self.work)} "
                           f"({len(a['content'])} chars)", {"path": str(p)})
 
+    def t_edit_file(self, a: dict[str, Any]) -> ToolResult:
+        p = self._inside(a["path"])
+        if not p.is_file():
+            return ToolResult("edit_file", "error", f"no such file: {a['path']}")
+        old, new = a["old_str"], a["new_str"]
+        if not old:
+            return ToolResult("edit_file", "error", "old_str is empty; use write_file to create "
+                              "a file")
+        text = p.read_text(errors="replace")
+        n = text.count(old)
+        if n != 1:
+            return ToolResult("edit_file", "error",
+                              f"old_str appears {n} times in {p.relative_to(self.work)}; it must "
+                              "appear exactly once (add surrounding lines to make it unique)",
+                              {"path": str(p), "occurrences": n})
+        text = text.replace(old, new, 1)
+        p.write_text(text)
+        line = text[:text.index(new) if new else 0].count("\n") + 1
+        return ToolResult("edit_file", "ok",
+                          f"edited {p.relative_to(self.work)} at line {line} "
+                          f"({len(old)} -> {len(new)} chars; file now {text.count(chr(10))} lines)",
+                          {"path": str(p), "line": line})
+
     def t_run(self, a: dict[str, Any]) -> ToolResult:
         res = run_command(["bash", "-c", a["command"]], cwd=str(self.work), timeout=300)
         ok = res.returncode == 0
@@ -474,8 +505,8 @@ def source_hash(work: Path) -> str:
 
 def failure_signature(r: ToolResult) -> str | None:
     """Stable fingerprint of a failure, used for stuck detection."""
-    if r.status == "ok" or r.tool in ("read_file", "list_files", "write_file", "delete_file",
-                                      "finish"):
+    if r.status == "ok" or r.tool in ("read_file", "list_files", "write_file", "edit_file",
+                                      "delete_file", "finish"):
         return None
     if r.tool == "scan_helpers" and r.status == "fail":
         return None  # helpers remaining is a work list, not an error

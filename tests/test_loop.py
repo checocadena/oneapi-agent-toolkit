@@ -218,6 +218,31 @@ def test_delete_file_removes_work_files_but_keeps_build(cfg, tmp_path):
     assert "delete_file" in {t["name"] for t in tool_schemas(baseline=True)}
 
 
+def test_edit_file_replaces_one_unique_string(cfg, tmp_path):
+    # a 2-line guard in a long file without rewriting it (seen Oct 28: Muse spent two runs
+    # re-reading a 1,117-line file to rewrite it whole for an #ifndef TESTING guard)
+    work = tmp_path / "w"
+    work.mkdir()
+    body = "".join(f"int f{i}() {{ return {i}; }}\n" for i in range(1000))
+    (work / "train.cpp").write_text(body + "int main() { return 0; }\n")
+    tb = Toolbox(cfg, work)
+    r = tb("edit_file", {"path": "train.cpp", "old_str": "int main() { return 0; }\n",
+                         "new_str": "#ifndef TESTING\nint main() { return 0; }\n#endif\n"})
+    assert r.status == "ok" and r.evidence["line"] == 1001
+    text = (work / "train.cpp").read_text()
+    assert text.startswith(body) and text.endswith("#ifndef TESTING\nint main() { return 0; }\n#endif\n")
+    dup = tb("edit_file", {"path": "train.cpp", "old_str": "return", "new_str": "x"})
+    assert dup.status == "error" and dup.evidence["occurrences"] == 1001
+    missing = tb("edit_file", {"path": "train.cpp", "old_str": "nope", "new_str": "x"})
+    assert missing.status == "error" and "0 times" in missing.summary
+    assert tb("edit_file", {"path": "none.cpp", "old_str": "a", "new_str": "b"}).status == "error"
+    assert tb("edit_file", {"path": "../x", "old_str": "a", "new_str": "b"}).status == "error"
+    assert tb("edit_file", {"path": "train.cpp", "old_str": "", "new_str": "b"}).status == "error"
+    assert failure_signature(dup) is None  # a bad edit is feedback, not a stuck signal
+    names = {t["name"] for t in tool_schemas()}
+    assert "edit_file" in names and "edit_file" in {t["name"] for t in tool_schemas(baseline=True)}
+
+
 def test_failure_signature():
     assert failure_signature(ToolResult("compile", "ok", "")) is None
     assert failure_signature(ToolResult("scan_helpers", "fail", "3 remain")) is None
