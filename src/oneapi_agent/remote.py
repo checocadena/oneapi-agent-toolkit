@@ -221,7 +221,12 @@ class H(http.server.BaseHTTPRequestHandler):
 
 threading.Thread(target=setup, daemon=True).start()
 srv = http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("GT_PORT", "8000"))), H)
-if os.environ.get("GT_TLS_CERT"):  # direct-IP providers: TLS with a per-run cert the client pins
+if os.environ.get("GT_TLS_CERT_FILE"):  # public TLS: a CA-issued cert for the machine's hostname
+    import ssl
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(os.environ["GT_TLS_CERT_FILE"], os.environ["GT_TLS_KEY_FILE"])
+    srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+elif os.environ.get("GT_TLS_CERT"):  # direct-IP providers: TLS with a per-run cert the client pins
     import base64, ssl
     (W / "tls.crt").write_bytes(base64.b64decode(os.environ["GT_TLS_CERT"]))
     (W / "tls.key").write_bytes(base64.b64decode(os.environ["GT_TLS_KEY"]))
@@ -359,6 +364,7 @@ class Provider:
     name = "provider"
     key_env = ""
     tls = False  # True for providers reached on a bare IP: the agent then serves pinned TLS
+    public_tls = False  # True: reached on a hostname with a CA-issued cert (no pinning)
 
     def candidates(self, vendor: str, gpu_type: str | None) -> list[str]:
         raise NotImplementedError
@@ -540,12 +546,41 @@ class VastProvider(Provider):
         return self._instance(machine_id) is not None
 
 
-def cloud_init_script(env: dict[str, str]) -> str:
-    """A cloud-init user-data shell script that starts the agent with ``env`` on port 8000."""
+# Public TLS (``public_tls``): the machine names itself <ip-with-dashes>.sslip.io (a public DNS
+# name that resolves to the IP inside it) and gets a Let's Encrypt certificate for that name,
+# so the agent is an ordinary HTTPS host on port 443. For clients behind an egress proxy that
+# allows only hostnames on port 443 and checks certificates itself (no pinning possible).
+PUBLIC_HOST_SUFFIX = ".sslip.io"
+PUBLIC_TLS_SETUP = r"""
+IP="$(curl -fsS http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address)"
+HOST="$(echo "$IP" | tr . -)__SUFFIX__"
+(command -v ufw >/dev/null && ufw allow 80/tcp && ufw allow 443/tcp) || true
+command -v certbot >/dev/null || (apt-get update -qq && apt-get install -y -qq certbot) \
+  || python3 -m pip install -q certbot || python3 -m pip install -q --break-system-packages certbot
+for i in 1 2 3; do
+  certbot certonly --standalone -d "$HOST" --non-interactive --agree-tos \
+    --register-unsafely-without-email && break
+  sleep 10
+done
+export GT_TLS_CERT_FILE="/etc/letsencrypt/live/$HOST/fullchain.pem"
+export GT_TLS_KEY_FILE="/etc/letsencrypt/live/$HOST/privkey.pem"
+export GT_PORT=443
+""".replace("__SUFFIX__", PUBLIC_HOST_SUFFIX)
+
+
+def public_host(ip: str) -> str:
+    """The public-TLS hostname of a machine: ``203-0-113-5.sslip.io`` for 203.0.113.5."""
+    return ip.replace(".", "-") + PUBLIC_HOST_SUFFIX
+
+
+def cloud_init_script(env: dict[str, str], public_tls: bool = False) -> str:
+    """A cloud-init user-data shell script that starts the agent with ``env``: on port 8000,
+    or with ``public_tls`` on port 443 behind a CA-issued certificate (see PUBLIC_TLS_SETUP)."""
     exports = "\n".join(f"export {k}={shlex.quote(v)}" for k, v in env.items())
     return ("#!/bin/bash\nexport HOME=/root\n" + exports + "\n"
-            "(command -v ufw >/dev/null && ufw allow 8000/tcp) || true\n"
-            "mkdir -p /workspace && cd /workspace\n"
+            + (PUBLIC_TLS_SETUP if public_tls else
+               "(command -v ufw >/dev/null && ufw allow 8000/tcp) || true\n")
+            + "mkdir -p /workspace && cd /workspace\n"
             "nohup bash -c " + shlex.quote(START_CMD) + " > /var/log/gputest-agent.log 2>&1 &\n")
 
 
@@ -634,15 +669,17 @@ class DigitalOceanProvider(Provider):
     Candidates come from the live ``/v2/sizes`` list: available single-GPU sizes of the vendor,
     cheapest first. AMD GPU access may first need a support request on new accounts; the API's
     error is reported as the create failure. Reached on the droplet's public IPv4, port 8000,
-    with pinned TLS.
+    with pinned TLS; or, with ``public_tls``, on ``<ip-with-dashes>.sslip.io`` port 443 with a
+    Let's Encrypt certificate the droplet obtains at boot (for clients behind an egress proxy).
     """
 
     name, key_env, tls = "digitalocean", "OCEAN_API_KEY", True
     IMAGE = {"amd": "gpu-amd-base"}
     AMD_MARKERS = ("mi300", "mi325", "mi350", "mi355")
 
-    def __init__(self, key: str, api: _JSONAPI | None = None) -> None:
+    def __init__(self, key: str, api: _JSONAPI | None = None, public_tls: bool = False) -> None:
         self.api = api or _JSONAPI("https://api.digitalocean.com/v2", key)
+        self.public_tls = public_tls
         self._sizes: dict[str, dict[str, Any]] | None = None
         self._temp_key_id: int | None = None  # throwaway SSH key registered by this run
 
@@ -715,7 +752,8 @@ class DigitalOceanProvider(Provider):
         if not img:
             raise Unavailable(f"no default GPU image for {vendor}; pass --image")
         body = {"name": f"oneapi-gputest-{secrets.token_hex(3)}", "region": regions[0],
-                "size": gpu, "image": img, "user_data": cloud_init_script(env),
+                "size": gpu, "image": img,
+                "user_data": cloud_init_script(env, public_tls=self.public_tls),
                 "ssh_keys": self.ssh_keys(), "tags": ["oneapi-gputest"]}
         try:
             res = self.api.req("POST", "/droplets", body)
@@ -737,6 +775,8 @@ class DigitalOceanProvider(Provider):
             return None
         for net in (d.get("networks") or {}).get("v4", []):
             if net.get("type") == "public" and net.get("ip_address"):
+                if self.public_tls:
+                    return f"https://{public_host(net['ip_address'])}"
                 return f"https://{net['ip_address']}:8000"
         return None
 
@@ -779,8 +819,10 @@ class DigitalOceanProvider(Provider):
         return self._droplet(machine_id) is not None
 
 
-def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = None) -> Provider:
-    """Provider by name, keyed from ``api_key``, its environment variable or the keyring."""
+def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = None,
+                  public_tls: bool = False) -> Provider:
+    """Provider by name, keyed from ``api_key``, its environment variable or the keyring.
+    ``public_tls`` (DigitalOcean only) reaches the machine on a hostname with a CA cert."""
     found = find_key(name, api_key)
     key = found[0] if found else ""
     if name == "runpod":
@@ -790,7 +832,7 @@ def make_provider(name: str, *, cloud: str = "SECURE", api_key: str | None = Non
     if name == "vultr":
         return VultrProvider(key)
     if name == "digitalocean":
-        return DigitalOceanProvider(key)
+        return DigitalOceanProvider(key, public_tls=public_tls)
     raise ValueError(f"unknown provider {name!r}")
 
 
@@ -826,7 +868,8 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                 into: str = "docs/gpu-run", keep_pod: bool = False, api_key: str | None = None,
                 api: RunpodAPI | None = None, log: Callable[[str], None] = print,
                 poll_s: float = 10, agent_url: Callable[[str], str] | None = None,
-                boot_minutes: float = 15, max_stuck: int = 3) -> ToolResult:
+                boot_minutes: float = 15, max_stuck: int = 3,
+                public_tls: bool = False) -> ToolResult:
     """Rent a GPU, run ``gpu_test`` there through a bundle, import the results, delete it.
 
     ``sycl_url`` (with optional ``sycl_sha256``) is a SYCL compiler tarball unpacked to
@@ -857,7 +900,10 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
                               f"choose from {sorted(PROVIDER_KEY_ENV)}")
         if not find_key(provider, api_key):
             return missing_key_result("remote_test", provider)
-        prov = make_provider(provider, cloud=cloud, api_key=api_key)
+        if public_tls and provider != "digitalocean":
+            return ToolResult("remote_test", "error", "--public-tls is implemented for "
+                              "digitalocean only", {"provider": provider})
+        prov = make_provider(provider, cloud=cloud, api_key=api_key, public_tls=public_tls)
     candidates = prov.candidates(vendor, gpu_type)
     affordable: list[tuple[str, float | None, float]] = []
     for g in candidates:
@@ -881,7 +927,10 @@ def remote_test(task_file: str, *, vendor: str = "nvidia", gpu_type: str | None 
             env["GT_SYCL_SHA256"] = sycl_sha256
     ctx: ssl.SSLContext | None = None
     tls_note: list[str] = []
-    if prov.tls:
+    if prov.public_tls:
+        tls_note.append("reached on a public hostname with a CA-issued certificate "
+                        "(sslip.io + Let's Encrypt), verified by the client's trust store")
+    elif prov.tls:
         pair = make_tls_pair(tmp)
         if pair:
             env["GT_TLS_CERT"] = base64.b64encode(pair[0].read_bytes()).decode()
