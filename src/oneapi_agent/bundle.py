@@ -143,7 +143,8 @@ def make_bundle(task_file: str, output: str | None = None) -> ToolResult:
     setup = task.get("gpu_setup")
     if setup and (Path(setup).is_absolute() or ".." in Path(setup).parts):
         return ToolResult("bundle", "error", f"gpu_setup must be inside the task dir: {setup!r}")
-    missing = [s for s in [task["cuda_path_abs"], *task["sycl_sources_abs"],
+    sycl = [] if task.get("record_native") else task["sycl_sources_abs"]  # nothing to port yet
+    missing = [s for s in [task["cuda_path_abs"], *sycl,
                            *[i for i in task["inputs_abs"] if Path(i).absolute() not in fetched],
                            *task["include_dirs_abs"], *([str(tdir / setup)] if setup else [])]
                if not Path(s).exists()]

@@ -185,7 +185,9 @@ class LoopConfig:
         cfg = cls(
             goal=data["goal"],
             cuda_path=absolute(data["cuda_path"]),
-            reference_cmd=data["reference_cmd"],
+            # {task_dir}: files the reference needs that the model must not see (they stay
+            # outside the work dir, which is all the model's tools can read)
+            reference_cmd=data["reference_cmd"].replace("{task_dir}", str(base)),
             candidate_cmd=data["candidate_cmd"],
             inputs=[absolute(i) for i in data.get("inputs", [])],
             reference_build=[

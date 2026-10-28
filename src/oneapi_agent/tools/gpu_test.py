@@ -17,11 +17,12 @@ machine can be brought back with ``ingest_results``.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shutil
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -109,6 +110,7 @@ def load_task(task_file: str | os.PathLike[str]) -> dict[str, Any]:
     task["task_dir"] = str(tdir)
     task["name"] = task.get("name", tdir.name)
     task["cuda_path_abs"] = str((tdir / task["cuda_path"]).resolve())
+    task["reference_cmd"] = task.get("reference_cmd", "").replace("{task_dir}", task["task_dir"])
     sycl = task.get("sycl_sources") or [f"sycl/{Path(task['cuda_path']).stem}.cpp"]
     task["sycl_sources_abs"] = [str((tdir / s).resolve()) for s in sycl]
     task["include_dirs_abs"] = [str((tdir / d).resolve()) for d in task.get("include_dirs", [])]
@@ -307,10 +309,14 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
         if nb is not None:
             record("native_build", nb.evidence())
             native_ok = nb.returncode == 0
-        if native_ok:
+        if native_ok and not task.get("record_native"):
             record("native_verify_vs_reference",
                    verify(task["reference_cmd"], cmd("build/native"), inputs,
                           work_dir=str(work / "v_native"), **vkw))
+
+    if task.get("record_native"):
+        return _record_native(task, out, results, work, steps, record, native_ok, native_note,
+                              cmd("build/native"), inputs, vkw, dev, dev_vendor)
 
     tf = target_flags(dev, amd_arch, cuda_arch)
     comp = compile_sycl(task["sycl_sources_abs"], [*task["base_flags_expanded"], *tf, *incs],
@@ -355,6 +361,50 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
                      {"task": task["name"], "device": dev, "vendor": dev_vendor,
                       "amd_arch": amd_arch, "cuda_arch": cuda_arch, "target_flags": tf, "selector": selector,
                       "steps": steps, "results_dir": str(results)}, limitations)
+    return _finish(res, out, steps)
+
+
+def _record_native(task: dict[str, Any], out: Path, results: Path, work: Path,
+                   steps: list[dict[str, Any]], record: Callable[..., None], native_ok: bool,
+                   native_note: str | None, native_cmd: str, inputs: list[str],
+                   vkw: dict[str, Any], dev: dict[str, Any], dev_vendor: str) -> ToolResult:
+    """Task field ``record_native``: run the original CUDA twice on every input and keep the
+    first run's outputs as a recorded reference (results/recorded/case<i>.out, with sha256),
+    plus how far the two runs differ, which says how deterministic the program is. No SYCL
+    port is built: this is how a differential check gets its reference."""
+    where = f"{dev['name']} ({dev_vendor})"
+    if not native_ok:
+        res = ToolResult("gpu_test", "error", f"record_native: the original CUDA was not built "
+                         f"on {where}: {native_note or 'see native_build'}",
+                         {"task": task["name"], "device": dev, "steps": steps})
+        return _finish(res, out, steps)
+    rep = verify(native_cmd, native_cmd, inputs, work_dir=str(work / "v_record"),
+                 **{**vkw, "tolerance": 0.0, "rtol": 0.0})
+    record("native_repeat", rep)
+    rec_dir = results / "recorded"
+    rec_dir.mkdir(exist_ok=True)
+    recorded = []
+    for i in range(max(len(inputs), 1)):
+        src = work / "v_record" / f"case{i}_reference.out"
+        if not src.exists():
+            res = ToolResult("gpu_test", "error", f"record_native: no output for case {i}",
+                             {"task": task["name"], "steps": steps, "repeat": rep.to_dict()})
+            return _finish(res, out, steps)
+        dst = rec_dir / f"case{i}.out"
+        shutil.copyfile(src, dst)
+        recorded.append({"case": i, "input": Path(inputs[i]).name if inputs else None,
+                         "file": f"recorded/{dst.name}", "bytes": dst.stat().st_size,
+                         "sha256": hashlib.sha256(dst.read_bytes()).hexdigest()})
+    deterministic = rep.status == "ok"
+    res = ToolResult("gpu_test", "ok",
+                     f"recorded {len(recorded)} output(s) of the original CUDA on {where}; "
+                     f"two runs {'identical' if deterministic else 'differ'}: {rep.summary}",
+                     {"task": task["name"], "device": dev, "vendor": dev_vendor,
+                      "recorded": recorded, "deterministic": deterministic,
+                      "repeat": rep.evidence, "steps": steps},
+                     ["A recorded reference is the original program's own output on one GPU: "
+                      "it is only as right as that program, and a non-deterministic program "
+                      "needs a tolerance at least as wide as its run-to-run difference."])
     return _finish(res, out, steps)
 
 
