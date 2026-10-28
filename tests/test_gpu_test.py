@@ -9,6 +9,8 @@ import json
 import tarfile
 from pathlib import Path
 
+import pytest
+
 from oneapi_agent.bundle import ingest_results, make_bundle
 from oneapi_agent.toolchain import CommandResult
 from oneapi_agent.tools.gpu_test import gpu_test, pick_device, target_flags
@@ -473,3 +475,14 @@ def test_candidate_cmd_may_name_the_task_dir(tmp_path):
     want = f"python3 {tmp_path.resolve()}/run.py build/candidate {{input}} {{output}}"
     assert LoopConfig.from_task_file(tmp_path / "task.json").candidate_cmd == want
     assert load_task(str(tmp_path / "task.json"))["candidate_cmd"] == want
+
+
+def test_task_benchmark_runs_sets_or_skips_the_benchmark():
+    from oneapi_agent.tools.gpu_test import benchmark_runs
+
+    assert benchmark_runs({}, 10) == 10
+    assert benchmark_runs({"benchmark_runs": 3}, 10) == 3
+    assert benchmark_runs({"benchmark_runs": 0}, 10) == 0  # a training run is not repeated
+    for bad in (-1, "2", True, 1.5):
+        with pytest.raises(ValueError, match="benchmark_runs"):
+            benchmark_runs({"benchmark_runs": bad}, 10)

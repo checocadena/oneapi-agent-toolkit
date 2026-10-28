@@ -8,7 +8,9 @@ Given a task file (the ``examples/*/task.json`` format), it:
 3. builds the ORIGINAL CUDA for this GPU when it can: ``nvcc`` on NVIDIA, ``hipify-perl`` +
    ``hipcc`` on AMD (Intel has no CUDA path, so the reference stands alone there);
 4. compiles the SYCL port ahead of time for the vendor's target, verifies it against the
-   reference AND the native CUDA/HIP build, and benchmarks it on that one device.
+   reference AND the native CUDA/HIP build, and benchmarks it on that one device. A task's
+   ``benchmark_runs`` field sets how many timed runs (default: ``runs``; 0 skips the benchmark,
+   for programs too long to repeat, such as a training run).
 
 Every step is a real tool call; results go to ``<out_dir>/results/<step>.json``, a
 ``SUMMARY.md`` and ``summary.json`` (the returned ToolResult), so a run done on another
@@ -239,6 +241,14 @@ def _native_build(task: dict[str, Any], vendor: str, work: Path, incs: list[str]
     return None, "no CUDA path on this vendor; the C++ reference is the ground truth"
 
 
+def benchmark_runs(task: dict[str, Any], default: int) -> int:
+    """Timed runs for this task: its ``benchmark_runs`` field, else ``default``; 0 skips."""
+    n = task.get("benchmark_runs", default)
+    if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+        raise ValueError(f"benchmark_runs must be a non-negative integer, got {n!r}")
+    return n
+
+
 def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
              device: str | None = None, allow_cpu: bool = False, native: bool = True,
              runs: int = 10, sycl_cxx: str | None = None,
@@ -334,10 +344,12 @@ def gpu_test(task_file: str, out_dir: str, *, vendor: str | None = None,
             sycl_vs_native = verify(cmd("build/native"), cmd("build/sycl"), inputs, env=gpu_env,
                                     work_dir=str(work / "v_sycl_native"), **vkw)
             record("sycl_verify_vs_native", sycl_vs_native)
-        record("sycl_benchmark", benchmark(concrete(cmd("build/sycl")), runs=runs,
-                                           devices=[selector], cwd=str(work),
-                                           report_regex=KERNEL_RE, runner=runner))
-        if native_ok:
+        runs = benchmark_runs(task, runs)
+        if runs > 0:
+            record("sycl_benchmark", benchmark(concrete(cmd("build/sycl")), runs=runs,
+                                               devices=[selector], cwd=str(work),
+                                               report_regex=KERNEL_RE, runner=runner))
+        if native_ok and runs > 0:
             record("native_benchmark", benchmark(concrete(cmd("build/native")), runs=runs,
                                                  devices=["none"], cwd=str(work),
                                                  report_regex=KERNEL_RE, runner=runner))
