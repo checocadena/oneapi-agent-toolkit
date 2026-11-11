@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>oneapi-agent-toolkit · still 2 · with and without the checks</title>
+<link rel="stylesheet" href="still.css">
+<style>
+  /* New chart, in the banner's palette. Bar width = 520px * share of runs correct and helper-free. */
+  .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 90px; margin-top: 62px; }
+  .gt { font: 600 31px/1.3 var(--sans); }
+  .gs { font: 24px/1.3 var(--sans); color: var(--muted); margin: 6px 0 34px; }
+  .row { margin-bottom: 30px; }
+  .lab { font: 26px/1.2 var(--sans); margin-bottom: 12px; color: var(--muted); }
+  .lab b { color: var(--ink); font-weight: 600; }
+  .bar { display: flex; align-items: center; gap: 20px; }
+  .bar i { display: block; height: 50px; border-radius: 8px; background: #2d333b; }
+  .bar i.hi { background: var(--good); }
+  .bar span { font: 700 40px/1 var(--sans); }
+  .bar span.hi { color: var(--good); }
+</style></head>
+<body>
+<!-- Left: docs/ablation/round2/README.md (40/40, 23/40, 14/40; 120 runs).
+     Right: docs/agent-ports/README.md (30/30, 18/30, 17/30; 90 runs).
+     Bar widths: 520px max per column; 23/40 = 299px, 14/40 = 182px, 18/30 = 312px, 17/30 = 295px. -->
+<div class="pad">
+  <div class="kicker">Measured: same tasks, same prompts, three arms</div>
+  <div class="title">Ports that are correct and fully converted</div>
+  <div class="note">graded by a hidden check the agent never saw: compile, verify against the reference, count dpct helpers</div>
+  <div class="groups">
+    <div>
+      <div class="gt">4 workloads</div>
+      <div class="gs">audio waveshaper, 64-tap FIR, SAXPY, HeCBench softmax · 40 runs per arm</div>
+      <div class="row"><div class="lab"><b>toolkit</b> · the normal loop</div><div class="bar"><i class="hi" style="width:520px"></i><span class="hi">40/40</span></div></div>
+      <div class="row"><div class="lab"><b>baseline</b> · no checks, done when the agent says so</div><div class="bar"><i style="width:299px"></i><span>23/40</span></div></div>
+      <div class="row"><div class="lab"><b>baseline + shell</b> · can build and run its own tests</div><div class="bar"><i style="width:182px"></i><span>14/40</span></div></div>
+    </div>
+    <div>
+      <div class="gt">5 HeCBench programs the agent had never seen</div>
+      <div class="gs">stencil1d, matrix_rotate, atomic_reduction, scan, adam · 30 runs per arm</div>
+      <div class="row"><div class="lab"><b>toolkit</b></div><div class="bar"><i class="hi" style="width:520px"></i><span class="hi">30/30</span></div></div>
+      <div class="row"><div class="lab"><b>baseline</b></div><div class="bar"><i style="width:312px"></i><span>18/30</span></div></div>
+      <div class="row"><div class="lab"><b>baseline + shell</b></div><div class="bar"><i style="width:295px"></i><span>17/30</span></div></div>
+    </div>
+  </div>
+</div>
+<div class="foot"><span>Claude Sonnet 5.5 and Haiku 5.5 · CPU device · indicative, not a benchmark</span><span>docs/ablation/round2 · docs/agent-ports</span></div>
+</body></html>

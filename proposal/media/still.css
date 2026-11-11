@@ -1,0 +1,17 @@
+/* Shared by the still images: 1920x1080 pages, captured at 2x by build.py.
+   Palette and type are the toolkit's own: the dark README banner
+   (docs/img/banner-dark.svg, PALETTES["dark"] in scripts/render_banner.py). */
+:root {
+  --bg: #0d1117; --box: #161b22; --line: #30363d; --ink: #e6edf3; --muted: #9198a1;
+  --accent: #4493f8; --accent-soft: #121d2f; --good: #3fb950; --bad: #f85149; --arrow: #6e7681;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+.pad { position: absolute; inset: 96px 130px 110px; }
+.kicker { font: 600 26px/1 var(--mono); letter-spacing: 0.04em; color: var(--accent); }
+.title { font: 700 70px/1.08 var(--sans); letter-spacing: -0.01em; margin: 24px 0 0; }
+.note { font: 30px/1.4 var(--sans); color: var(--muted); margin-top: 22px; }
+.foot { position: absolute; left: 130px; right: 130px; bottom: 54px; display: flex; justify-content: space-between;
+  font: 22px/1 var(--sans); color: var(--muted); }

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>oneapi-agent-toolkit · Press kit</title>
+<style>
+  /* Printed with Chrome: see proposal/build.py. Letter, no browser margins.
+     Palette and type are the toolkit's own: the dark README banner (docs/img/banner-dark.svg,
+     PALETTES["dark"] in scripts/render_banner.py), the README's shields.io badges, and the
+     status colours of the replay viewer (scripts/render_trace.py). */
+  @page { size: 8.5in 11in; margin: 0; }
+  :root {
+    --bg: #0d1117; --box: #161b22; --line: #30363d; --ink: #e6edf3; --muted: #9198a1;
+    --accent: #4493f8; --accent-soft: #121d2f; --good: #3fb950; --bad: #f85149; --warn: #d29922; --arrow: #6e7681;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #000; }
+  body { font-family: var(--sans); color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page {
+    width: 8.5in; height: 11in; position: relative; overflow: hidden;
+    background: var(--bg); page-break-after: always; break-after: page;
+    padding: 0.8in 0.8in 0.75in;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .folio {
+    position: absolute; left: 0.8in; right: 0.8in; bottom: 0.42in;
+    display: flex; justify-content: space-between;
+    font: 7.5pt/1 var(--mono); color: var(--muted);
+  }
+  h1, h2, h3 { font-weight: normal; margin: 0; }
+  h2 { font: 600 9pt/1 var(--mono); color: var(--accent); margin-bottom: 0.3in; }
+  h2::before { content: "## "; color: var(--arrow); }
+  p { font-size: 10.5pt; line-height: 1.55; margin: 0 0 0.14in; max-width: 6.1in; color: #c9d1d9; }
+  p b { color: var(--ink); font-weight: 600; }
+  .lede { font: 700 18pt/1.28 var(--sans); max-width: 6.6in; margin-bottom: 0.26in; color: var(--ink); }
+  .mono, code { font-family: var(--mono); font-size: 0.92em; }
+  code { background: var(--box); border: 1px solid var(--line); border-radius: 4px; padding: 0 0.04in; color: var(--ink); }
+  .small { font-size: 9pt; line-height: 1.5; }
+  img { display: block; }
+  a { color: var(--accent); text-decoration: none; }
+  .gap { font: 8pt/1.5 var(--mono); border: 1px dashed var(--warn); color: var(--warn); border-radius: 6px; padding: 0.08in 0.12in; max-width: 6.9in; margin-top: 0.14in; }
+
+  /* Cover: the README's first screen, banner plus badges. */
+  .cover { padding: 1in 0.8in; }
+  .cover .k { font: 600 11pt/1 var(--mono); color: var(--muted); }
+  .cover .big { font: 700 41pt/1.05 var(--sans); letter-spacing: -0.01em; margin-top: 0.55in; }
+  .cover .tag { font: 16pt/1.35 var(--sans); color: var(--muted); margin-top: 0.22in; max-width: 6.4in; }
+  .cover .pipe { display: flex; align-items: center; margin-top: 0.7in; }
+  .cover .pipe .b { width: 0.98in; height: 0.62in; border-radius: 7px; border: 1.3px solid var(--accent); background: var(--accent-soft);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .cover .pipe .b.plain { border-color: var(--line); background: var(--box); }
+  .cover .pipe .t { font: 600 8.6pt/1 var(--mono); }
+  .cover .pipe .b.plain .t, .cover .pipe .b.gpu .t { font-family: var(--sans); font-size: 9pt; }
+  .cover .pipe .s { font: 6.8pt/1 var(--sans); color: var(--muted); }
+  .cover .pipe .ar { flex: 1; height: 1.3px; background: var(--arrow); position: relative; margin: 0 3px 0 2px; }
+  .cover .pipe .ar::after { content: ""; position: absolute; right: -2px; top: -3.5px; border: 4px solid transparent; border-left: 6px solid var(--arrow); border-right: 0; }
+  .cover .rule { font: 9pt/1.4 var(--sans); color: var(--muted); margin-top: 0.16in; }
+  .badges { display: flex; gap: 0.1in; margin-top: 0.55in; }
+  .badge { display: flex; font: 8.5pt/1 Verdana, "DejaVu Sans", sans-serif; border-radius: 3px; overflow: hidden; }
+  .badge span { padding: 0.05in 0.08in; color: #fff; }
+  .badge span:first-child { background: #555; }
+  .badge span:last-child { background: #007ec6; }
+  .cover .sub { position: absolute; left: 0.8in; right: 0.8in; bottom: 0.8in; display: flex; justify-content: space-between; align-items: flex-end;
+    font: 9pt/1.7 var(--mono); color: var(--muted); }
+
+  .plan { width: 100%; margin: 0.05in 0 0.3in; }
+  .stills figure { margin: 0 0 0.14in; }
+  .stills img { width: 3.85in; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .stills figcaption { font: 7.5pt/1.4 var(--mono); margin-top: 0.06in; color: var(--muted); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 9.6pt; line-height: 1.42; color: #c9d1d9; }
+  td, th { text-align: left; vertical-align: top; padding: 0.075in 0.1in 0.075in 0; border-top: 1px solid var(--line); }
+  th { font: 600 7.5pt/1.5 var(--mono); width: 1.55in; color: var(--good); }
+  td b { color: var(--ink); font-weight: 600; }
+  td .n { color: var(--good); font-weight: 700; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35in; }
+  .cols p b { color: var(--accent); font-family: var(--mono); font-size: 0.95em; }
+</style>
+</head>
+<body>
+
+<!-- 1. Cover -->
+<section class="page cover">
+  <div class="k">checocadena / oneapi-agent-toolkit</div>
+  <div class="big">oneapi-agent-toolkit</div>
+  <div class="tag">Evidence-first tools that help coding agents finish CUDA → SYCL ports, and prove them.</div>
+  <div class="pipe">
+    <div class="b plain"><div class="t">CUDA</div><div class="s">your kernels</div></div><div class="ar"></div>
+    <div class="b"><div class="t">migrate</div><div class="s">SYCLomatic</div></div><div class="ar"></div>
+    <div class="b"><div class="t">compile</div><div class="s">icpx -fsycl</div></div><div class="ar"></div>
+    <div class="b"><div class="t">scan_helpers</div><div class="s">0 dpct left</div></div><div class="ar"></div>
+    <div class="b"><div class="t">verify</div><div class="s">vs reference</div></div><div class="ar"></div>
+    <div class="b gpu"><div class="t">GPU check</div><div class="s">NVIDIA · AMD</div></div>
+  </div>
+  <div class="rule">Done only when verify passes and scan_helpers finds zero dpct helpers, on the same freshly compiled source.</div>
+  <!-- The two static badges from README.md; the CI badge is live and is not reproduced. -->
+  <div class="badges">
+    <div class="badge"><span>python</span><span>3.11+</span></div>
+    <div class="badge"><span>license</span><span>AGPL-3.0 | commercial</span></div>
+    <div class="badge"><span>version</span><span>{{VERSION}}</span></div>
+  </div>
+  <div class="sub"><span>Open-source software<br>Press kit</span><span style="text-align:right">{{ARTIST}}<br>{{YEAR}}</span></div>
+</section>
+
+<!-- 2. What it is -->
+<section class="page">
+  <h2>What it is</h2>
+  <p class="lede">Intel's SYCLomatic gets CUDA code most of the way to SYCL, an open standard not tied to NVIDIA. <span style="white-space:nowrap">oneapi-agent-toolkit</span> gives a coding agent the tools to finish that port and prove it: a port counts as done only when its output matches the original and no SYCLomatic helpers remain.</p>
+  <p>The toolkit is a Python package with five tools: <code>migrate</code>, <code>compile</code>, <code>scan_helpers</code>, <code>verify</code> and <code>benchmark</code>. Each returns evidence rather than a claim: a status, the exact commands that ran, parsed diagnostics, numbers and a list of limitations. Agents reach the tools through an MCP server, a command line that prints the same results, or a bundled agent loop that enforces the "done" rule itself. A GPU command rents a machine on one of four clouds, checks the port against the original CUDA built there, and deletes the machine.</p>
+  <!-- README.md, "The last-mile problem, observed"; examples/RESULTS.md -->
+  <p>The problem it answers was observed in the repository's own examples. On HeCBench's softmax, SYCLomatic produced code that compiled with zero warnings but had silently swapped <code>expf</code> for a reduced-precision function: 22,156 of 524,288 outputs were wrong on an AVX-512 CPU. Only running the code and comparing outputs caught it. Coding agents asked to finish such ports tend to stop as soon as the code compiles.</p>
+  <!-- docs/ablation/round2/README.md -->
+  <p>In 120 measured runs with two Claude models, agents using the toolkit finished every port correctly and with no helpers left (40 of 40). The same agents without its checks managed 23 of 40, and 14 of 40 when given only a shell.</p>
+  <!-- pyproject.toml (version); git log (first commit 2026-10-15); README Status and Roadmap; PROGRESS.md "Current gaps" -->
+  <p><b>Stage:</b> version {{VERSION}}, a working research tool, not yet on PyPI. The first commit is dated 15 October 2026. All measured ports were made by the bundled loop with Claude models and graded on a CPU, on small single-file programs: indicative, not a benchmark. Intel GPUs have not been tested.</p>
+  <!-- museport README.md ("Pre-existing") and docs/CHANGES-TO-TOOLKIT.md; this repo's git tag pre_hackathon and PRs #19 to #29 -->
+  <p><b>Used in Muse Port.</b> Muse Port, by the same author, installs this toolkit as a pinned dependency for its tools, agent loop and GPU tests. Muse Port was built during the Meta Global AI Developer Hackathon 2026 and submitted there. The toolkit's state before the event is the git tag <code>pre_hackathon</code>; the 11 changes made to it for Muse Port are listed in Muse Port's repository.</p>
+  <div class="gap">TO CONFIRM (Checo): the repository shows no outside users, adoption or press. Add any that exist, or leave this kit as is.</div>
+  <div class="folio"><span>oneapi-agent-toolkit</span><span>2</span></div>
+</section>
+
+<!-- 3. How it works -->
+<section class="page">
+  <h2>How it works</h2>
+  <img class="plan" src="media/pipeline.svg" alt="A coding agent or the bundled loop calls five tools; the port is done only when compile, verify and a zero-helper scan hold on the same source; then a GPU check">
+  <!-- README.md, Architecture and tool table; DECISIONS.md D4, D11; PROGRESS.md Milestone 4 -->
+  <div class="cols">
+    <div>
+      <p class="small"><b>migrate</b> runs SYCLomatic and parses every warning, with the file and line in both the CUDA and the migrated code.</p>
+      <p class="small"><b>compile</b> builds with Intel's <span class="mono">icpx -fsycl</span> and returns each diagnostic as data.</p>
+      <p class="small"><b>scan_helpers</b> counts the <span class="mono">dpct::</span> helpers SYCLomatic leaves behind, by kind and file, with the plain SYCL to replace each, and flags risky patterns such as reduced-precision math.</p>
+      <p class="small"><b>verify</b> runs the reference and the port on the same inputs and compares the outputs: error statistics for arrays, or a null test in dBFS for audio.</p>
+    </div>
+    <div>
+      <p class="small"><b>benchmark</b> times a program on each SYCL device it finds and reports the raw samples.</p>
+      <p class="small"><b>Honest failures.</b> If a compiler is missing, the result says <span class="mono">toolchain_missing</span> and names the command that could not run. Nothing is faked.</p>
+      <p class="small"><b>The loop.</b> <span class="mono">oneapi-agent loop</span> lets a model call the tools until compile, verify and a zero-helper scan all hold on the same source. The model cannot choose verify's commands or tolerances, and each run has a cost cap.</p>
+      <p class="small"><b>GPU check.</b> <span class="mono">remote-test</span> rents a GPU on Runpod, Vast.ai, Vultr or DigitalOcean, builds the original CUDA there, verifies the port against it and deletes the machine.</p>
+    </div>
+  </div>
+  <div class="folio"><span>oneapi-agent-toolkit</span><span>3</span></div>
+</section>
+
+<!-- 4. Results -->
+<section class="page">
+  <h2>Results so far</h2>
+  <p class="small" style="color:var(--muted);margin-bottom:.25in">From the repository's README and docs folder, as of {{CHECKED}}. Every number links there to the committed traces and sources.</p>
+  <table>
+    <!-- docs/ablation/round2/README.md -->
+    <tr><th>With vs without</th><td>4 workloads, Claude Sonnet and Haiku, 5 runs each, 120 runs in all. Correct and helper-free: toolkit <span class="n">40/40</span>, no checks 23/40, a shell only 14/40.</td></tr>
+    <!-- docs/agent-ports/README.md -->
+    <tr><th>Unseen programs</th><td>5 HeCBench programs the agent had never seen, 90 runs: toolkit <span class="n">30/30</span>, no checks 18/30, a shell only 17/30.</td></tr>
+    <!-- README.md "Checked on NVIDIA and AMD GPUs"; docs/agent-ports/README.md -->
+    <tr><th>On real GPUs</th><td>The agent's ports, unedited: <span class="n">10/10</span> pass against the C++ reference and the original CUDA built on the same GPU, 5 on NVIDIA and 5 on an AMD Instinct MI350X.</td></tr>
+    <!-- docs/ablation/round2/README.md -->
+    <tr><th>Why checks matter</th><td>Without checks, agents shipped wrong output in 6 of 40 runs, including a softmax port that compiled cleanly and got 332,679 of 524,288 outputs wrong. With a shell, none did, but helpers stayed in 26 of 40 runs.</td></tr>
+    <!-- docs/ablation/round2/README.md -->
+    <tr><th>Cost</th><td>About the same as without: $1.37 vs $1.23 for 20 Sonnet runs.</td></tr>
+    <!-- README.md "A real model closing the gap"; docs/real-runs/ -->
+    <tr><th>Original examples</th><td>Claude Sonnet ported all 4 original examples to success, in 5 to 8 iterations, for $0.067 to $0.082 each. One run per example.</td></tr>
+    <!-- README.md Status; docs/gpu-testing.md -->
+    <tr><th>Hardware</th><td>Ports checked on nine NVIDIA GPU types and an AMD MI350X. On the MI350X, an in-order queue cut the softmax port's cost per launch from 114.6 to 24.4 µs (the original CUDA, converted for AMD: 8.9 µs).</td></tr>
+    <!-- PROGRESS.md "Upstream reports" -->
+    <tr><th>Upstream</th><td>Two build bugs in Intel's open-source compiler for AMD GPUs reported as intel/llvm#23531 and #23532.</td></tr>
+  </table>
+  <!-- README.md, line under "Results at a glance" and "Does the toolkit actually help?" -->
+  <p class="small" style="margin-top:.3in;max-width:6.5in"><b>Honest limits.</b> Only Claude models from one vendor were measured, with 3 to 5 runs per cell, on small single-file programs, graded on a CPU: indicative, not a benchmark. No port made by an outside agent over MCP has been measured; only the registration was checked. GPU kernel timings are single small launches, not a speed claim. Intel GPUs are untested.</p>
+  <div class="folio"><span>oneapi-agent-toolkit</span><span>4</span></div>
+</section>
+
+<!-- 5. Images -->
+<section class="page">
+  <h2>Images</h2>
+  <div class="stills">
+    <figure><img src="{{IMG1}}" alt="The README banner: the six-step pipeline and the three headline results"><figcaption>1 · The README banner, redrawn for 16:9</figcaption></figure>
+    <figure><img src="{{IMG2}}" alt="Bar chart: correct and helper-free ports with the toolkit, without checks, and with only a shell"><figcaption>2 · With and without the toolkit's checks</figcaption></figure>
+    <figure><img src="{{IMG3}}" alt="Replay of a run without the toolkit: every step says OK, then the hidden check fails"><figcaption>3 · Replay: a run without the toolkit, every step OK, then the hidden check fails</figcaption></figure>
+  </div>
+  <p class="small" style="color:var(--muted)">Supplied as 3840 × 2160 JPEGs with this kit. Image 1 is the project's README banner, redrawn. Image 2 is a new chart of the README's results. Image 3 is the project's own replay page, re-rendered at high resolution.</p>
+  <div class="gap">TO CONFIRM (Checo): no photo of the author and no video of the toolkit itself. Add a portrait if the kit needs one.</div>
+  <div class="folio"><span>oneapi-agent-toolkit</span><span>5</span></div>
+</section>
+
+<!-- 6. Setup and links -->
+<section class="page">
+  <h2>Setup and links</h2>
+  <!-- README.md Quickstart and License; LICENSE (GNU AGPL v3) -->
+  <table>
+    <tr><th>Install</th><td><span class="mono small">git clone https://{{REPO_URL}}</span><br><span class="mono small">cd oneapi-agent-toolkit &amp;&amp; pip install -e ".[all]"</span><br>Python 3.11 or later.</td></tr>
+    <tr><th>Try in a minute</th><td><span class="mono small">scripts/demo.sh</span> runs the agent loop end to end with canned tool results, marked MOCK. No toolchain, no API key.</td></tr>
+    <tr><th>Toolchain</th><td>For the real tools: Intel's <span class="mono small">icpx</span> and SYCLomatic, installed by <span class="mono small" style="white-space:nowrap">scripts/install-toolchain.sh</span>. Without them each tool says <span class="mono small">toolchain_missing</span>.</td></tr>
+    <tr><th>Agents</th><td><span class="mono small">oneapi-agent setup</span> registers the MCP server with Claude Code, Codex, Cursor and Gemini CLI. Other agents can use the CLI (<span class="mono small">AGENTS.md</span>).</td></tr>
+    <tr><th>Model and GPUs</th><td>An Anthropic or Meta Model API key for the loop. A Runpod, Vast.ai, Vultr or DigitalOcean key for GPU runs.</td></tr>
+    <tr><th>Used in</th><td>Muse Port, by the same author: <span class="mono small">{{MUSEPORT_URL}}</span></td></tr>
+    <tr><th>License</th><td>AGPL-3.0. Commercial licenses are offered for closed-source use (see the README). Versions up to commit <span class="mono small">b08b687</span> were released under MIT.</td></tr>
+  </table>
+  <p class="small" style="margin-top:.3in"><b>Code, results and evidence:</b> <a class="mono" href="https://{{REPO_URL}}">{{REPO_URL}}</a><br><b>Replay demo:</b> <a class="mono" href="https://{{REPLAY_URL}}">checocadena.github.io/oneapi-agent-toolkit</a><br><b>One-page overview:</b> <span class="mono">docs/overview.md</span> in the repository</p>
+  <p class="small"><b>Contact:</b> {{ARTIST}} · <a class="mono" href="https://{{CONTACT}}">{{CONTACT}}</a> · <a class="mono" href="https://{{WEBSITE}}">{{WEBSITE}}</a></p>
+  <div class="gap">TO CONFIRM (Checo): the package is not on PyPI yet (the release workflow waits for a PyPI trusted publisher). Publish before sending, or keep "not yet on PyPI".</div>
+  <p class="small" style="color:var(--muted);margin-top:.25in">Builds on SYCLomatic (Intel), the Intel oneAPI DPC++/C++ compiler and HeCBench programs. Design inspired by REA. oneapi-agent-toolkit is an independent project and is not affiliated with Intel, NVIDIA, AMD, Anthropic or Meta.</p>
+  <div class="folio"><span>oneapi-agent-toolkit</span><span>6</span></div>
+</section>
+
+</body>
+</html>

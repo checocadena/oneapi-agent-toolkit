@@ -1,0 +1,29 @@
+ONEAPI-AGENT-TOOLKIT
+Checo Cadena, 2026
+Open-source software (AGPL-3.0, commercial licenses available) · github.com/checocadena/oneapi-agent-toolkit
+Replay demo: checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html
+
+
+DESCRIPTION (one paragraph)
+
+Intel's SYCLomatic gets CUDA code most of the way to SYCL, an open standard not tied to NVIDIA, but it leaves the output full of helper code and gives no proof that the port still behaves like the original. oneapi-agent-toolkit gives a coding agent five tools that return evidence instead of claims (migrate, compile, scan_helpers, verify and benchmark), through an MCP server, a command line or a bundled agent loop, and counts a port as done only when its output matches the original and no helpers remain. In 120 measured runs with two Claude models, agents using the toolkit finished every port correctly (40 of 40), while the same agents without its checks managed 23 of 40; on five programs the agent had never seen, the result was 30 of 30 against 18 of 30, and the agent's unedited ports then passed on rented NVIDIA and AMD GPUs. The toolkit is a working research tool at version 0.3.0, not yet on PyPI. Its results so far come from Claude models only, on small programs graded on a CPU: indicative, not a benchmark. Muse Port, by the same author, is built on it.
+
+
+SHORT BIO
+
+Checo Cadena is a New York-based singer-songwriter, sound artist and creative technologist from Monterrey, Mexico, who writes and produces records and builds the machines around them: plugins, robots, installations and software. Since 2023 Cadena has been Computer Control Engineer at Amorphic Robot Works, Chico MacMurtrie's robotic sculpture studio. Cadena holds a B.S. in Integrated Design and Media from NYU Tandon and an M.A. in Creative Media and Technology from Berklee NYC.
+
+Contact: Checo Cadena · github.com/checocadena · checocadena.com
+
+
+STILL OPEN
+
+- No outside users, adoption, press or quotes appear anywhere in the repository. The kit claims none. Add any that exist.
+- Not on PyPI yet: publish.yml waits for a PyPI trusted publisher. Publish before sending, or keep "not yet on PyPI".
+- No photo of the author and no video of the toolkit itself (the replay page is its demo). Add a portrait if the kit needs one.
+- The README is out of date after the hackathon. Its Status table and docs/meta-model-api.md say no request has reached Meta's API and no Muse result exists, and the Roadmap says Muse prices come only from environment variables. But src/oneapi_agent/loop.py has built-in Muse prices (since PR #19), and Muse Port ran this toolkit's loop with Muse. The kit therefore makes no claim about Muse results for the toolkit. Update the README, then decide whether the kit should say more.
+- Test count: the README says 203 tests (199 pass, 4 skip). tests/ now holds 219 test functions (not run here: pytest is not installed on this machine). The kit gives no test count. Recheck.
+- The upstream issues intel/llvm#23531 and #23532 are described as "reported". Their current status (open, fixed) was not checked.
+- The kit says Muse Port was built during the Meta Global AI Developer Hackathon 2026 and submitted there. It does not mention the result.
+- Image 3 is the project's own replay page, re-rendered as is. Its "Loop outcome" banner contains an em dash (between "Agent declared itself done" and "model called finish"), written by scripts/render_trace.py. Change it there and rebuild if the kit must have no long dashes at all.
+- The cover's "version 0.3.0" badge is not one of the README's badges (they are CI, Python 3.11+ and license); the version comes from pyproject.toml and the v0.3.0 tag. The live CI badge was left out because its state could not be checked offline.

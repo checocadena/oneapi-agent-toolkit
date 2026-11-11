@@ -1,0 +1,16 @@
+{
+  "title": "oneapi-agent-toolkit",
+  "pdf": "oneapi-agent-toolkit-press-kit.pdf",
+  "stills": ["media/still-1.html", "media/still-2.html", "media/still-3.html"],
+  "fields": {
+    "ARTIST": "Checo Cadena",
+    "YEAR": "2026",
+    "CONTACT": "github.com/checocadena",
+    "WEBSITE": "checocadena.com",
+    "REPO_URL": "github.com/checocadena/oneapi-agent-toolkit",
+    "REPLAY_URL": "checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html",
+    "MUSEPORT_URL": "github.com/checocadena/museport",
+    "VERSION": "0.3.0",
+    "CHECKED": "11 November 2026"
+  }
+}

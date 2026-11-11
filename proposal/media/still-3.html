@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>oneapi-agent-toolkit · still 3 · replay of a run without the toolkit</title>
+<style>
+  /* The repository's own replay page (docs/replay/baseline-softmax-fail.html, made by
+     scripts/render_trace.py from a committed trace), opened at its last step and
+     re-rendered at 3840x2160. It replaces docs/img/replay-softmax-fail.png (2400x1520).
+     The page is laid out at 1512x850 and scaled 1920/1512 to fill 1920x1080. */
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #fbfbf8; }
+  iframe { border: 0; width: 1512px; height: 850px; transform: scale(1.2698413); transform-origin: 0 0; }
+</style></head>
+<body>
+<!-- The replay opens in the viewer's dark theme (prefers-color-scheme), matching this kit.
+     Opening step 7 scrolls the page; the script puts the header back in view. -->
+<iframe id="f" src="../../docs/replay/baseline-softmax-fail.html#step-7" scrolling="no"></iframe>
+<script>
+  document.getElementById('f').addEventListener('load', function () {
+    var w = this.contentWindow;
+    setTimeout(function () { w.scrollTo(0, 0); }, 50);
+  });
+</script>
+</body></html>
