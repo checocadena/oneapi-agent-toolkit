@@ -17,12 +17,16 @@
 #   ROCM_VERSION    ROCm apt release to build against (default 7.0: the first with gfx950).
 #                   The HIP adapter links libamdhip64.so.7, so the GPU host needs ROCm 7.x.
 #   JOBS            parallel compile jobs (default: nproc)
+#   NO_WORKAROUNDS  1 = skip both intel/llvm naming workarounds below, to check that an
+#                   intel/llvm commit with the upstream fixes (#23531 via PR #23689, #23532 via
+#                   PR #23690) builds and compiles for AMD on its own (default: 0)
 set -euo pipefail
 
 WORK="${1:-/work}"
 INTEL_LLVM_REF="${INTEL_LLVM_REF:-dfcf0080a27749a5c8c73b9d83658593726b01ea}"
 ROCM_VERSION="${ROCM_VERSION:-7.0}"
 JOBS="${JOBS:-$(nproc)}"
+NO_WORKAROUNDS="${NO_WORKAROUNDS:-0}"
 OUT="$WORK/out"
 mkdir -p "$WORK" "$OUT"
 export DEBIAN_FRONTEND=noninteractive
@@ -63,10 +67,16 @@ BUILD="$WORK/build"
 # libclc targets, and the driver looks for libspirv under lib/amdgcn-amd-amdhsa/ too
 # (clang/lib/Driver/ToolChains/SYCL.cpp, findLibspirvPath). Later -D options win.
 rm -f "$BUILD/CMakeCache.txt"
-python3 "$SRC/buildbot/configure.py" -s "$SRC" -o "$BUILD" --hip --no-assertions --disable-jit \
-  --cmake-opt=-DUR_HIP_ROCM_DIR=/opt/rocm \
-  "--cmake-opt=-DLLVM_RUNTIME_TARGETS=default;amdgcn-amd-amdhsa;spirv64-unknown-unknown" \
+WORKAROUND_OPTS=(
+  "--cmake-opt=-DLLVM_RUNTIME_TARGETS=default;amdgcn-amd-amdhsa;spirv64-unknown-unknown"
   --cmake-opt=-DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES=libclc
+)
+if [ "$NO_WORKAROUNDS" = 1 ]; then
+  echo "NO_WORKAROUNDS=1: configure.py's own runtime targets, no libspirv link"
+  WORKAROUND_OPTS=()
+fi
+python3 "$SRC/buildbot/configure.py" -s "$SRC" -o "$BUILD" --hip --no-assertions --disable-jit \
+  --cmake-opt=-DUR_HIP_ROCM_DIR=/opt/rocm "${WORKAROUND_OPTS[@]}"
 
 echo "== build (jobs=$JOBS)"
 cmake --build "$BUILD" --target deploy-sycl-toolchain -- -j "$JOBS"
@@ -78,9 +88,12 @@ export LD_LIBRARY_PATH="/opt/rocm/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 # lib/clang/<v>/lib/amdgcn-amd-amdhsa/, but the driver looks under amdgpu<X.Y>-amd-amdhsa/ and
 # then amdgpu-amd-amdhsa/ (seen with strace), so `clang++ -fsycl` fails with "cannot find
 # libspirv.l64.signed_char.bc". A link makes the driver's own fallback find it for every gfx.
-for d in "$INSTALL"/lib/clang/*/lib; do
-  [ -d "$d/amdgcn-amd-amdhsa" ] && ln -sfn amdgcn-amd-amdhsa "$d/amdgpu-amd-amdhsa"
-done
+if [ "$NO_WORKAROUNDS" != 1 ]; then
+  for d in "$INSTALL"/lib/clang/*/lib; do
+    [ -d "$d/amdgcn-amd-amdhsa" ] && ln -sfn amdgcn-amd-amdhsa "$d/amdgpu-amd-amdhsa"
+  done
+fi
+ls -d "$INSTALL"/lib/clang/*/lib/*amd* || true
 
 echo "== pack (before the checks, so a failed check never throws the build away)"
 cat > "$INSTALL/BUILD-INFO.txt" <<EOF
