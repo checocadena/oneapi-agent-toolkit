@@ -11,6 +11,9 @@
   <a href="#license"><img src="https://img.shields.io/badge/license-AGPL--3.0%20%7C%20commercial-blue" alt="License: AGPL-3.0, commercial licenses available"></a>
 </p>
 
+> [!IMPORTANT]
+> **This project has been superseded by [Muse Port](https://github.com/checocadena/museport).** New work happens there. Muse Port still installs this package as a pinned dependency, so the code and results here stay available, but this repository is no longer developed on its own.
+
 <p align="center"><b>Evidence-driven MCP toolkit that makes coding agents fluent in oneAPI/SYCL.</b><br>
 <a href="#results-at-a-glance">Results</a> · <a href="docs/overview.md">One-page overview</a> · <a href="#quickstart">Quickstart</a> · <a href="AGENTS.md">For any agent</a> · <a href="https://checocadena.github.io/oneapi-agent-toolkit/docs/replay/baseline-softmax-fail.html">Demo</a></p>
 
